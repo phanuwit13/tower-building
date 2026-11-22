@@ -14,8 +14,8 @@ Read this before you sculpt an item. Every item in every theme is built in code 
 - **+y is up.** 1 tile = 1 world unit.
 - **The origin is the centre of the footprint, on the ground.** The footprint is `w` tiles along x and `d` tiles along z, so the model must stay inside x ∈ [−w/2, w/2] and z ∈ [−d/2, d/2]. Its lowest point must be exactly y = 0.
 - **The front faces +x.** The default camera and the HUD thumbnails look from +x+z, above (a 3/4 view), so the +x side and the +z end are what kids see first. Put doors, faces, signs and the most interesting side on +x. Players can turn items in 90° steps, so finish all four sides; the back may be simpler.
-- For long footprints, use `w ≤ d` (1×2, 2×3): the long side runs along z and the front is a long side, like the bench and the classroom.
-- **`at` is the bounding-box centre of a part.** There are two exceptions: a dome's `at` is the centre of its flat base, and a torus's `at` is the centre of its ring (for a full ring, that is the same thing).
+- Legal footprints are 1×1, 1×2, 2×1, 2×2, 2×3 and 3×2 (what validation accepts). **The item list you are given fixes the footprint of each item; do not change it.** For long footprints the convention is `w ≤ d` (1×2, 2×3): the long side runs along z and the front is a long side, like the bench and the classroom. It is a convention, not a rule: 2×1 and 3×2 are legal if the list asks for them (then the long side runs along x and the +x face is a short end).
+- **`at` is the bounding-box centre of a part.** There are two exceptions: a dome's `at` is the centre of its flat base, and a torus's `at` is the centre of its ring (for a full ring, that is the same thing). This matters with `rotate`: a dome turns about the middle of its base, not about the middle of its height, and a part-ring torus (`arc` below 2π) turns about the ring centre, not about the middle of the visible arch. After rotating, check where the part ended up.
 - **`rotate` is Euler XYZ in radians** (`[0, Math.PI / 2, 0]` is a quarter turn about y).
 - **`scale` is applied first, then `rotate`, then the move to `at`.** So `scale: [1, 0.5, 1]` squashes the part's own y before it is turned.
 
@@ -25,7 +25,7 @@ Every primitive is `kit.<name>(..., at, color, opts?)` and returns a `Part`. Eve
 
 | primitive | signature | notes |
 |---|---|---|
-| box | `box([sx, sy, sz], at, color, { round? })` | `round` gives bevelled edges but costs 300 triangles: use it rarely |
+| box | `box([sx, sy, sz], at, color, { round? })` | `round` is a corner radius in world units (a number, not `true`); it is capped at half the smallest side. It gives bevelled edges but costs 300 triangles: use it rarely. None of the six approved items uses it; if you do, start small (0.03 to 0.06) |
 | cylinder | `cylinder(rTop, rBottom, h, at, color, { segments = 12 })` | axis along y; `rTop: 0` gives a cone; `segments: 4` gives a thin rope or chain |
 | cone | `cone(r, h, at, color, { segments = 12 })` | point up |
 | sphere | `sphere(r, at, color, { detail = 1 })` | low-poly icosphere; `detail: 0` for small balls; `scale` gives an ellipsoid |
@@ -45,8 +45,8 @@ import { door, gableRoof, glassWindow, wallPanel, type Facing } from '../../../m
 
 They return `Part[]`, so spread them in: `parts.push(...glassWindow(kit, {...}))`. `facing` is the direction the wall faces: `'x+' | 'x-' | 'z+' | 'z-'`. For wall parts, `at` is the centre of the part **on the wall's outer surface**, for example `[W / 2, y, z]` on a +x wall of width `W`. The helper builds outwards from there in layers 0.01 apart, so faces never z-fight.
 
-- **`glassWindow(kit, { at, facing, w, h, frame = 'teal', panes = 2 })`**: a frame plus `skyBlue` glass that glows `windowWarm` at night, split by thin bars. `w` × `h` is the glass size; the frame adds 0.04 on each side. **Always use it for windows**: it is the owner-approved look (glass blue by day, warm glow at night). The frame sticks out 0.02 from the wall, the glass 0.03 and the bars 0.04.
-- **`door(kit, { at, facing, w, h, color, knob? })`**: a slab 0.03 out from the wall. `at` is the door's centre, so its bottom is at `at[1] − h / 2`. `knob` adds a small round handle.
+- **`glassWindow(kit, { at, facing, w, h, frame = 'teal', panes = 2 })`**: a frame plus `skyBlue` glass that glows `windowWarm` at night, split by thin bars. `w` × `h` is the glass size; the frame adds 0.04 on each side. **Always use it for windows**: it is the owner-approved look (glass blue by day, warm glow at night). The frame sticks out 0.02 from the wall, the glass 0.03 and the bars 0.04. The bars are vertical, full glass height and evenly spaced along the wall (along z on `x+`/`x-` walls, along x on `z+`/`z-` walls), `panes − 1` of them: the window is the same on every facing and symmetric, so there is no left or right to get wrong. Horizontal bars are not available.
+- **`door(kit, { at, facing, w, h, color, knob? })`**: a slab 0.03 out from the wall. `at` is the door's centre, so its bottom is at `at[1] − h / 2`. `knob` (a palette colour) adds a small round handle, 0.45 of the door height up. There is no handing: the knob sits on the same world side for every facing, at the +z edge of the door on `x+` and `x-` walls and at the +x edge on `z+` and `z-` walls (so seen from outside, it is on the left of an `x+` door and on the right of a `z+` door). Choose `at` and the door's side of the wall with that in mind.
 - **`wallPanel(kit, { at, facing, w, h, depth, color, glow? })`**: any flat box on a wall, such as a sign, a notice board, a poster, a step or a shutter. Stack layers 0.01 apart: a board 0.02 deep, then lettering 0.03 deep.
 - **`gableRoof(kit, { at, length, width, rise, eave, color, ridge?, along = 'z', thickness = 0.08 })`**: two slabs meeting at a ridge, plus an optional round ridge cap.
   - `at` is the centre of the wall tops.
@@ -78,14 +78,14 @@ Fill the footprint. On every footprint axis of n ≥ 2 tiles, the model must spa
 
 ## 6. Triangle budget and costs
 
-The budget per item is **800 + 400·w·d** triangles: 1×1 = 1200, 1×2 = 1600, 2×2 = 2400, 2×3 = 3200. Validation rejects anything over it. **Aim for ≤ 50 %.** The approved items use 11–41 %: tree 268, bench 180, lamp 292, flagpole 196, swing set 348, classroom 1304.
+The budget per item is **800 + 400·w·d** triangles: 1×1 = 1200, 1×2 (or 2×1) = 1600, 2×2 = 2400, 2×3 (or 3×2) = 3200. Validation rejects anything over it. **Aim for ≤ 50 %.** The approved items use 11–41 %: tree 268, bench 180, lamp 292, flagpole 196, swing set 348, classroom 1304.
 
 Measured costs, with defaults unless stated:
 
 | part | triangles |
 |---|---|
 | box | 12 |
-| box with `round` | 300 |
+| box with `round` (any radius) | 300 |
 | cylinder (12 / 8 / 16 / 4 segments) | 48 / 32 / 64 / 16 |
 | cone (12 / 8 segments), or cylinder with `rTop: 0` | 24 / 16 |
 | sphere (detail 0 / 1 / 2) | 20 / 80 / 180 |
@@ -96,6 +96,8 @@ Measured costs, with defaults unless stated:
 | door / door with knob | 12 / 32 |
 | wallPanel | 12 |
 | gableRoof / with ridge cap | 24 / 56 |
+
+`scale` does not change a part's triangle count: a squashed sphere costs the same as a round one, so use it freely, but remember a scaled-up part still has the same coarse faces.
 
 Cheap tricks: use `segments: 8` for small cylinders, `detail: 0` for small balls and `segments: 4` for ropes. Get roundness from spheres, cylinders and chunky proportions, not from `round`.
 
@@ -139,7 +141,7 @@ Any colour may glow (a screen, a neon sign, a lit pool). Make windows with `glas
 Validation (`src/models/validate.ts`) enforces these, and every theme is checked by `src/themes/registry.test.ts`:
 
 - id matches `/^[a-z0-9-]+$/`, the Thai `name` is not empty, and both are unique within the theme. The category is one of `building, nature, seating, food, play, ride, animal, vehicle, decoration, facility`.
-- Footprint is 1×1, 1×2, 2×2 or 2×3.
+- Footprint is 1×1, 1×2, 2×1, 2×2, 2×3 or 3×2 (the item list fixes which; `w ≤ d` is only a convention).
 - **Stay inside the footprint**, with no overhang at all (not even leaves, roofs or awnings).
 - **Sit on the ground**: the lowest point is exactly y = 0. The height is at most 5.
 - **Fill the footprint**: on each axis of n ≥ 2 tiles, the model spans at least n − 0.6.
@@ -171,7 +173,7 @@ Not checked, but expected:
 1. `npx vitest run src/themes src/models`. Every item of every theme is validated, and errors name the item and the rule. Also run `npx tsc --noEmit`.
 2. `npm run dev` and open `http://localhost:5173/?gallery=<theme>` (for example `?gallery=school`). Look at your item next to the approved ones, page with ◀ ▶, and orbit to see every side.
    - Switch to night with ตั้งค่า → ช่วงเวลา → กลางคืน: windows and lamps should glow, and nothing else should.
-   - Once Task 15b lands, `&item=<id>` shows one item close up with its triangle count and budget.
+   - `&item=<id>` (for example `?gallery=school&item=classroom`) shows one item close up. Every label shows a thumbnail and the triangles used against the budget.
 3. Compare with the style references: the same chunkiness, palette and scale. The front (+x) should read in the 3/4 view.
 
 ## 11. Style references (`src/themes/school/items/`)
