@@ -1,6 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
-import { gableRoof } from '../../../models/parts';
+import type { Part, Vec3 } from '../../../models/kit';
+import { gableRoof, wheel } from '../../../models/parts';
 
 // A flat wooden fruit handcart, long side along z, the selling side (+x) to the front. Two big
 // wooden wheels on one axle, a pair of handles and two prop legs at the -z end, and a green
@@ -20,18 +20,6 @@ const FRUIT_X = 0.15; // centre line of the front trays
 const ORANGE_R = 0.055;
 const SLICE = { w: 0.13, len: 0.15, t: 0.03 }; // watermelon slice: rind width (z), point length (x), thickness
 
-/** A big wooden cartwheel standing in the z-y plane (rolls along z). */
-function cartwheel(kit: StyleKit, at: Vec3): Part[] {
-  const parts: Part[] = [
-    kit.torus(WHEEL.r, WHEEL.tube, at, 'woodDark', { radialSegments: 3, rotate: [0, Math.PI / 2, 0] }),
-    kit.cylinder(0.055, 0.055, 0.1, at, 'woodDark', { rotate: [0, 0, Math.PI / 2], segments: 6 }),
-  ];
-  for (let i = 0; i < SPOKES; i++) {
-    parts.push(kit.box([0.03, WHEEL.r * 2, 0.035], at, 'wood', { rotate: [(i * Math.PI) / SPOKES + Math.PI / 4, 0, 0] }));
-  }
-  return parts;
-}
-
 /** รถเข็นผลไม้: a wooden fruit handcart with two big wheels, a green canopy, oranges and watermelon. */
 export const item: ItemModel = {
   id: 'fruit-cart',
@@ -39,6 +27,11 @@ export const item: ItemModel = {
   category: 'food',
   footprint: { w: 1, d: 2 },
   build: (kit) => {
+    // a big wooden cartwheel standing in the z-y plane (rolls along z)
+    const cartwheel = (at: Vec3) => wheel(kit, {
+      at, radius: WHEEL.r, tube: WHEEL.tube, axis: 'x', color: 'woodDark', radialSegments: 3, hubColor: 'woodDark', hubRadius: 0.055, hubLength: 0.1,
+      spokes: SPOKES, spokeColor: 'wood', spokeWidth: 0.035, spokeThick: 0.03,
+    });
     const bedLen = BED.z1 - BED.z0;
     const bz = (BED.z0 + BED.z1) / 2;
     const bedBottom = BED.top - BED.t;
@@ -50,8 +43,8 @@ export const item: ItemModel = {
       kit.box([RIM.t, RIM.h, bedLen], [BED.w / 2 - RIM.t / 2, BED.top + RIM.h / 2, bz], 'woodDark'),
       kit.box([RIM.t, RIM.h, bedLen], [-BED.w / 2 + RIM.t / 2, BED.top + RIM.h / 2, bz], 'woodDark'),
       // wheels, axle and two blocks holding the axle under the bed
-      ...cartwheel(kit, [WHEEL.x, AXLE_Y, WHEEL.z]),
-      ...cartwheel(kit, [-WHEEL.x, AXLE_Y, WHEEL.z]),
+      ...cartwheel([WHEEL.x, AXLE_Y, WHEEL.z]),
+      ...cartwheel([-WHEEL.x, AXLE_Y, WHEEL.z]),
       kit.cylinder(0.03, 0.03, 2 * WHEEL.x, [0, AXLE_Y, WHEEL.z], 'stoneDark', { rotate: [0, 0, Math.PI / 2], segments: 4 }),
     ];
     for (const s of [-1, 1]) {

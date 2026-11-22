@@ -1,6 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { along, heading } from '../../../models/parts';
 
 // The trunk follows a curve in the x-y plane: it leans out from the back (-x) and bends upright under the crown.
 const BASE: Vec3 = [-0.24, 0, 0];
@@ -19,14 +20,10 @@ function bezier(t: number): Vec3 {
   const u = 1 - t;
   return [0, 1, 2].map((i) => u * u * BASE[i] + 2 * u * t * BEND[i] + t * t * TOP[i]) as Vec3;
 }
-function dir(yaw: number, pitch: number): Vec3 {
-  return [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
-}
-const along = (p: Vec3, d: Vec3, s: number): Vec3 => [p[0] + d[0] * s, p[1] + d[1] * s, p[2] + d[2] * s];
 
 /** A flat diamond (a 4-sided cylinder squashed flat) from `start`; returns the part and where the next piece starts. */
 function diamond(kit: StyleKit, start: Vec3, yaw: number, [len, width, pitch]: [number, number, number], color: PaletteColor): [Part, Vec3] {
-  const d = dir(yaw, pitch);
+  const d = heading(yaw, pitch);
   const part = kit.cylinder(1, 1, FROND_T, along(start, d, len / 2), color, {
     segments: 4, scale: [len / 2, 1, width / 2], rotate: [0, yaw, pitch],
   });
@@ -62,7 +59,7 @@ export const item: ItemModel = {
     for (let f = 0; f < FRONDS; f++) {
       const yaw = 0.2 + (f / FRONDS) * Math.PI * 2;
       const color: PaletteColor = f % 2 === 0 ? 'leaf' : 'leafDark';
-      let p = along([TOP[0], TOP[1] + 0.04, TOP[2]], dir(yaw, 0), 0.04);
+      let p = along([TOP[0], TOP[1] + 0.04, TOP[2]], heading(yaw, 0), 0.04);
       for (const piece of FROND_PIECES) {
         const [part, next] = diamond(kit, p, yaw, piece, color);
         parts.push(part);

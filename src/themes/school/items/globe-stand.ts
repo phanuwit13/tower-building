@@ -1,6 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { aim } from '../../../models/parts';
 
 // A big desk-style globe: round wooden base, turned stem, a wooden ring standing in the y-z plane
 // (so it faces the front, +x) and the globe inside it, its axis tilted in the ring's plane.
@@ -37,13 +38,6 @@ function onGlobe(lat: number, lon: number): Vec3 {
   return [x, y * Math.cos(TILT) - z * Math.sin(TILT), y * Math.sin(TILT) + z * Math.cos(TILT)];
 }
 
-/** Euler XYZ that turns a part's own +y onto the unit vector n (Ry(b)·Rz(c)·ŷ = n). */
-function alignY([nx, ny, nz]: Vec3): Vec3 {
-  const c = Math.acos(Math.max(-1, Math.min(1, ny)));
-  const b = Math.abs(Math.sin(c)) < 1e-6 ? 0 : Math.atan2(nz, -nx);
-  return [0, b, c];
-}
-
 /** ลูกโลก: a big blue and green globe, tilted in a wooden ring on a round base. */
 export const item: ItemModel = {
   id: 'globe-stand',
@@ -65,14 +59,14 @@ export const item: ItemModel = {
     for (const [lat, lon, size, color] of LAND) {
       const n = onGlobe(lat, lon);
       const h = (size * LAND_LONG) ** 2 / GLOBE.r; // half-height that matches the globe's curve along the long side
-      parts.push(kit.dome(size, at(n, GLOBE.r + LAND_LIFT - h), color, { segments: 8, scale: [1, h / size, LAND_LONG], rotate: alignY(n) }));
+      parts.push(kit.dome(size, at(n, GLOBE.r + LAND_LIFT - h), color, { segments: 8, scale: [1, h / size, LAND_LONG], rotate: aim(n, 'y') }));
     }
     for (const s of [-1, 1]) {
       const n = onGlobe((s * Math.PI) / 2, 0); // north (+1) and south (-1) poles
       const pinLen = RING.r - GLOBE.r;
       parts.push(
-        kit.sphere(POLE_CAP.r, at(n, GLOBE.r - POLE_CAP.r * POLE_CAP.squash * 0.4), 'white', { detail: 0, scale: [1, POLE_CAP.squash, 1], rotate: alignY(n) }),
-        kit.cylinder(PIN.r, PIN.r, pinLen, at(n, GLOBE.r + pinLen / 2), 'sunYellow', { segments: 4, rotate: alignY(n) }),
+        kit.sphere(POLE_CAP.r, at(n, GLOBE.r - POLE_CAP.r * POLE_CAP.squash * 0.4), 'white', { detail: 0, scale: [1, POLE_CAP.squash, 1], rotate: aim(n, 'y') }),
+        kit.cylinder(PIN.r, PIN.r, pinLen, at(n, GLOBE.r + pinLen / 2), 'sunYellow', { segments: 4, rotate: aim(n, 'y') }),
         kit.sphere(PIN.cap, at(n, RING.r), 'sunYellow', { detail: 0 }),
       );
     }

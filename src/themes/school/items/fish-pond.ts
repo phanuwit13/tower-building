@@ -1,6 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { ICO_LOW } from '../../../models/parts';
 
 // An oval pond (longer along z) ringed by low boulders; reeds at the back (-x, -z) so they never hide the water.
 const POND = { rx: 0.68, rz: 0.76 }; // water radii
@@ -13,7 +14,6 @@ const ROCKS: Array<[number, PaletteColor]> = [
   [0.12, 'stone'], [0.1, 'stone'], [0.11, 'stoneDark'], [0.12, 'stone'], [0.09, 'stone'], [0.11, 'stoneDark'],
 ];
 const ROCK_SQUASH = 0.55;
-const ICO_LOW = 0.851; // a detail-0 sphere's lowest point is this share of its radius below the centre
 const PAD = { r: 0.12, h: 0.02, lift: 0.005, notch: 0.55 }; // pads float just above the water; `notch` = the cut's angle (radians)
 /** Lily pads: [x, z, size, colour, notch direction (radians)]. */
 const PADS: Array<[number, number, number, PaletteColor, number]> = [

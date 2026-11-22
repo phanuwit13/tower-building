@@ -1,6 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { along, heading } from '../../../models/parts';
 
 const TRUNK = { h: 0.8, rBottom: 0.14, rTop: 0.095 }; // short, thick, pale green stem
 const CROWN_Y = TRUNK.h - 0.03; // where the leaves come out
@@ -24,16 +25,11 @@ const SHOOT = { r: 0.045, h: 0.34 }; // the new rolled-up leaf in the middle
 const BUNCH = { yaw: 6.0, out: 0.21, y: 0.47 }; // the bananas hang in the gap on the front (+x) side
 const FINGER = { r: 0.032, len: 0.1, tilt: 0.5 }; // one banana: a stretched ball leaning out and up
 
-/** Unit direction for a yaw around y (0 = +x, + turns towards -z) and a pitch (+ up). */
-function dir(yaw: number, pitch: number): Vec3 {
-  return [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
-}
-const along = (p: Vec3, d: Vec3, s: number): Vec3 => [p[0] + d[0] * s, p[1] + d[1] * s, p[2] + d[2] * s];
 
 /** One flat oval leaf half from `start`, with its midrib on top; returns the parts and the far end. */
 function blade(kit: StyleKit, start: Vec3, yaw: number, [len, width, pitch]: [number, number, number], color: PaletteColor): [Part[], Vec3] {
-  const d = dir(yaw, pitch);
-  const up = dir(yaw, pitch + Math.PI / 2); // the leaf's top-side normal
+  const d = heading(yaw, pitch);
+  const up = heading(yaw, pitch + Math.PI / 2); // the leaf's top-side normal
   const mid = along(start, d, len / 2);
   const rot: Vec3 = [0, yaw, pitch];
   return [[
@@ -55,14 +51,14 @@ export const item: ItemModel = {
       kit.cone(SHOOT.r, SHOOT.h, [0, CROWN_Y + SHOOT.h / 2, 0], 'lime', { segments: 6 }),
     ];
     for (const leaf of LEAVES) {
-      const start = along([0, CROWN_Y, 0], dir(leaf.yaw, 0), 0.04);
+      const start = along([0, CROWN_Y, 0], heading(leaf.yaw, 0), 0.04);
       const [inner, end] = blade(kit, start, leaf.yaw, leaf.inner, leaf.color);
-      const [outer] = blade(kit, along(end, dir(leaf.yaw, leaf.inner[2]), -OVERLAP), leaf.yaw, leaf.outer, leaf.color);
+      const [outer] = blade(kit, along(end, heading(leaf.yaw, leaf.inner[2]), -OVERLAP), leaf.yaw, leaf.outer, leaf.color);
       parts.push(...inner, ...outer);
     }
     // banana bunch: a stalk out of the crown, two rows of fingers pointing up and out, and the
     // dark red flower bud hanging under them
-    const d = dir(BUNCH.yaw, 0);
+    const d = heading(BUNCH.yaw, 0);
     const c: Vec3 = [d[0] * BUNCH.out, BUNCH.y, d[2] * BUNCH.out];
     const stalkOut = BUNCH.out - 0.07;
     const stalkDrop = CROWN_Y - (BUNCH.y + 0.08);

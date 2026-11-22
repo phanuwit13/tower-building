@@ -219,13 +219,13 @@ export function barrelRoof(kit: StyleKit, o: {
  * - `hubColor` adds a 6-sided hub (radius `hubRadius`, default radius / 4; `hubLength` along the axle, default 4 * tube).
  * - `spokes`: full-diameter bars through the hub (default 2, so four spokes), `spokeWidth` across and
  *   `spokeThick` along the axle (defaults tube * 0.6 and tube * 0.5), in `spokeColor` (default 'white'),
- *   the first at 45 degrees, the rest evenly spread over a half turn.
+ *   the first at 45 degrees, each next one `spokeStep` further round (default half a turn / `spokes`).
  * - `tubularSegments` (default 12; keep a multiple of 4 so a vertex sits at the bottom) and `radialSegments` (default 4).
  */
 export function wheel(kit: StyleKit, o: {
   at: Vec3; radius: number; tube: number; axis: 'x' | 'z'; color: PaletteColor;
   hubColor?: PaletteColor; hubRadius?: number; hubLength?: number;
-  spokes?: number; spokeColor?: PaletteColor; spokeWidth?: number; spokeThick?: number;
+  spokes?: number; spokeColor?: PaletteColor; spokeWidth?: number; spokeThick?: number; spokeStep?: number;
   tubularSegments?: number; radialSegments?: number;
 }): Part[] {
   const axisZ = o.axis === 'z';
@@ -243,7 +243,7 @@ export function wheel(kit: StyleKit, o: {
   const w = o.spokeWidth ?? o.tube * 0.6;
   const th = o.spokeThick ?? o.tube * 0.5;
   for (let i = 0; i < spokes; i++) {
-    const ang = Math.PI / 4 + (i * Math.PI) / spokes;
+    const ang = Math.PI / 4 + i * (o.spokeStep ?? Math.PI / spokes);
     parts.push(kit.box(axisZ ? [w, 2 * o.radius, th] : [th, 2 * o.radius, w], o.at, o.spokeColor ?? 'white',
       { rotate: axisZ ? [0, 0, ang] : [ang, 0, 0] }));
   }

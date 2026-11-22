@@ -1,7 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { Part, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
-import { door, gableRoof, glassWindow, wallPanel, type Facing } from '../../../models/parts';
+import { door, type Facing, gableRoof, glassWindow, rod, wallPanel } from '../../../models/parts';
 
 // A small green timber shed at the back of the plot, its gable end and red door facing the front
 // (+x). The wheelbarrow stands on the +z side of the door and the watering can on the -z side.
@@ -20,14 +20,6 @@ const WIN = { y: 0.44, w: 0.32, h: 0.24 };
 const BARROW = { x: 0.42, z: 0.58, tray: 0.24, yaw: 0.45 }; // tray centre height; turned `yaw` so the camera sees it side on
 const CAN = { x: 0.44, z: -0.66, r: 0.085, h: 0.15 };
 const STONES: Array<[number, number]> = [[0.56, -0.26], [0.76, -0.34]]; // stepping stones from the door step
-
-/** A round rod from a to b. */
-function rod(kit: StyleKit, a: Vec3, b: Vec3, r: number, color: PaletteColor, segments = 6): Part {
-  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const len = Math.hypot(...d);
-  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  return kit.cylinder(r, r, len, mid, color, { segments, rotate: [Math.atan2(d[2], d[1]), 0, -Math.asin(d[0] / len)] });
-}
 
 /** โรงเก็บเครื่องมือ: a little green garden shed with a red door, a window box, a wheelbarrow and a watering can. */
 export const item: ItemModel = {
@@ -101,7 +93,7 @@ export const item: ItemModel = {
     );
     for (const s of [-1, 1]) {
       parts.push(
-        rod(kit, p(0.06, ty - 0.06, s * 0.04), p(0.25, 0.09, s * 0.04), 0.016, 'stoneDark', 4), // fork
+        rod(kit, p(0.06, ty - 0.06, s * 0.04), p(0.25, 0.09, s * 0.04), 0.016, 'stoneDark', { segments: 4 }), // fork
         rod(kit, p(0.1, ty - 0.05, s * 0.09), p(-0.34, ty + 0.06, s * 0.13), 0.02, 'wood'), // handle
         kit.sphere(0.03, p(-0.34, ty + 0.06, s * 0.13), 'charcoal', { detail: 0 }), // grip
         kit.box([0.03, ty - 0.07, 0.03], p(-0.1, (ty - 0.07) / 2, s * 0.09), 'charcoal', { rotate: [0, yaw, 0] }), // leg
@@ -113,7 +105,7 @@ export const item: ItemModel = {
     const tip: Vec3 = [cx + 0.2, CAN.h + 0.06, cz];
     parts.push(
       kit.cylinder(CAN.r, CAN.r, CAN.h, [cx, CAN.h / 2, cz], 'blue', { segments: 10 }),
-      rod(kit, [cx + 0.04, 0.05, cz], tip, 0.018, 'blue', 6),
+      rod(kit, [cx + 0.04, 0.05, cz], tip, 0.018, 'blue'),
       kit.cylinder(0.035, 0.02, 0.04, tip, 'navy', { segments: 8, rotate: [0, 0, -0.8] }), // sprinkler rose
       kit.torus(0.06, 0.018, [cx - 0.02, CAN.h, cz], 'blue', { arc: Math.PI, tubularSegments: 6, radialSegments: 4 }),
     );

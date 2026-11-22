@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { Part, Vec3 } from '../../../models/kit';
+import { wheel } from '../../../models/parts';
 
 // A Thai ice-cream tricycle. The freezer box rides up front (+x) between two wheels; the rider's
 // saddle, the handlebar and the single back wheel are behind it (-x). The umbrella pole goes
@@ -29,15 +30,6 @@ const CONE = { x: BOX.x + BOX.w / 2 + 0.05, r: 0.085, h: 0.27, tip: BOX.y0 + 0.0
 const SCOOP_R = 0.095;
 const FRAME = 'teal';
 
-/** A spoked bicycle wheel standing in the x-y plane (rolls along x). */
-function wheel(kit: StyleKit, at: Vec3): Part[] {
-  return [
-    kit.torus(WHEEL.r, WHEEL.tube, at, 'charcoal', { radialSegments: 3, tubularSegments: 8 }), // 8 keeps a vertex at the bottom: y = 0 exactly
-    kit.box([0.022, WHEEL.r * 2, 0.02], at, 'white', { rotate: [0, 0, Math.PI / 4] }),
-    kit.box([0.022, WHEEL.r * 2, 0.02], at, 'white', { rotate: [0, 0, -Math.PI / 4] }),
-  ];
-}
-
 /** รถเข็นไอศกรีม: an ice-cream tricycle with a pink freezer box, a striped umbrella and a big cone. */
 export const item: ItemModel = {
   id: 'ice-cream-cart',
@@ -45,6 +37,10 @@ export const item: ItemModel = {
   category: 'food',
   footprint: { w: 1, d: 1 },
   build: (kit) => {
+    // a bicycle wheel standing in the x-y plane; 8 tubular segments keep a vertex at the bottom: y = 0 exactly
+    const spoked = (at: Vec3) => wheel(kit, {
+      at, radius: WHEEL.r, tube: WHEEL.tube, axis: 'z', color: 'charcoal', radialSegments: 3, tubularSegments: 8, spokeWidth: 0.022, spokeThick: 0.02, spokeStep: -Math.PI / 2, // spokes at +45 and -45 degrees
+    });
     const parts: Part[] = [
       // freezer box: pink with a white band and a white lid
       kit.box([BOX.w, BOX.h, BOX.d], [BOX.x, BOX.y0 + BOX.h / 2, 0], 'pink'),
@@ -53,10 +49,10 @@ export const item: ItemModel = {
       kit.cylinder(HATCH.r, HATCH.r, HATCH.h, [HATCH.x, LID_TOP + HATCH.h / 2, HATCH.z], 'pink', { segments: 6 }),
       kit.cylinder(HATCH.r, HATCH.r, HATCH.h, [HATCH.x, LID_TOP + HATCH.h / 2, -HATCH.z], 'pink', { segments: 6 }),
       // front wheels on one axle under the box, back wheel on a short hub
-      ...wheel(kit, [BOX.x, AXLE_Y, FRONT_Z]),
-      ...wheel(kit, [BOX.x, AXLE_Y, -FRONT_Z]),
+      ...spoked([BOX.x, AXLE_Y, FRONT_Z]),
+      ...spoked([BOX.x, AXLE_Y, -FRONT_Z]),
       kit.cylinder(AXLE_R, AXLE_R, 2 * FRONT_Z, [BOX.x, AXLE_Y, 0], 'stoneDark', { rotate: [Math.PI / 2, 0, 0], segments: 4 }),
-      ...wheel(kit, [BACK_X, AXLE_Y, 0]),
+      ...spoked([BACK_X, AXLE_Y, 0]),
       kit.cylinder(AXLE_R, AXLE_R, 2 * STAY_Z + 0.03, [BACK_X, AXLE_Y, 0], 'stoneDark', { rotate: [Math.PI / 2, 0, 0], segments: 4 }),
     ];
     // frame: two low stays from the back hub to the box, the pedal crank between them, the saddle post and a top bar

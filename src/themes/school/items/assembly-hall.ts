@@ -1,6 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
-import { door, glassWindow, wallPanel, type Facing } from '../../../models/parts';
+import { barrelRoof, door, glassWindow, wallPanel, type Facing } from '../../../models/parts';
 
 // A wide hall under a tall curved (barrel) roof. The barrel runs along x, so the front (+x) is the
 // wide arched end: a porch of four columns at the bottom, a big stage window with red curtains above it.
@@ -43,35 +43,14 @@ export const item: ItemModel = {
       kit.box([len + 2 * CORNICE.lip, CORNICE.h, 2 * (WALL.half + CORNICE.lip)], [cx, WALL_TOP, 0], 'white'),
     ];
 
-    // The curved roof. Points on the half ellipse, in (y, z), from +z over the top to -z.
+    // The curved roof, with a fan of wedges closing both ends under the arch (0.005 short of each wall face).
     const roofLen = len + ROOF_OVER.front + ROOF_OVER.back;
     const roofX = cx + (ROOF_OVER.front - ROOF_OVER.back) / 2;
-    const pts: Array<[number, number]> = [];
-    for (let i = 0; i <= ARCH.n; i++) {
-      const t = ARCH.t0 + (i / ARCH.n) * (Math.PI - 2 * ARCH.t0);
-      pts.push([ARCH_Y + ARCH.b * Math.sin(t), ARCH.a * Math.cos(t)]);
-    }
-    for (let i = 0; i < ARCH.n; i++) {
-      const [y0, z0] = pts[i];
-      const [y1, z1] = pts[i + 1];
-      const c = Math.hypot(y1 - y0, z1 - z0);
-      const dy = (y1 - y0) / c, dz = (z1 - z0) / c;
-      // F: the foot of the perpendicular from the ellipse centre O to this chord; v: unit vector from the chord towards O
-      const k = (ARCH_Y - y0) * dy + (0 - z0) * dz;
-      const fy = y0 + dy * k, fz = z0 + dz * k;
-      const h = Math.hypot(ARCH_Y - fy, -fz);
-      const vy = (ARCH_Y - fy) / h, vz = -fz / h;
-      const my = (y0 + y1) / 2, mz = (z0 + z1) / 2;
-      // [phi, PI/2, 0] turns a part's local x onto the chord (direction (vz, -vy) in y, z), its local y onto v
-      // and its local z onto world x (the barrel's axis).
-      const rotate: Vec3 = [Math.atan2(vz, vy), Math.PI / 2, 0];
-      const apex = ((fy - my) * vz + (fz - mz) * -vy) / c; // where O sits along the chord, from its middle
-      parts.push(
-        kit.box([c + ARCH.overlap, ARCH.thick, roofLen], [roofX, my - vy * ARCH.thick / 2, mz - vz * ARCH.thick / 2], 'teal', { rotate }),
-        // the end walls under the arch: a fan of wedges from O to each chord, 0.005 short of each wall face
-        kit.wedge([c, h, len - 0.01], [cx, my + vy * h / 2, mz + vz * h / 2], 'cream', { rotate, apex }),
-      );
-    }
+    parts.push(...barrelRoof(kit, {
+      at: [roofX, ARCH_Y, 0], length: roofLen, width: 2 * ARCH.a, rise: ARCH.b, color: 'teal',
+      segments: ARCH.n, spring: ARCH.t0, thickness: ARCH.thick, overlap: ARCH.overlap,
+      endWall: { color: 'cream', length: len - 0.01, center: cx },
+    }));
 
     // windows: three tall ones along each side, two and a door at the back, a wide one in the back arch
     const win = (at: Vec3, facing: Facing, w = SIDE_WIN.w, h = SIDE_WIN.h) => glassWindow(kit, { at, facing, w, h });

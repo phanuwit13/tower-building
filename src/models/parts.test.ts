@@ -318,6 +318,18 @@ describe('wheel', () => {
   });
 });
 
+describe('wheel spoke turning', () => {
+  it('spokeStep sets the turn between spokes: -90 degrees puts the second at -45, the same line as +135 but built turned the other way', () => {
+    const spoke = (step?: number) => wheel(kit, { at: [0, 0, 0], radius: 0.2, tube: 0.03, axis: 'z', color: 'charcoal', spokes: 2, spokeStep: step })[2];
+    const a = spoke(-Math.PI / 2), b = spoke();
+    expect(bounds([a]).max.x).toBeCloseTo(bounds([b]).max.x, 6); // same line
+    const pa = a.geometry.attributes.position, pb = b.geometry.attributes.position;
+    let differs = false;
+    for (let i = 0; i < pa.array.length; i++) if (Math.abs(pa.array[i] - pb.array[i]) > 1e-6) differs = true;
+    expect(differs).toBe(true); // but not the same vertices in the same order
+  });
+});
+
 describe('ICO_LOW', () => {
   it('is how far a detail-0 sphere reaches below its centre, as a share of its radius', () => {
     const b = bounds([kit.sphere(1, [0, 0, 0], 'red', { detail: 0 })]);

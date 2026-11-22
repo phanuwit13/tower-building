@@ -1,11 +1,11 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { ICO_LOW } from '../../../models/parts';
 
 // A round bed edged with stones, stepped like a cake so every ring of flowers shows from the 3/4 view.
 const SOIL = { r: 0.78, h: 0.07 };
 const EDGE = { ring: 0.8, n: 16, r: 0.1, squash: 0.62 }; // edging stones round the soil
-const ICO_LOW = 0.851; // a detail-0 sphere's lowest point is this share of its radius below the centre
 /** Green tiers, outside in: [radius, top height]. Each carries one ring of flowers. */
 const TIERS: Array<[number, number]> = [[0.68, 0.15], [0.48, 0.27], [0.28, 0.39]];
 /** Flower rings, outside in: [count, colour, start angle]; each sits just inside its tier's edge. */

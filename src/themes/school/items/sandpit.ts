@@ -1,6 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
-import type { PaletteColor } from '../../../models/palette';
+import type { Part, Vec3 } from '../../../models/kit';
+import { rod } from '../../../models/parts';
 
 // A square sandpit with tall timber sides, a plank ledge and a seat board in each corner (much
 // chunkier than the swing set's low rim), heaped with sand and full of toys: a sand castle at the
@@ -15,14 +15,6 @@ const DIGGER = { x: -0.14, z: 0.42 };
 const BUCKET = { x: 0.44, z: 0.36, rTop: 0.085, rBottom: 0.065, h: 0.15 };
 const HEAP = { x: 0.4, z: -0.4, r: 0.26, squash: 0.36 }; // squashed ball half sunk in the sand (its base stays above y = 0)
 const SPADE = { lean: 0.32, handle: 0.28 };
-
-/** A round rod from a to b. */
-function rod(kit: StyleKit, a: Vec3, b: Vec3, r: number, color: PaletteColor, segments = 6): Part {
-  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const len = Math.hypot(...d);
-  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  return kit.cylinder(r, r, len, mid, color, { segments, rotate: [Math.atan2(d[2], d[1]), 0, -Math.asin(d[0] / len)] });
-}
 
 /** บ่อทราย: a chunky wooden sandpit with corner seats, a sand castle, a ride-on digger, a bucket and a spade. */
 export const item: ItemModel = {
@@ -84,8 +76,8 @@ export const item: ItemModel = {
       kit.box([0.035, 0.11, 0.15], [dx - 0.14, bodyTop + 0.075, dz], 'red'), // backrest
       kit.cylinder(0.018, 0.018, 0.09, [dx + 0.06, bodyTop + 0.045, dz], 'charcoal', { segments: 4 }), // steering post
       kit.box([0.03, 0.03, 0.13], [dx + 0.06, bodyTop + 0.09, dz], 'charcoal'), // handlebar
-      rod(kit, [dx + 0.15, bodyTop - 0.01, dz], [dx + 0.3, bodyTop + 0.13, dz], 0.028, 'sunYellow', 4), // boom
-      rod(kit, [dx + 0.3, bodyTop + 0.13, dz], [dx + 0.36, SAND_Y + 0.08, dz], 0.024, 'sunYellow', 4), // stick
+      rod(kit, [dx + 0.15, bodyTop - 0.01, dz], [dx + 0.3, bodyTop + 0.13, dz], 0.028, 'sunYellow', { segments: 4 }), // boom
+      rod(kit, [dx + 0.3, bodyTop + 0.13, dz], [dx + 0.36, SAND_Y + 0.08, dz], 0.024, 'sunYellow', { segments: 4 }), // stick
       kit.sphere(0.035, [dx + 0.3, bodyTop + 0.13, dz], 'charcoal', { detail: 0 }), // elbow
       kit.wedge([0.1, 0.08, 0.13], [dx + 0.39, SAND_Y + 0.04, dz], 'stoneDark', { apex: -0.5 }), // scoop
     );
@@ -109,7 +101,7 @@ export const item: ItemModel = {
     parts.push(
       kit.sphere(HEAP.r, [HEAP.x, SAND_Y, HEAP.z], 'sand', { scale: [1, HEAP.squash, 1] }),
       kit.box([0.14, 0.16, 0.025], blade, 'red', { rotate: tilt }),
-      rod(kit, along(0.07), along(0.07 + SPADE.handle), 0.024, 'sunYellow', 6),
+      rod(kit, along(0.07), along(0.07 + SPADE.handle), 0.024, 'sunYellow'),
       kit.box([0.11, 0.035, 0.035], along(0.07 + SPADE.handle), 'sunYellow', { rotate: tilt }), // T grip
     );
     return kit.finish(parts);

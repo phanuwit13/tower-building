@@ -1,6 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
-import type { PaletteColor } from '../../../models/palette';
+import type { Part, Vec3 } from '../../../models/kit';
+import { rod } from '../../../models/parts';
 
 // A round blue tank with a pointed red lid on a railed deck, held up by four splayed steel legs with
 // cross bracing. A white water drop (facing the default camera) says what is inside; the ladder runs up the
@@ -16,14 +16,6 @@ const BAND = { h: 0.045, out: 0.015, at: [0.09, 0.9] }; // white bands, as fract
 const LID = { r: 0.55, h: 0.28 };
 const DROP = { y: 0.3, r: 0.13, flat: 0.45, turn: Math.PI / 4 }; // ball this far up the tank, squashed flat against it, turned from +x towards +z to face the default camera
 const LADDER = { hw: 0.11, foot: 0.82, step: 0.17 }; // ground ladder: rails ±hw from x = 0, feet at z = foot
-
-/** A round rod from a to b. */
-function rod(kit: StyleKit, a: Vec3, b: Vec3, r: number, color: PaletteColor, segments = 4): Part {
-  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const len = Math.hypot(...d);
-  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  return kit.cylinder(r, r, len, mid, color, { segments, rotate: [Math.atan2(d[2], d[1]), 0, -Math.asin(d[0] / len)] });
-}
 
 /** ถังเก็บน้ำ: a tall water tower: a blue tank with a cone lid on four braced steel legs, with a ladder. */
 export const item: ItemModel = {
@@ -43,7 +35,7 @@ export const item: ItemModel = {
     for (const [sx, sz] of corners) {
       parts.push(
         kit.box([FOOT.size, FOOT.h, FOOT.size], [sx * LEG.foot, FOOT.h / 2, sz * LEG.foot], 'stone'),
-        rod(kit, legAt(sx, sz, FOOT.h), legAt(sx, sz, DECK.y), LEG.r, 'stoneDark', 8),
+        rod(kit, legAt(sx, sz, FOOT.h), legAt(sx, sz, DECK.y), LEG.r, 'stoneDark', { segments: 8 }),
       );
     }
     // bracing on each side: an X in each storey and a level bar at the middle
@@ -51,11 +43,11 @@ export const item: ItemModel = {
       const [bx, bz] = corners[(i + 1) % 4];
       const [y0, y1, y2] = BRACE.levels;
       parts.push(
-        rod(kit, legAt(ax, az, y0), legAt(bx, bz, y1), BRACE.r, 'stoneDark'),
-        rod(kit, legAt(bx, bz, y0), legAt(ax, az, y1), BRACE.r, 'stoneDark'),
-        rod(kit, legAt(ax, az, y1), legAt(bx, bz, y2), BRACE.r, 'stoneDark'),
-        rod(kit, legAt(bx, bz, y1), legAt(ax, az, y2), BRACE.r, 'stoneDark'),
-        rod(kit, legAt(ax, az, y1), legAt(bx, bz, y1), BRACE.r + 0.01, 'stoneDark'),
+        rod(kit, legAt(ax, az, y0), legAt(bx, bz, y1), BRACE.r, 'stoneDark', { segments: 4 }),
+        rod(kit, legAt(bx, bz, y0), legAt(ax, az, y1), BRACE.r, 'stoneDark', { segments: 4 }),
+        rod(kit, legAt(ax, az, y1), legAt(bx, bz, y2), BRACE.r, 'stoneDark', { segments: 4 }),
+        rod(kit, legAt(bx, bz, y1), legAt(ax, az, y2), BRACE.r, 'stoneDark', { segments: 4 }),
+        rod(kit, legAt(ax, az, y1), legAt(bx, bz, y1), BRACE.r + 0.01, 'stoneDark', { segments: 4 }),
       );
     });
 
@@ -95,7 +87,7 @@ export const item: ItemModel = {
 
     // ladder up the +z side: from the ground to the deck, then up the tank wall
     const ladder = (zBottom: number, zTop: number, yBottom: number, yTop: number, step: number) => {
-      for (const x of [-LADDER.hw, LADDER.hw]) parts.push(rod(kit, [x, yBottom, zBottom], [x, yTop, zTop], 0.018, 'white'));
+      for (const x of [-LADDER.hw, LADDER.hw]) parts.push(rod(kit, [x, yBottom, zBottom], [x, yTop, zTop], 0.018, 'white', { segments: 4 }));
       for (let y = yBottom + step; y < yTop - 0.04; y += step) {
         const z = zBottom + ((zTop - zBottom) * (y - yBottom)) / (yTop - yBottom);
         parts.push(kit.box([2 * LADDER.hw, 0.025, 0.025], [0, y, z], 'white'));

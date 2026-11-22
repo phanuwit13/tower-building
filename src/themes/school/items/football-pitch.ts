@@ -1,6 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { Part, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { rod } from '../../../models/parts';
 
 // A mini pitch: the long axis runs along z, with a goal at each z end. The camera sees it from the side (+x).
 const TURF = { size: 1.96, h: 0.04 }; // the grass slab
@@ -16,14 +17,6 @@ const GOAL = { hw: 0.32, h: 0.4, depth: 0.2, post: 0.032 }; // mouth half width,
 const NET = { r: 0.012, xs: [-0.21, -0.105, 0, 0.105, 0.21], color: 'white' as PaletteColor };
 const FLAG = { h: 0.3, r: 0.018, w: 0.1, flagH: 0.07 }; // corner flags
 const BALL = { r: 0.065, at: [0.2, TOP + 0.065, -0.16] as Vec3 };
-
-/** A round rod from a to b (net strands, slanted frame bars). */
-function rod(kit: StyleKit, a: Vec3, b: Vec3, r: number, color: PaletteColor, segments = 4): Part {
-  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const len = Math.hypot(...d);
-  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  return kit.cylinder(r, r, len, mid, color, { segments, rotate: [Math.atan2(d[2], d[1]), 0, -Math.asin(d[0] / len)] });
-}
 
 /** สนามฟุตบอลเล็ก: a mini football pitch with mown stripes, white lines, a ball and a netted goal at each end. */
 export const item: ItemModel = {
@@ -67,7 +60,7 @@ export const item: ItemModel = {
       for (const x of [-GOAL.hw, GOAL.hw]) {
         parts.push(
           kit.cylinder(GOAL.post, GOAL.post, GOAL.h, [x, TOP + GOAL.h / 2, z0], 'white', { segments: 6 }),
-          rod(kit, [x, top, z0], [x, foot, z1], 0.02, 'white'),
+          rod(kit, [x, top, z0], [x, foot, z1], 0.02, 'white', { segments: 4 }),
           // side net: one level strand and one upright strand in the triangle
           kit.box([2 * NET.r, 2 * NET.r, GOAL.depth / 2], [x, TOP + GOAL.h / 2, z0 + (s * GOAL.depth) / 4], NET.color),
           kit.box([2 * NET.r, GOAL.h / 2, 2 * NET.r], [x, TOP + GOAL.h / 4, z0 + (s * GOAL.depth) / 2], NET.color),
@@ -77,7 +70,7 @@ export const item: ItemModel = {
         kit.cylinder(GOAL.post, GOAL.post, 2 * (GOAL.hw + GOAL.post), [0, top, z0], 'white', { rotate: [0, 0, Math.PI / 2], segments: 6 }),
         kit.box([2 * GOAL.hw, 0.03, 0.03], [0, foot, z1], 'white'),
       );
-      for (const x of NET.xs) parts.push(rod(kit, [x, top, z0], [x, foot, z1], NET.r, NET.color));
+      for (const x of NET.xs) parts.push(rod(kit, [x, top, z0], [x, foot, z1], NET.r, NET.color, { segments: 4 }));
       for (const t of [1 / 3, 2 / 3]) {
         parts.push(kit.box([2 * GOAL.hw, 2 * NET.r, 2 * NET.r], [0, top + (foot - top) * t, z0 + (z1 - z0) * t], NET.color));
       }

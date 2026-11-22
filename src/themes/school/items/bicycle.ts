@@ -1,6 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
-import type { PaletteColor } from '../../../models/palette';
+import { rod } from '../../../models/parts';
 
 // The bike is drawn in its own side plane (x forward, y up, z sideways) and then leaned a little
 // about x (towards -z) onto its kick stand. The lean turns about the ground line under the wheels,
@@ -27,7 +27,6 @@ const cos = Math.cos(LEAN);
 const sin = Math.sin(LEAN);
 /** A point in the bike's side plane after the lean. */
 const lean = ([x, y, z]: Vec3): Vec3 => [x, y * cos - z * sin, y * sin + z * cos];
-const mid = (a: Vec3, b: Vec3): Vec3 => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
 
 /** จักรยาน: a child's bicycle on its kick stand, red frame, black tyres, handlebars and a basket in front. */
 export const item: ItemModel = {
@@ -37,14 +36,6 @@ export const item: ItemModel = {
   footprint: { w: 1, d: 1 },
   build: (kit) => {
     const leaned: Vec3 = [LEAN, 0, 0];
-    /** A round tube from a to b (side-plane points): its y axis turned onto the a-b direction, then leaned. */
-    const rod = (a: Vec3, b: Vec3, r: number, color: PaletteColor, segments = 5): Part => {
-      const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-      const len = Math.hypot(...d);
-      // Euler XYZ [α, 0, γ] = Rx(α)·Rz(γ) takes +y to (dx, dy, dz); the lean adds to α
-      return kit.cylinder(r, r, len, lean(mid(a, b)), color,
-        { segments, rotate: [Math.atan2(d[2], d[1]) + LEAN, 0, -Math.asin(d[0] / len)] });
-    };
     const parts: Part[] = [];
 
     // wheels: black tyres, two white crossed spokes, grey hubs
@@ -59,19 +50,19 @@ export const item: ItemModel = {
 
     // red frame
     parts.push(
-      rod(SEAT_JOINT, HEAD_TOP, TUBE, 'red'), // top tube
-      rod(BB, HEAD_BOT, TUBE * 1.15, 'red'), // down tube
-      rod(BB, SEAT_JOINT, TUBE, 'red'), // seat tube
-      rod(SEAT_JOINT, REAR_AXLE, TUBE * 0.8, 'red'), // seat stay
-      rod(BB, REAR_AXLE, TUBE * 0.8, 'red'), // chain stay
-      rod(HEAD_BOT, HEAD_TOP, TUBE * 1.4, 'red'), // head tube
-      rod(HEAD_BOT, FRONT_AXLE, TUBE * 0.9, 'red'), // fork
+      rod(kit, lean(SEAT_JOINT), lean(HEAD_TOP), TUBE, 'red', { segments: 5 }), // top tube
+      rod(kit, lean(BB), lean(HEAD_BOT), TUBE * 1.15, 'red', { segments: 5 }), // down tube
+      rod(kit, lean(BB), lean(SEAT_JOINT), TUBE, 'red', { segments: 5 }), // seat tube
+      rod(kit, lean(SEAT_JOINT), lean(REAR_AXLE), TUBE * 0.8, 'red', { segments: 5 }), // seat stay
+      rod(kit, lean(BB), lean(REAR_AXLE), TUBE * 0.8, 'red', { segments: 5 }), // chain stay
+      rod(kit, lean(HEAD_BOT), lean(HEAD_TOP), TUBE * 1.4, 'red', { segments: 5 }), // head tube
+      rod(kit, lean(HEAD_BOT), lean(FRONT_AXLE), TUBE * 0.9, 'red', { segments: 5 }), // fork
     );
     // seat post and saddle, stem, handlebar with grips and a little yellow bell
     parts.push(
-      rod(SEAT_JOINT, [SADDLE[0] + 0.005, SADDLE[1] - 0.02, 0], 0.014, 'stoneDark', 5),
+      rod(kit, lean(SEAT_JOINT), lean([SADDLE[0] + 0.005, SADDLE[1] - 0.02, 0]), 0.014, 'stoneDark', { segments: 5 }),
       kit.sphere(0.06, lean(SADDLE), 'charcoal', { detail: 0, scale: [1.4, 0.45, 0.8], rotate: leaned }),
-      rod(HEAD_TOP, BAR.at, 0.016, 'stoneDark', 5),
+      rod(kit, lean(HEAD_TOP), lean(BAR.at), 0.016, 'stoneDark', { segments: 5 }),
       kit.cylinder(0.014, 0.014, 2 * BAR.half, lean(BAR.at), 'stoneDark', { segments: 5, rotate: [Math.PI / 2 + LEAN, 0, 0] }),
       kit.sphere(0.022, lean([BAR.at[0] + 0.01, BAR.at[1] + 0.025, -0.06]), 'sunYellow', { detail: 0 }),
     );
@@ -94,7 +85,7 @@ export const item: ItemModel = {
     // kick stand on the -z side, down to a small foot that sits flat on the ground
     const foot = lean(STAND_FOOT);
     parts.push(
-      rod([BB[0] - 0.03, BB[1] - 0.01, -0.03], STAND_FOOT, 0.012, 'stoneDark', 4),
+      rod(kit, lean([BB[0] - 0.03, BB[1] - 0.01, -0.03]), lean(STAND_FOOT), 0.012, 'stoneDark', { segments: 4 }),
       kit.box([0.06, 0.02, 0.05], [foot[0], 0.01, foot[2]], 'stoneDark'),
     );
     return kit.finish(parts);
