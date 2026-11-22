@@ -59,6 +59,8 @@ export interface CityView {
   ghostBox(): THREE.Box3 | null;
   /** Hide/show the ghost, its outline and its marker (e.g. for a screenshot). Persists across sync. */
   setGhostVisible(v: boolean): void;
+  /** How long the last change to the placed items took to apply (ms); undefined before the first. */
+  lastBuildMs(): number | undefined;
 }
 
 export function createCityView(
@@ -165,11 +167,16 @@ export function createCityView(
     return topOf.get(key) ?? 1;
   };
 
+  let buildMs: number | undefined;
+
   function sync(s: AppState): void {
     const game = s.game;
     const themeId = game?.themeId ?? null;
+    const t0 = performance.now();
+    let changed = false;
     if (themeId !== placedTheme) {
       for (const o of placed.values()) root.remove(o); // clones share geometry; nothing to dispose
+      changed ||= placed.size > 0;
       placed.clear();
       placedTheme = themeId;
     }
@@ -185,11 +192,13 @@ export function createCityView(
         applyTransform(o, fp, pl.x, pl.z, pl.rotation);
         root.add(o);
         placed.set(pl.uid, o);
+        changed = true;
       }
       for (const [uid, o] of placed) {
-        if (!live.has(uid)) { root.remove(o); placed.delete(uid); }
+        if (!live.has(uid)) { root.remove(o); placed.delete(uid); changed = true; }
       }
     }
+    if (changed) buildMs = performance.now() - t0;
 
     const g = s.ghost;
     const item = game && s.screen === 'playing' ? getTheme(game.themeId)?.items.find((i) => i.id === game.current) : undefined;
@@ -226,5 +235,6 @@ export function createCityView(
       suppressed = !v;
       applyVisibility();
     },
+    lastBuildMs: () => buildMs,
   };
 }

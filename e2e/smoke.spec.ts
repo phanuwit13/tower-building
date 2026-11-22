@@ -134,3 +134,16 @@ test('gallery &item= shows one item with its label and budget, and unknown ids f
   await expect(page.locator('.gallery-label').first()).toBeVisible();
   expect(await page.locator('.gallery-label').count()).toBeGreaterThan(1);
 });
+
+test('?demo=full plays a full map in memory and the fps overlay counts draw calls', async ({ page }) => {
+  test.setTimeout(60_000); // software WebGL draws a full map slowly
+  await page.goto('/?demo=full&fps=1');
+  await expect(page.getByText(/^วางแล้ว 1\d\d ชิ้น$/)).toBeVisible();
+  await expect(page.locator('.fps-overlay')).toHaveText(/^\d+ fps · .+ · \d+ calls · city \d+\.\d ms$/);
+  // the one free spot is the current item's: placing it fills the map and ends the round
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(T.endTitle)).toBeVisible();
+  await expect(page.getByText(/ใช้พื้นที่ 100%/)).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('city-builder/save'))).toBeNull(); // the player's own save is untouched
+});

@@ -16,6 +16,8 @@ export interface Stage {
   setQuality(q: QualityTier): void;
   onFrame(cb: (dtMs: number, nowMs: number) => void): void;
   renderNow(): void;
+  /** Draw calls and triangles of the last animation frame, every pass included (shadow map, AO, bloom). */
+  frameStats(): { calls: number; triangles: number };
 }
 
 interface TierSettings {
@@ -89,6 +91,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = EXPOSURE;
   renderer.shadowMap.enabled = true;
+  renderer.info.autoReset = false; // the loop resets it once per frame, so a frame's passes add up
   const canvas = renderer.domElement;
   container.appendChild(canvas);
 
@@ -163,6 +166,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   };
 
   const frameCallbacks: Array<(dtMs: number, nowMs: number) => void> = [];
+  const stats = { calls: 0, triangles: 0 };
 
   const stage: Stage = {
     renderer, scene, camera, controls, canvas,
@@ -189,6 +193,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
       frameCallbacks.push(cb);
     },
     renderNow: render,
+    frameStats: () => ({ ...stats }),
   };
 
   new ResizeObserver(resize).observe(container);
@@ -201,7 +206,10 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     last = now;
     for (const cb of frameCallbacks) cb(dt, now);
     controls.update();
+    renderer.info.reset();
     render();
+    stats.calls = renderer.info.render.calls;
+    stats.triangles = renderer.info.render.triangles;
   });
 
   return stage;

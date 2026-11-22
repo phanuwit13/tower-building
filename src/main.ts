@@ -15,7 +15,7 @@ import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
-import { attachFpsOverlay } from './render/debug';
+import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
 import { loadBatch, parseBatchParam } from './render/batchGallery';
 import { school } from './themes/school';
@@ -63,9 +63,12 @@ function detectQuality(): QualityTier {
 }
 
 function boot(app: HTMLElement): void {
-  const controller = createController({
-    store: browserStore(() => window.localStorage), getTheme, getCatalog, seed: randomSeed, detectQuality,
-  });
+  const realStore = browserStore(() => window.localStorage);
+  // `?demo=full`: a full School map for measuring, played in memory; the player's save is left alone.
+  const demo = parseDemoParam(location.search);
+  const schoolCatalog = getCatalog(school.id);
+  const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
+  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality });
   let tier = controller.getState().quality;
   let appliedKey = '';
 
@@ -82,7 +85,7 @@ function boot(app: HTMLElement): void {
   });
   const thumbnailer = createThumbnailer(kit);
   const fpsMonitor = new FpsMonitor();
-  attachFpsOverlay(stage, () => tier);
+  attachFpsOverlay(stage, () => tier, () => cityView.lastBuildMs());
 
   // Scene: re-applied when settings or tier change (rain counts are per tier).
   const applyScene = (s: AppState): void => {
