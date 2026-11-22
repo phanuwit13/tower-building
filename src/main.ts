@@ -17,6 +17,8 @@ import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
 import { attachFpsOverlay } from './render/debug';
 import { attachGallery } from './render/gallery';
+import { loadBatch, parseBatchParam } from './render/batchGallery';
+import { school } from './themes/school';
 import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
@@ -227,7 +229,7 @@ function boot(app: HTMLElement): void {
  * nothing is loaded or saved; the settings panel only switches the lighting, ground and tier.
  * An unknown theme id starts the normal game.
  */
-function bootGallery(app: HTMLElement, theme: ThemeDef): void {
+function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
   let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: theme.defaultGround };
   const kit = getStyleKit();
@@ -258,7 +260,20 @@ function bootGallery(app: HTMLElement, theme: ThemeDef): void {
     },
   });
   app.appendChild(el('div', { class: 'gallery-tools' }, [button(T.settings, openSettings)]));
+  if (devNote) document.body.append(el('p', { class: 'gallery-dev-note', text: devNote }));
   apply();
+}
+
+/** DEV only, `?gallery=batch-<n>`: the School theme reduced to one sculptor batch (module loaded lazily). */
+function bootBatchGallery(app: HTMLElement, n: number): void {
+  loadBatch(n).then(
+    (items) => bootGallery(app, { ...school, name: `โรงเรียน · batch ${n}`, items },
+      items.length === 0 ? `batch ${n} is empty: add items to src/themes/school/batches/b${n}.ts` : undefined),
+    (e: unknown) => {
+      console.error(`batch ${n} failed to load`, e);
+      app.append(el('p', { class: 'gallery-dev-note', text: `batch ${n} failed to load: ${e instanceof Error ? e.message : String(e)}` }));
+    },
+  );
 }
 
 const app = document.getElementById('app');
@@ -266,7 +281,9 @@ if (app) {
   try {
     const galleryTheme = new URLSearchParams(location.search).get('gallery');
     const gallery = galleryTheme === null ? undefined : getTheme(galleryTheme);
+    const batch = import.meta.env.DEV ? parseBatchParam(galleryTheme) : null;
     if (!hasWebGL2()) showFatal(app);
+    else if (batch !== null) bootBatchGallery(app, batch);
     else if (gallery) bootGallery(app, gallery);
     else boot(app);
   } catch (e) {
