@@ -135,11 +135,16 @@ test('gallery &item= shows one item with its label and budget, and unknown ids f
   expect(await page.locator('.gallery-label').count()).toBeGreaterThan(1);
 });
 
-test('?demo=full plays a full map in memory and the fps overlay counts draw calls', async ({ page }) => {
+test('?demo=full plays a full map in memory; on smooth it draws in a handful of calls', async ({ page }) => {
   test.setTimeout(60_000); // software WebGL draws a full map slowly
+  await page.addInitScript(() => localStorage.setItem('city-builder/quality', 'smooth'));
   await page.goto('/?demo=full&fps=1');
   await expect(page.getByText(/^วางแล้ว 1\d\d ชิ้น$/)).toBeVisible();
-  await expect(page.locator('.fps-overlay')).toHaveText(/^\d+ fps · .+ · \d+ calls · city \d+\.\d ms$/);
+  const overlay = page.locator('.fps-overlay');
+  await expect(overlay).toHaveText(new RegExp(`^\\d+ fps · ${T.quality.smooth} · \\d+ calls · city \\d+\\.\\d ms$`), { timeout: 20_000 });
+  // ~145 items used to cost ~350 calls a frame; merged, it is a few per map chunk plus ground, sky and ghost
+  await expect.poll(async () => Number(/(\d+) calls/.exec((await overlay.textContent()) ?? '')?.[1]), { timeout: 20_000 })
+    .toBeLessThanOrEqual(20);
   // the one free spot is the current item's: placing it fills the map and ends the round
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
