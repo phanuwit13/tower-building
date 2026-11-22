@@ -395,3 +395,21 @@ describe('style kit light patterns', () => {
     expect(s.fragmentShader).toContain('glowStrength * vLight');
   });
 });
+
+describe('light phase per item', () => {
+  it('identical light-only parts in different places get different phase inputs after merging', async () => {
+    const { mergeItems, placementMatrix } = await import('../render/batch');
+    const mk = () => kit.finish([kit.box([0.3, 0.3, 0.1], [0, 0.5, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' })]);
+    const merged = mergeItems(
+      [{ model: mk(), matrix: placementMatrix({ w: 1, d: 1 }, 2, 3, 0) }, { model: mk(), matrix: placementMatrix({ w: 1, d: 1 }, 7, 5, 0) }],
+      kit.materials);
+    const piv = merged.glow!.attributes.pivot;
+    const n = piv.count / 2;
+    expect([piv.getX(0), piv.getZ(0)]).not.toEqual([piv.getX(n), piv.getZ(n)]);
+    expect(piv.getY(0)).toBeCloseTo(0.5);
+    // the same pivot hashes drive the shader phase: world xz differ, so the hashes differ
+    const hash = (x: number, z: number) => { const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return v - Math.floor(v); };
+    expect(hash(piv.getX(0), piv.getZ(0))).not.toBeCloseTo(hash(piv.getX(n), piv.getZ(n)), 3);
+  });
+});
+

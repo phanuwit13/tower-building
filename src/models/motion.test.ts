@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  advanceMotion, BLINK_OFF_LEVEL, BLINK_PERIOD, CULL_MARGIN, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
+  advanceMotion, BLINK_OFF_LEVEL, BLINK_ON, BLINK_PERIOD, BREATHE_PERIOD, WINDOW_VARIATION, CULL_MARGIN, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
   MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, patchWaterShader, resolveMotion, setMoon, setNight,
   setReducedMotion, setWind, WATER, WATER_FRAGMENT, WATER_FRAGMENT_PARS, waterLight, watchReducedMotion,
 } from './motion';
@@ -215,7 +215,11 @@ describe('light patterns', () => {
 
   it('steady and reduced motion hold exactly 1.0', () => {
     expect(lightPattern('steady', 12.3, 1)).toBe(1);
-    for (const k of ['breathe', 'blink', 'window'] as const) expect(lightPattern(k, 12.3, 1, 0)).toBe(1);
+    for (const k of ['breathe', 'blink'] as const) expect(lightPattern(k, 12.3, 1, 0)).toBe(1);
+  });
+  it('a window keeps its static per-pane variation when motion is off', () => {
+    expect(lightPattern('window', 5, 1, 0)).toBe(lightPattern('window', 0, 1, 1));
+    expect(lightPattern('window', 5, 1, 0)).not.toBe(lightPattern('window', 5, 3, 0));
   });
   it('breathe stays within 0.65..1.0 and reaches both ends', () => {
     const v = sample('breathe');
@@ -426,5 +430,19 @@ describe('water shader', () => {
     for (const v of [WATER.glint.share, WATER.glint.cell, WATER.glint.power, WATER.band.mix, WATER.band.speed, WATER.pool.base, WATER.pool.scale]) {
       expect(glsl).toContain(glslFloat(v));
     }
+  });
+  it('the shader bakes exactly the TS constants (parity)', () => {
+    for (const n of [BREATHE_PERIOD, BLINK_PERIOD, BLINK_ON, BLINK_OFF_LEVEL, WINDOW_VARIATION]) {
+      expect(MOTION_VERTEX_SETUP).toContain(Number.isInteger(n) ? n.toFixed(1) : String(n));
+    }
+    expect(MOTION_VERTEX_SETUP).toContain(`uTime / ${BLINK_PERIOD} `);
+    expect(MOTION_VERTEX_SETUP).toContain(`< ${BLINK_ON} ?`);
+    expect(MOTION_VERTEX_SETUP).toContain(`/ ${BREATHE_PERIOD}.0 +`);
+  });
+  it('breathing is far below 3 Hz', () => {
+    expect(1 / BREATHE_PERIOD).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+  });
+  it('every motion code fits under the light stride', () => {
+    for (const c of Object.values(MOTION_CODE)) expect(c).toBeLessThan(LIGHT_STRIDE);
   });
 });

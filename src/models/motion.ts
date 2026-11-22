@@ -46,7 +46,11 @@ export const MOTION_CODE = { none: 0, sway: 1, wave: 2, spin: 3, swing: 4, pond:
  */
 export type LightKind = 'steady' | 'breathe' | 'blink' | 'window';
 export const LIGHT_CODE = { steady: 0, breathe: 1, blink: 2, window: 3 } as const;
+/** Every motion code must stay below this: the light code lives in the digits above it. */
 export const LIGHT_STRIDE = 8;
+if (Object.values(MOTION_CODE).some((c) => c >= LIGHT_STRIDE)) {
+  throw new Error('motion: every MOTION_CODE must be below LIGHT_STRIDE (it is packed with the light code in anim.x)');
+}
 /** Breathe: 0.65..1.0 over 3 s. Blink: 1.4 s a cycle (on 55 %, dim 0.1 when off). Window: steady ±15 %. */
 export const BREATHE_PERIOD = 3;
 export const BLINK_PERIOD = 1.4;
@@ -61,12 +65,15 @@ export const LIGHT_MAX_HZ = 3;
  * `phase` is the part's phase (its own plus the item's); `motion` is `uMotion` (0 holds 1.0).
  */
 export function lightPattern(kind: LightKind, time: number, phase: number, motion = 1): number {
-  if (!(motion > 0) || kind === 'steady') return 1;
+  if (kind === 'steady') return 1;
   const tau = Math.PI * 2;
   const frac = (x: number) => x - Math.floor(x);
+  // a window's per-pane variation is a static look, not motion: it stays when motion is off
+  if (kind === 'window') return 1 + WINDOW_VARIATION * (2 * frac(phase / tau) - 1);
+  if (!(motion > 0)) return 1;
   if (kind === 'breathe') return 0.825 + 0.175 * Math.sin((tau * time) / BREATHE_PERIOD + phase);
   if (kind === 'blink') return frac(time / BLINK_PERIOD + phase / tau) < BLINK_ON ? 1 : BLINK_OFF_LEVEL;
-  return 1 + WINDOW_VARIATION * (2 * frac(phase / tau) - 1);
+  return 1;
 }
 
 /** The packed `anim.x` of a motion code and a light kind. */
@@ -235,10 +242,10 @@ vAnim = vec4( float( motionKind ), anim.yz, motionPhase );
 // glow light pattern (mirrors lightPattern in this file); steady and reduced motion hold 1.0
 vLight = 1.0;
 if ( uMotion > 0.0 ) {
-  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = 0.825 + 0.175 * sin( 6.2831853 * uTime / ${BREATHE_PERIOD.toFixed(1)} + motionPhase );
-  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${BLINK_PERIOD.toFixed(2)} + motionPhase / 6.2831853 ) < ${BLINK_ON.toFixed(2)} ? 1.0 : ${BLINK_OFF_LEVEL.toFixed(2)};
-  else if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${WINDOW_VARIATION.toFixed(2)} * ( 2.0 * fract( motionPhase / 6.2831853 ) - 1.0 );
+  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = 0.825 + 0.175 * sin( 6.2831853 * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
+  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / 6.2831853 ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
 }
+if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / 6.2831853 ) - 1.0 );
 bool motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};
 mat3 motionRot = mat3( 1.0 );
 vec3 motionShift = vec3( 0.0 );

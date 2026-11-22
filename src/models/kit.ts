@@ -107,11 +107,15 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
     throw new Error('style kit: water is drawn by the body material (its night look is built in): drop glow');
   }
   let anim: readonly number[] | null = m?.anim ?? null;
+  let pivot: readonly number[] | null = m?.pivot ?? null;
   if (opts?.light && opts.light !== 'steady') {
     // the pattern code rides in anim.x; a window pane's brightness comes from a hash of its own position
     const base = m?.anim ?? [0, 0, 0, 0];
     const pane = opts.light === 'window' ? 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719) : 0;
     anim = [packLight(base[0], opts.light), base[1], base[2], base[3] + pane];
+    // the shader hashes the world position of the pivot for each light's own phase; a light-only part has no
+    // motion pivot, so give it one (harmless: movement is gated by the motion kind)
+    if (!m) pivot = at;
   }
   const repeat = (name: string, v: readonly number[] | null, size: number) => {
     const arr = new Float32Array(n * size);
@@ -119,7 +123,7 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
     g.setAttribute(name, new THREE.BufferAttribute(arr, size));
   };
   repeat('anim', anim, 4);
-  repeat('pivot', m?.pivot ?? null, 3);
+  repeat('pivot', pivot, 3);
   repeat('axis', m?.axis ?? null, 3);
   return { geometry: g, glow: !!glow };
 }
