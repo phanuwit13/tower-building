@@ -7,11 +7,11 @@ const view = (o: Partial<HudView> = {}): HudView => ({
   visible: true,
   current: { name: 'บ้าน', size: '2×2 ช่อง', thumb: null },
   next: { name: 'ต้นไม้', size: '1×1 ช่อง', thumb: null },
-  placed: 0, canPlace: true, canRotate: true, hint: null, ...o,
+  placed: 0, canPlace: true, canRotate: true, hint: null, finished: false, ...o,
 });
 const setup = () => {
   const root = document.createElement('div');
-  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn() };
+  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn(), onRestart: vi.fn() };
   const hud = createHud(root, h);
   return { root, h, hud };
 };
@@ -51,5 +51,32 @@ describe('hud', () => {
     expect(root.textContent).toContain(T.hintTap);
     hud.update(view({ visible: false }));
     expect((root.firstElementChild as HTMLElement).hidden).toBe(true);
+  });
+  it('finished: restart replaces rotate/place and uses the restart handler', () => {
+    const { root, h, hud } = setup();
+    hud.update(view({ finished: true, canPlace: false, canRotate: false, current: null, next: null }));
+    expect(btn(root, T.rotate).hidden).toBe(true);
+    expect(btn(root, T.place).hidden).toBe(true);
+    const restart = [...root.querySelectorAll('button')].find((b) => b.textContent === T.restart) as HTMLButtonElement;
+    expect(restart.hidden).toBe(false);
+    restart.click();
+    expect(h.onRestart).toHaveBeenCalledOnce();
+    hud.update(view());
+    expect(restart.hidden).toBe(true);
+    expect(btn(root, T.place).hidden).toBe(false);
+  });
+  it('does not re-assign thumbnail src or text when nothing changed', () => {
+    const { root, hud } = setup();
+    const card = { name: 'บ้าน', size: '2×2 ช่อง', thumb: 'data:image/png;base64,AAAA' };
+    hud.update(view({ current: card }));
+    const img = root.querySelector('.card-current img') as HTMLImageElement;
+    const setAttr = vi.spyOn(img, 'setAttribute');
+    const name = root.querySelector('.card-current .card-name') as HTMLElement;
+    const nameWrites = vi.spyOn(name, 'textContent', 'set');
+    hud.update(view({ current: { ...card } }));
+    expect(setAttr).not.toHaveBeenCalled();
+    expect(nameWrites).not.toHaveBeenCalled();
+    hud.update(view({ current: { ...card, thumb: 'data:image/png;base64,BBBB' } }));
+    expect(img.getAttribute('src')).toBe('data:image/png;base64,BBBB');
   });
 });

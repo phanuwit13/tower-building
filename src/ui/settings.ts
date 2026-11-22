@@ -34,7 +34,7 @@ function group<V extends string>(title: string, ids: readonly V[], labels: Recor
 export function createSettingsPanel(
   root: HTMLElement,
   h: SettingsHandlers,
-): { open(cur: { settings: SceneSettings; quality: QualityTier }): void; close(): void } {
+): { open(cur: { settings: SceneSettings; quality: QualityTier }): void; close(): void; isOpen(): boolean } {
   const weather = group(T.weather.title, WEATHER_IDS, T.weather, h.onWeather);
   const time = group(T.time.title, TIME_IDS, T.time, h.onTime);
   const ground = group(T.ground.title, GROUND_IDS, T.ground, h.onGround);
@@ -67,13 +67,13 @@ export function createSettingsPanel(
       time.mark(cur.settings.time);
       ground.mark(cur.settings.ground);
       quality.mark(cur.quality);
-      if (wrap.hidden) {
-        opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-        document.addEventListener('keydown', onKey);
-      }
+      if (!wrap.hidden) return; // already open (a chip was tapped): refresh only, keep focus where it is
+      opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      document.addEventListener('keydown', onKey);
       wrap.hidden = false;
       closeBtn.focus();
     },
     close,
+    isOpen: () => !wrap.hidden,
   };
 }

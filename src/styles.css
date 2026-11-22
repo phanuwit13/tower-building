@@ -1,11 +1,11 @@
 :root {
   --ink: #2b2d42;
   --paper: #ffffff;
-  --accent: #ff7a59;
+  --accent: #c94a28; /* white on it: 4.67:1 (AA, normal text) */
   --accent-ink: #ffffff;
   --sky: #e8f6ff;
   --chip: #eef3ff;
-  --selected: #4d96ff;
+  --selected: #2f6fd6; /* white on it: 4.81:1 */
 }
 
 html,
@@ -22,6 +22,7 @@ canvas {
   display: block;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
 }
 
 button {
@@ -64,10 +65,11 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hud-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .btn-place { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 20px; }
 .btn-rotate { min-width: 96px; font-size: 18px; }
+.btn-restart { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 18px; }
 
 /* Settings: centered panel on wide screens, bottom sheet on narrow ones */
 .settings { background: rgb(0 0 0 / 0.35); }
-.settings-sheet { background: var(--paper); border-radius: 24px; padding: 16px; width: min(560px, 92vw); max-height: 90vh; overflow: auto; box-sizing: border-box; }
+.settings-sheet { background: var(--paper); border-radius: 24px; padding: 16px; width: min(560px, 92vw); max-height: 90vh; max-height: 90dvh; overflow: auto; box-sizing: border-box; }
 .settings-head { display: flex; justify-content: space-between; align-items: center; }
 .settings-head h2, .settings-group h3 { margin: 0; }
 .settings-group { margin-top: 12px; }
@@ -77,7 +79,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .settings-danger { display: flex; gap: 8px; margin-top: 16px; }
 @media (max-width: 600px) {
   .settings { align-items: flex-end; }
-  .settings-sheet { width: 100%; border-radius: 24px 24px 0 0; max-height: 80vh; }
+  .settings-sheet { width: 100%; border-radius: 24px 24px 0 0; max-height: 80vh; max-height: 80dvh; }
 }
 
 /* Dialogs and end screen */

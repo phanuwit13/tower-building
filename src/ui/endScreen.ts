@@ -5,7 +5,7 @@ import { summaryLabel, T } from './strings';
 export function createEndScreen(
   root: HTMLElement,
   h: { onScreenshot(): void; onRestart(): void; onView(): void },
-): { show(s: FillStats): void; hide(): void } {
+): { show(s: FillStats): void; hide(): void; isVisible(): boolean } {
   const summary = el('p', { class: 'end-summary' });
   const screen = el('section', { class: 'end-screen screen', attrs: { role: 'status' } }, [
     el('div', { class: 'end-card' }, [
@@ -23,5 +23,6 @@ export function createEndScreen(
   return {
     show(s) { summary.textContent = summaryLabel(s); screen.hidden = false; },
     hide() { screen.hidden = true; },
+    isVisible: () => !screen.hidden,
   };
 }

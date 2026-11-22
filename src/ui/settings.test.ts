@@ -30,4 +30,18 @@ describe('settings panel', () => {
     expect(remove.mock.calls.some((c) => c[0] === 'keydown')).toBe(true);
     remove.mockRestore();
   });
+  it('reopening while open refreshes the selection without stealing focus', () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const panel = createSettingsPanel(root, h);
+    panel.open(cur);
+    const chips = [...root.querySelectorAll<HTMLButtonElement>('.chip')];
+    const rain = chips.find((b) => b.textContent === 'ฝนตก')!;
+    rain.focus();
+    panel.open({ ...cur, settings: { ...cur.settings, weather: 'rain' } });
+    expect(document.activeElement).toBe(rain);
+    expect(rain.getAttribute('aria-pressed')).toBe('true');
+    expect(panel.isOpen()).toBe(true);
+    panel.close();
+    expect(panel.isOpen()).toBe(false);
+  });
 });
