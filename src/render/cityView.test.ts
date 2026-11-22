@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AppState } from '../app/controller';
 import { demoFullGame } from '../game/demo';
 import { newGame, placeCurrent } from '../game/game';
@@ -18,12 +18,13 @@ const settings = { weather: 'sunny', time: 'day', ground: 'grass' } as const;
 
 function setup() {
   const scene = new THREE.Scene();
-  const stage = { scene } as unknown as Stage;
+  const invalidateShadows = vi.fn();
+  const stage = { scene, invalidateShadows } as unknown as Stage;
   const view = createCityView(stage, kit, getTheme);
   const root = scene.getObjectByName('city')!;
   /** The merged item meshes (the ghost and its marker are separate children). */
   const chunkMeshes = () => root.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name.startsWith('city-'));
-  return { view, root, chunkMeshes };
+  return { view, root, chunkMeshes, invalidateShadows };
 }
 
 const state = (game: GameState | null, ghost: AppState['ghost'] = null): AppState => ({
@@ -60,36 +61,42 @@ describe('city view batching', () => {
     expect(vertices(meshes)).toBe(expected);
   });
 
-  it('a placement re-merges only its own chunk', () => {
-    const { view, chunkMeshes } = setup();
+  it('a placement re-merges only its own chunk and asks for one shadow update', () => {
+    const { view, chunkMeshes, invalidateShadows } = setup();
     view.sync(state(full));
     const before = new Map(chunkMeshes().map((m) => [m.name, m.geometry]));
+    invalidateShadows.mockClear();
     view.sync(state(placeAnywhere(full)));
     const changed = chunkMeshes().filter((m) => before.get(m.name) !== m.geometry);
     expect(changed.length).toBeGreaterThanOrEqual(1);
     expect(new Set(changed.map((m) => m.name.split('-')[1])).size).toBe(1); // one chunk (its body and maybe glow)
+    expect(invalidateShadows).toHaveBeenCalledTimes(1);
     expect(view.lastBuildMs()).toBeGreaterThanOrEqual(0);
   });
 
-  it('moving the ghost or changing the weather does not re-merge', () => {
-    const { view, chunkMeshes } = setup();
+  it('moving the ghost or changing the weather neither re-merges nor updates shadows', () => {
+    const { view, chunkMeshes, invalidateShadows } = setup();
     view.sync(state(full));
     const geometries = chunkMeshes().map((m) => m.geometry);
+    invalidateShadows.mockClear();
     view.sync(state(full, { x: 3, z: 3, rotation: 0, valid: false }));
     view.sync(state(full, { x: 4, z: 3, rotation: 1, valid: false }));
     view.sync(state({ ...full, settings: { ...settings, weather: 'rain', time: 'night' } }));
     expect(chunkMeshes().map((m) => m.geometry)).toEqual(geometries);
+    expect(invalidateShadows).not.toHaveBeenCalled();
   });
 
-  it('restart and clear remove every merged mesh and dispose their geometry', () => {
-    const { view, chunkMeshes } = setup();
+  it('restart and clear remove every merged mesh, dispose their geometry and update shadows', () => {
+    const { view, chunkMeshes, invalidateShadows } = setup();
     view.sync(state(full));
     let disposed = 0;
     for (const m of chunkMeshes()) m.geometry.addEventListener('dispose', () => disposed++);
     const count = chunkMeshes().length;
+    invalidateShadows.mockClear();
     view.sync(state(newGame(catalog, settings, 5))); // restart: same theme, no placements
     expect(chunkMeshes()).toHaveLength(0);
     expect(disposed).toBe(count);
+    expect(invalidateShadows).toHaveBeenCalledTimes(1);
 
     view.sync(state(placeAnywhere(newGame(catalog, settings, 5))));
     expect(chunkMeshes().length).toBeGreaterThan(0);
@@ -98,11 +105,13 @@ describe('city view batching', () => {
   });
 
   it('a reloaded save showing the same city keeps the batch', () => {
-    const { view, chunkMeshes } = setup();
+    const { view, chunkMeshes, invalidateShadows } = setup();
     view.sync(state(full));
     const geometries = chunkMeshes().map((m) => m.geometry);
+    invalidateShadows.mockClear();
     view.sync(state(JSON.parse(JSON.stringify(full)) as GameState));
     expect(chunkMeshes().map((m) => m.geometry)).toEqual(geometries);
+    expect(invalidateShadows).not.toHaveBeenCalled();
   });
 
   it('the ghost still shows the current item, built from its own prototype', () => {

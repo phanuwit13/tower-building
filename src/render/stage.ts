@@ -16,6 +16,11 @@ export interface Stage {
   setQuality(q: QualityTier): void;
   onFrame(cb: (dtMs: number, nowMs: number) => void): void;
   renderNow(): void;
+  /**
+   * Re-render the sun's shadow map on the next frame. Shadows are drawn only on change, so call
+   * this whenever a shadow caster or the sun changes: placements, time of day, weather, tier.
+   */
+  invalidateShadows(): void;
   /** Draw calls and triangles of the last animation frame, every pass included (shadow map, AO, bloom). */
   frameStats(): { calls: number; triangles: number };
 }
@@ -91,6 +96,10 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = EXPOSURE;
   renderer.shadowMap.enabled = true;
+  // Placed items never move, so the shadow map is redrawn only when something invalidates it
+  // (the scene and AO passes would otherwise redraw it two or three times every frame).
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true; // the first frame
   renderer.info.autoReset = false; // the loop resets it once per frame, so a frame's passes add up
   const canvas = renderer.domElement;
   container.appendChild(canvas);
@@ -113,6 +122,9 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   let width = 1;
   let height = 1;
   let composer: EffectComposer | null = null;
+
+  const invalidateShadows = () => { renderer.shadowMap.needsUpdate = true; };
+  canvas.addEventListener('webglcontextrestored', invalidateShadows); // the restored map is empty
 
   const pixelRatio = (t: TierSettings) => Math.min(window.devicePixelRatio || 1, t.maxPixelRatio);
 
@@ -150,6 +162,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false); // CSS owns the canvas's display size
     composer?.setSize(w, h);
+    invalidateShadows();
   };
 
   const renderComposed = (c: EffectComposer) => {
@@ -188,11 +201,13 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
         composer.setPixelRatio(renderer.getPixelRatio());
         composer.setSize(width, height);
       }
+      invalidateShadows(); // a new map size starts empty
     },
     onFrame(cb) {
       frameCallbacks.push(cb);
     },
     renderNow: render,
+    invalidateShadows,
     frameStats: () => ({ ...stats }),
   };
 

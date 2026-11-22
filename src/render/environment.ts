@@ -283,6 +283,7 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
       sun.intensity = p.sunIntensity;
       sun.position.set(...p.sunDir).multiplyScalar(SUN_DISTANCE).add(CENTER);
       setShadowTier(sun.shadow, q);
+      stage.invalidateShadows(); // the sun moved (time of day) or its map was resized (tier)
 
       linear.setHex(p.fog);
       if (q === 'smooth') linear.setRGB(...acesFilmic([linear.r, linear.g, linear.b], stage.renderer.toneMappingExposure));

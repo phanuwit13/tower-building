@@ -175,6 +175,7 @@ export function attachGallery(
     prev.disabled = current === 0;
     next.disabled = current === pages.length - 1;
     pageBox = box;
+    stage.invalidateShadows(); // new models on the map
     frame(box);
   }
 

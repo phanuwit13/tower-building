@@ -195,7 +195,10 @@ export function createCityView(
   function sync(s: AppState): void {
     const game = s.game;
     const t0 = performance.now();
-    if (syncPlaced(game?.themeId ?? null, game?.placements ?? [])) buildMs = performance.now() - t0;
+    if (syncPlaced(game?.themeId ?? null, game?.placements ?? [])) {
+      buildMs = performance.now() - t0;
+      stage.invalidateShadows(); // the only shadow casters that ever change (the ghost casts none)
+    }
 
     const g = s.ghost;
     const item = game && s.screen === 'playing' ? getTheme(game.themeId)?.items.find((i) => i.id === game.current) : undefined;
