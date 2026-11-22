@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { GRID_SIZE } from '../game/types';
 import type { ItemModel } from '../models/contract';
-import { galleryPages, type GallerySlot } from './gallery';
+import { budgetLabel, countTriangles, galleryPages, selectItem, triangleBudget, type GallerySlot } from './gallery';
 
 const fake = (id: string, w: number, d: number): ItemModel => ({
   id, name: id, category: 'decoration', footprint: { w, d }, build: () => new THREE.Group(),
@@ -48,6 +48,15 @@ describe('galleryPages', () => {
       }
     }
   });
+  it('leaves two empty tiles between rows', () => {
+    const [page] = galleryPages(small);
+    const fronts = [...new Set(page.map((s) => s.z + s.item.footprint.d))].sort((a, b) => a - b); // rows share a front edge
+    expect(fronts.length).toBeGreaterThan(1);
+    for (let i = 1; i < fronts.length; i++) {
+      const nextBack = Math.min(...page.filter((s) => s.z + s.item.footprint.d === fronts[i]).map((s) => s.z));
+      expect(nextBack - fronts[i - 1]).toBeGreaterThanOrEqual(2);
+    }
+  });
   it('spreads a full theme over several pages, every item exactly once', () => {
     const items = [
       ...Array.from({ length: 4 }, (_, i) => fake(`h${i}`, 2, 3)),
@@ -63,5 +72,34 @@ describe('galleryPages', () => {
   });
   it('has no pages for no items', () => {
     expect(galleryPages([])).toEqual([]);
+  });
+});
+
+describe('budget labels', () => {
+  it('uses the validator formula 800 + 400 * w * d', () => {
+    expect(triangleBudget({ w: 1, d: 1 })).toBe(1200);
+    expect(triangleBudget({ w: 2, d: 3 })).toBe(3200);
+  });
+  it('formats used / budget with thousands separators', () => {
+    expect(budgetLabel(612, { w: 2, d: 2 })).toBe('612 / 2,400');
+    expect(budgetLabel(1234, { w: 3, d: 2 })).toBe('1,234 / 3,200');
+  });
+  it('counts indexed and non-indexed triangles across meshes', () => {
+    const indexed = new THREE.BufferGeometry();
+    indexed.setAttribute('position', new THREE.Float32BufferAttribute(new Array(12).fill(0), 3));
+    indexed.setIndex([0, 1, 2, 0, 2, 3]);
+    const plain = new THREE.BufferGeometry();
+    plain.setAttribute('position', new THREE.Float32BufferAttribute(new Array(27).fill(0), 3));
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(indexed), new THREE.Mesh(plain));
+    expect(countTriangles(g)).toBe(2 + 3);
+  });
+});
+
+describe('selectItem', () => {
+  it('finds an item by id, and is undefined for unknown or missing ids', () => {
+    expect(selectItem(small, 'mid')?.id).toBe('mid');
+    expect(selectItem(small, 'nope')).toBeUndefined();
+    expect(selectItem(small, null)).toBeUndefined();
   });
 });

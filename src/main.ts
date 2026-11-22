@@ -235,7 +235,7 @@ function bootGallery(app: HTMLElement, theme: ThemeDef): void {
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
-  attachGallery(stage, kit, theme);
+  attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
 
   const apply = (): void => {
     environment.apply(scene, quality);

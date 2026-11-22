@@ -118,3 +118,19 @@ test('gallery shows every item of the theme with its Thai name, and no game', as
   await expect(page.getByRole('button', { name: T.clear })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length)).toBe(0); // the gallery saves nothing
 });
+
+test('gallery &item= shows one item with its label and budget, and unknown ids fall back', async ({ page }) => {
+  await page.goto('/?gallery=school&item=classroom');
+  const classroom = school.items.find((i) => i.id === 'classroom')!;
+  await expect(page.locator('.gallery-label')).toHaveCount(1);
+  await expect(page.locator('.gallery-label strong')).toHaveText(classroom.name);
+  await expect(page.locator('.gallery-label')).toContainText('classroom');
+  await expect(page.locator('.gallery-label .gallery-tris')).toHaveText(/^[\d,]+ \/ [\d,]+ tris$/);
+  await expect(page.locator('.gallery-label')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.length)).toBe(0);
+
+  await page.goto('/?gallery=school&item=nope');
+  await expect(page.getByText('unknown item id: nope')).toBeVisible();
+  await expect(page.locator('.gallery-label').first()).toBeVisible();
+  expect(await page.locator('.gallery-label').count()).toBeGreaterThan(1);
+});
