@@ -19,7 +19,7 @@ The game is a static Vite site. `npm run build` writes `dist/`, and Cloudflare P
 ## Previews
 
 - Every pushed branch gets a preview deployment at `https://<branch-with-slashes-as-dashes>.tower-building.pages.dev`. For example, `feat/stage1c-style-lock` is served at `https://feat-stage1c-style-lock.tower-building.pages.dev`.
-- The Cloudflare Pages GitHub app comments the preview link on the pull request.
+- Pages lowercases the branch name, turns every non-alphanumeric character into `-` and may truncate long names, so the alias you work out by hand can be wrong. The link the Cloudflare Pages GitHub app comments on the pull request is the authoritative one.
 - Preview links are public. Do not put anything private on a branch you preview.
 
 ## Production
@@ -32,7 +32,7 @@ The game is a static Vite site. `npm run build` writes `dist/`, and Cloudflare P
 npm run build && npx wrangler pages dev dist
 ```
 
-This runs a local server only. It does not need a Cloudflare login. Open the URL it prints and check the response headers with `curl -sI`.
+This runs a local server only. It does not need a Cloudflare login. Open the URL it prints and check the response headers with `curl -sI`. A `compatibility_date` warning from `wrangler pages dev` is harmless.
 
 ## Blocked domains
 
