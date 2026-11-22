@@ -20,7 +20,7 @@ function docItems(): DocItem[] {
 describe('registry', () => {
   it('every theme passes validation', () => {
     const kit = getStyleKit();
-    for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 1 })).toEqual([]);
+    for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 50 })).toEqual([]);
   });
   it('school has 50 valid items and the default footprint mix', () => {
     const school = getTheme('school')!;

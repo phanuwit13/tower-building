@@ -22,6 +22,11 @@ describe('detectTier', () => {
     expect(detectTier({ userAgent: DESKTOP, hardwareConcurrency: 8, deviceMemory: 4 })).toBe('smooth');
     expect(detectTier({ userAgent: DESKTOP, hardwareConcurrency: 4, deviceMemory: 8 })).toBe('smooth');
   });
+  it('picks smooth for an unknown-memory touch device, but not for a no-touch desktop', () => {
+    expect(detectTier({ userAgent: DESKTOP, hardwareConcurrency: 8, maxTouchPoints: 1 })).toBe('smooth');
+    expect(detectTier({ userAgent: DESKTOP, hardwareConcurrency: 8, maxTouchPoints: 0 })).toBe('pretty');
+    expect(detectTier({ userAgent: DESKTOP, hardwareConcurrency: 8, deviceMemory: 8, maxTouchPoints: 10 })).toBe('pretty');
+  });
   it('treats unknown hardware as capable', () => {
     expect(detectTier({ userAgent: DESKTOP })).toBe('pretty');
   });

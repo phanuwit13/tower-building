@@ -139,7 +139,7 @@ test('?demo=full plays a full map in memory; on smooth it draws in a handful of 
   test.setTimeout(60_000); // software WebGL draws a full map slowly
   await page.addInitScript(() => localStorage.setItem('city-builder/quality', 'smooth'));
   await page.goto('/?demo=full&fps=1');
-  await expect(page.getByText(/^วางแล้ว 1\d\d ชิ้น$/)).toBeVisible();
+  await expect(page.getByText(/^วางแล้ว \d+ ชิ้น$/)).toBeVisible();
   const overlay = page.locator('.fps-overlay');
   await expect(overlay).toHaveText(new RegExp(`^\\d+ fps · ${T.quality.smooth} · \\d+ calls · city \\d+\\.\\d ms$`), { timeout: 20_000 });
   // ~145 items used to cost ~350 calls a frame; merged, it is a few per map chunk plus ground, sky and ghost

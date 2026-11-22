@@ -124,4 +124,32 @@ describe('city view batching', () => {
     ghost.traverse((o) => { if (o instanceof THREE.Mesh && o.material !== kit.materials.body && o.material !== kit.materials.glow) ghostMeshes++; });
     expect(ghostMeshes).toBeGreaterThan(1); // footprint fill + the item model in ghost material
   });
+
+  it('a merge that throws leaves the view out of sync, so the next sync rebuilds in full', () => {
+    let failOnce = true;
+    const flaky = (id: string) => {
+      const t = getTheme(id);
+      if (!t) return t;
+      return {
+        ...t,
+        items: t.items.map((it) => ({
+          ...it,
+          build: (k: typeof kit) => {
+            if (failOnce) { failOnce = false; throw new Error('merge boom'); }
+            return it.build(k);
+          },
+        })),
+      };
+    };
+    const scene = new THREE.Scene();
+    const stage = { scene, invalidateShadows: vi.fn() } as unknown as Stage;
+    const view = createCityView(stage, kit, flaky);
+    const meshes = () => scene.getObjectByName('city')!.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name.startsWith('city-'));
+    expect(() => view.sync(state(full))).toThrow('merge boom');
+    view.sync(state(full)); // same placements: must not be skipped as 'same'
+    const ref = setup();
+    ref.view.sync(state(full));
+    expect(vertices(meshes())).toBe(vertices(ref.chunkMeshes()));
+    expect(meshes().length).toBeGreaterThan(0);
+  });
 });

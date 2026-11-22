@@ -181,15 +181,22 @@ export function createCityView(
     const plan = themeId === shownTheme ? planBatch(shown, placements) : { kind: 'rebuild' as const };
     if (plan.kind === 'same') return false;
     const empty = shown.length === 0;
+    try {
+      if (plan.kind === 'append' && themeId) {
+        addToBatch(themeId, plan.added);
+      } else {
+        batch.clear();
+        if (themeId) addToBatch(themeId, placements);
+      }
+    } catch (e) {
+      // The batch may hold a partial merge: forget what is shown so the next sync rebuilds in full.
+      shown = [];
+      shownTheme = null;
+      throw e;
+    }
     shown = placements;
     shownTheme = themeId;
-    if (plan.kind === 'append' && themeId) {
-      addToBatch(themeId, plan.added);
-      return true;
-    }
-    batch.clear();
-    if (themeId) addToBatch(themeId, placements);
-    return !(empty && placements.length === 0);
+    return plan.kind === 'append' && themeId ? true : !(empty && placements.length === 0);
   };
 
   function sync(s: AppState): void {
