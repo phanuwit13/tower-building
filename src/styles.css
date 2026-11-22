@@ -1,6 +1,93 @@
+:root {
+  --ink: #2b2d42;
+  --paper: #ffffff;
+  --accent: #ff7a59;
+  --accent-ink: #ffffff;
+  --sky: #e8f6ff;
+  --chip: #eef3ff;
+  --selected: #4d96ff;
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
   font-family: 'Mitr', sans-serif;
+  color: var(--ink);
+  overflow: hidden;
+  touch-action: manipulation;
 }
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+button {
+  font: inherit;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.18);
+  cursor: pointer;
+}
+button:focus-visible { outline: 3px solid var(--selected); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: default; }
+[hidden] { display: none !important; }
+
+/* Overlay screens */
+.screen { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; }
+.theme-select { flex-direction: column; background: var(--sky); overflow: auto; gap: 8px; padding: 16px; box-sizing: border-box; }
+.theme-select h1, .theme-select h2 { margin: 0; text-align: center; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; width: min(720px, 100%); }
+.theme-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px; min-height: 96px; }
+.theme-emoji { font-size: 40px; line-height: 1; }
+
+/* HUD: fixed overlay so the canvas stays full-screen */
+.hud { position: fixed; inset: 0; z-index: 5; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 8px; box-sizing: border-box; }
+.hud button, .hud .card { pointer-events: auto; }
+.hud-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.hud-cards { display: flex; gap: 8px; }
+.card { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 12px; min-width: 96px; text-align: center; }
+.card-label { font-size: 12px; opacity: 0.7; }
+.card-thumb { width: 56px; height: 56px; object-fit: contain; }
+.card-size { font-size: 12px; opacity: 0.7; }
+.card-next { opacity: 0.85; transform: scale(0.9); transform-origin: top left; }
+.hud-placed { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 14px; }
+.hud-tools { display: flex; gap: 8px; }
+.hud-hint { align-self: center; background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 14px; }
+.hud-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.btn-place { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 20px; }
+.btn-rotate { min-width: 96px; font-size: 18px; }
+
+/* Settings: centered panel on wide screens, bottom sheet on narrow ones */
+.settings { background: rgb(0 0 0 / 0.35); }
+.settings-sheet { background: var(--paper); border-radius: 24px; padding: 16px; width: min(560px, 92vw); max-height: 90vh; overflow: auto; box-sizing: border-box; }
+.settings-head { display: flex; justify-content: space-between; align-items: center; }
+.settings-head h2, .settings-group h3 { margin: 0; }
+.settings-group { margin-top: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.chip { background: var(--chip); }
+.chip.selected { background: var(--selected); color: #fff; }
+.settings-danger { display: flex; gap: 8px; margin-top: 16px; }
+@media (max-width: 600px) {
+  .settings { align-items: flex-end; }
+  .settings-sheet { width: 100%; border-radius: 24px 24px 0 0; max-height: 80vh; }
+}
+
+/* Dialogs and end screen */
+.overlay { z-index: 30; background: rgb(0 0 0 / 0.4); }
+.dialog, .end-card { background: var(--paper); border-radius: 24px; padding: 24px; width: min(420px, 90vw); text-align: center; box-sizing: border-box; }
+.dialog-actions, .end-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.btn-confirm { background: var(--accent); color: var(--accent-ink); }
+.end-screen { z-index: 20; background: rgb(0 0 0 / 0.25); }
+.end-card h2 { margin-top: 0; }
+
+/* Notices */
+.notices { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: min(480px, 92vw); }
+.notice { background: var(--ink); color: #fff; border-radius: 16px; padding: 10px 16px; text-align: center; }
