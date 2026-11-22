@@ -6,6 +6,8 @@ import { PALETTE } from './palette';
 
 const FOOTPRINTS = ['1x1', '1x2', '2x1', '2x2', '2x3', '3x2'];
 const TOL = 0.001;
+/** On a footprint axis of n >= 2 tiles the model must span at least n - COVERAGE_GAP (catches wrong-scale models). */
+const COVERAGE_GAP = 0.6;
 const COLOR_TOL = 1e-3;
 
 /** Palette colours in linear space, the space the kit writes vertex colours in. */
@@ -85,6 +87,11 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
     }
     if (box.min.y < -TOL || box.max.y > 5 + TOL) errs.push(`${tag}: height outside [0, 5]`);
     if (Math.abs(box.min.y) > TOL) errs.push(`${tag}: origin must be on the ground (lowest point y=${box.min.y.toFixed(3)}, expected 0)`);
+    for (const [axis, n, span] of [['x', w, box.max.x - box.min.x], ['z', d, box.max.z - box.min.z]] as const) {
+      if (n >= 2 && span < n - COVERAGE_GAP - TOL) {
+        errs.push(`${tag}: model spans ${span.toFixed(2)} of its ${n} tiles along ${axis} (needs at least ${(n - COVERAGE_GAP).toFixed(2)}): build it to fill its footprint`);
+      }
+    }
   }
   try {
     if (JSON.stringify(positionsOf(obj)) !== JSON.stringify(positionsOf(m.build(kit)))) errs.push(`${tag}: build() must be deterministic (two builds differ)`);
