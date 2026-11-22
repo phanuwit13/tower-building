@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { nextRandom } from '../game/rng';
 import { GRID_SIZE, type QualityTier, type SceneSettings, type TimeId, type WeatherId } from '../game/types';
 import type { StyleKit } from '../models/kit';
-import { setNight, setWind } from '../models/motion';
+import { glslFloat, setMoon, setNight, setWind } from '../models/motion';
 import { SURROUND_FADE } from './ground';
 import { setShadowTier, type Stage } from './stage';
 
@@ -13,9 +13,11 @@ export interface EnvPreset {
   hemiSky: number; hemiGround: number; hemiIntensity: number;
   sunColor: number; sunIntensity: number; sunDir: Vec3;
   glowStrength: number; stars: boolean;
+  /** How much the moon shows, 0..1 (and the moonlight glints on ponds): night 1, dusk and dawn faint, none by day or in rain. */
+  moon: number;
 }
 
-type BasePreset = Omit<EnvPreset, 'glowStrength' | 'stars'>;
+type BasePreset = Omit<EnvPreset, 'glowStrength' | 'stars' | 'moon'>;
 
 /**
  * Sunny looks per time of day. `sky` is the colour overhead, `fog` the colour at the horizon (the
@@ -48,6 +50,8 @@ const SUNNY: Record<TimeId, BasePreset> = {
 };
 
 const GLOW: Record<TimeId, number> = { dawn: 0.3, day: 0, dusk: 0.6, night: 1 };
+/** The moon by time of day (rain clouds hide it): full at night, a pale ghost of it at dusk and dawn. */
+const MOON_LIGHT: Record<TimeId, number> = { dawn: 0.35, day: 0, dusk: 0.35, night: 1 };
 const RAIN_SUN = 0.5;
 const RAIN_HEMI = 0.7;
 const RAIN_FOG_FAR = 0.6;
@@ -73,6 +77,7 @@ export function envPreset(time: TimeId, weather: WeatherId): EnvPreset {
   const p: EnvPreset = {
     ...base, sunDir: normalize(base.sunDir), glowStrength: GLOW[time],
     stars: time === 'night' && weather === 'sunny', // rain clouds hide them
+    moon: weather === 'rain' ? 0 : MOON_LIGHT[time],
   };
   if (weather === 'rain') {
     p.sky = greyed(p.sky);
@@ -157,6 +162,96 @@ function createSky() {
     set(sky: number, horizon: number) {
       material.uniforms.top.value.setHex(sky);
       material.uniforms.bottom.value.setHex(horizon);
+    },
+  };
+}
+
+/**
+ * The moon: a disc with a soft halo, at infinity (it is drawn `distance` from the camera, always in
+ * direction `dir`, so panning never moves it and orbiting slides it like the stars). Radii are
+ * angles in radians: the disc is about 46 px across on an 800 px tall view.
+ *
+ * Where: on the night light's compass line, on the far side of the map. The night light comes from
+ * behind the default camera so that it lights the faces kids see; a moon on the light's own side
+ * would never be in view. The default camera looks down steeply (the top of its view is 37° below
+ * the horizon), so the moon hangs that low too, in the backdrop past the map's far corner, just
+ * right of the top middle of the screen. Like the stars it is part of the backdrop: drawn over the
+ * surround (which writes no depth), behind the map and every item.
+ */
+const MOON_ELEVATION = -0.71; // radians: about 41° below the horizon
+const NIGHT_LIGHT = normalize(SUNNY.night.sunDir);
+const NIGHT_LIGHT_FLAT = Math.hypot(NIGHT_LIGHT[0], NIGHT_LIGHT[2]);
+export const MOON = {
+  dir: [
+    (-NIGHT_LIGHT[0] / NIGHT_LIGHT_FLAT) * Math.cos(MOON_ELEVATION),
+    Math.sin(MOON_ELEVATION),
+    (-NIGHT_LIGHT[2] / NIGHT_LIGHT_FLAT) * Math.cos(MOON_ELEVATION),
+  ] as Vec3,
+  discRadius: 0.021,
+  haloRadius: 0.076,
+  distance: 200, // past the whole map at the furthest zoom, inside the camera's far plane (300)
+} as const;
+/** Smooth has no bloom, so the moon draws its whole halo; on pretty, bloom makes most of it. */
+const MOON_HALO: Record<QualityTier, number> = { smooth: 1, pretty: 0.35 };
+
+/**
+ * One camera-facing quad (one draw call, and only while the moon shows). Its colour is
+ * premultiplied: the disc covers what is behind it, the halo only adds light. Not fogged, casts no
+ * shadow; the disc is bright enough for the pretty tier's bloom.
+ */
+function createMoon() {
+  const ratio = MOON.haloRadius / MOON.discRadius; // quad half-size, in disc radii
+  const f = glslFloat;
+  const material = new THREE.ShaderMaterial({
+    uniforms: { visibility: { value: 0 }, halo: { value: 1 } },
+    vertexShader: /* glsl */ `
+      varying vec2 vQuad;
+      void main() {
+        vQuad = position.xy;
+        vec4 centre = viewMatrix * vec4( cameraPosition + vec3( ${MOON.dir.map(f).join(', ')} ) * ${f(MOON.distance)}, 1.0 );
+        centre.xy += position.xy * ${f(MOON.distance * Math.tan(MOON.haloRadius))};
+        gl_Position = projectionMatrix * centre;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float visibility;
+      uniform float halo;
+      varying vec2 vQuad;
+      float moonSpot( vec2 q, vec2 c, float r ) { return 1.0 - smoothstep( 0.4 * r, r, length( q - c ) ); }
+      void main() {
+        vec2 q = vQuad * ${f(ratio)}; // disc radii: the rim is at 1
+        float r = length( q );
+        float aa = fwidth( r );
+        float disc = 1.0 - smoothstep( 1.0 - aa, 1.0 + aa, r );
+        // a friendly full moon: cream, a touch darker at the rim, three soft grey seas
+        float seas = moonSpot( q, vec2( -0.32, 0.22 ), 0.36 ) + moonSpot( q, vec2( 0.3, 0.32 ), 0.22 ) + moonSpot( q, vec2( 0.12, -0.38 ), 0.26 );
+        vec3 face = vec3( 1.3, 1.24, 1.05 ) * ( 1.0 - 0.16 * min( seas, 1.0 ) ) * ( 0.88 + 0.12 * sqrt( max( 1.0 - r * r, 0.0 ) ) );
+        float glow = halo * 0.34 * exp( -1.6 * max( r - 1.0, 0.0 ) ) * ( 1.0 - smoothstep( ${f(0.55 * ratio)}, ${f(ratio)}, r ) );
+        gl_FragColor = vec4( mix( vec3( 0.66, 0.68, 0.82 ) * glow, face, disc ), 1.0 );
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        gl_FragColor = vec4( gl_FragColor.rgb * visibility, disc * visibility );
+      }`,
+    transparent: true,
+    premultipliedAlpha: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  mesh.name = 'moon';
+  mesh.frustumCulled = false; // placed by its shader, not by its geometry
+  mesh.renderOrder = -1; // the first of the see-through things: everything nearer draws over it
+  mesh.visible = false;
+  let on = false;
+  return {
+    mesh,
+    set(visibility: number, q: QualityTier) {
+      on = visibility > 0;
+      mesh.visible = on;
+      material.uniforms.visibility.value = visibility;
+      material.uniforms.halo.value = MOON_HALO[q];
+    },
+    /** Before each scene render: an override pass (the pretty tier's AO normals) leaves the sky picture out. */
+    beforeRender(scene: THREE.Scene) {
+      mesh.visible = on && scene.overrideMaterial === null;
     },
   };
 }
@@ -270,10 +365,18 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
   const sky = createSky();
   const stars = createStars();
   const rain = createRain();
+  const moon = createMoon();
 
-  scene.add(hemi, sun, sun.target, sky.mesh, stars, rain.lines);
+  scene.add(hemi, sun, sun.target, sky.mesh, stars, moon.mesh, rain.lines);
   scene.fog = fog;
   stage.onFrame((dt) => rain.update(dt));
+  // The pretty tier's AO pass re-renders the scene with an override material: keep the moon out of
+  // it (no AO halo round a sky picture, and one draw call, not two).
+  const sceneBeforeRender = scene.onBeforeRender.bind(scene);
+  scene.onBeforeRender = (...args) => {
+    sceneBeforeRender(...args);
+    moon.beforeRender(scene);
+  };
 
   const linear = new THREE.Color();
   return {
@@ -295,10 +398,12 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
       fog.far = p.fogFar;
       sky.set(p.sky, p.fog);
       stars.visible = p.stars;
+      moon.set(p.moon, q);
       rain.set(s.weather === 'rain', q, greyed(p.hemiSky, 0.45, 0.9)); // drops pick up the sky light, softened
       kit.setGlowStrength(p.glowStrength);
       setWind(s.weather === 'rain' ? RAIN_WIND : 1);
       setNight(p.glowStrength); // how night it is: 0 day, 0.3 dawn, 0.6 dusk, 1 night
+      setMoon(p.moon); // moonlight glints on ponds
     },
   };
 }

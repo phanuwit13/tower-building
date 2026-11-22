@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  advanceMotion, BLINK_OFF_LEVEL, BLINK_PERIOD, CULL_MARGIN, freezeMotion, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
-  MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, resolveMotion, setNight,
-  setReducedMotion, setWind, watchReducedMotion,
+  advanceMotion, BLINK_OFF_LEVEL, BLINK_PERIOD, CULL_MARGIN, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
+  MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, patchWaterShader, resolveMotion, setMoon, setNight,
+  setReducedMotion, setWind, WATER, WATER_FRAGMENT, WATER_FRAGMENT_PARS, waterLight, watchReducedMotion,
 } from './motion';
 
 const reset = () => {
   motionUniforms.uTime.value = 0;
   setWind(1);
   setNight(0);
+  setMoon(0);
   setReducedMotion(false);
 };
 afterEach(reset);
@@ -59,11 +60,12 @@ describe('resolveMotion', () => {
 });
 
 describe('motion uniforms', () => {
-  it('start calm: time 0, wind 1, motion on, day', () => {
+  it('start calm: time 0, wind 1, motion on, day, no moon', () => {
     expect(motionUniforms.uTime.value).toBe(0);
     expect(motionUniforms.uWind.value).toBe(1);
     expect(motionUniforms.uMotion.value).toBe(1);
     expect(motionUniforms.uNight.value).toBe(0);
+    expect(motionUniforms.uMoon.value).toBe(0);
   });
   it('advanceMotion adds frame time in seconds and ignores bad frames', () => {
     advanceMotion(500);
@@ -86,16 +88,28 @@ describe('motion uniforms', () => {
     expect(motionUniforms.uMotion.value).toBe(0);
     setReducedMotion(false);
     expect(motionUniforms.uMotion.value).toBe(1);
+    setMoon(0.35);
+    expect(motionUniforms.uMoon.value).toBe(0.35);
+    setMoon(-2);
+    expect(motionUniforms.uMoon.value).toBe(0);
+    setMoon(9);
+    expect(motionUniforms.uMoon.value).toBe(1);
   });
-  it('freezeMotion holds time 0 and motion off until restored', () => {
+  it('freezeMotion holds time 0, motion off and daylight water (no night glow) until restored', () => {
     advanceMotion(1234);
     setReducedMotion(false);
+    setNight(1);
+    setMoon(1);
     const restore = freezeMotion();
     expect(motionUniforms.uTime.value).toBe(0);
     expect(motionUniforms.uMotion.value).toBe(0);
+    expect(motionUniforms.uNight.value).toBe(0);
+    expect(motionUniforms.uMoon.value).toBe(0);
     restore();
     expect(motionUniforms.uTime.value).toBeCloseTo(1.234);
     expect(motionUniforms.uMotion.value).toBe(1);
+    expect(motionUniforms.uNight.value).toBe(1);
+    expect(motionUniforms.uMoon.value).toBe(1);
   });
 });
 
@@ -178,7 +192,7 @@ describe('motion shader', () => {
     const b = standard();
     patchMotionShader(a);
     patchMotionShader(b);
-    for (const k of ['uTime', 'uWind', 'uMotion', 'uNight'] as const) {
+    for (const k of ['uTime', 'uWind', 'uMotion', 'uNight', 'uMoon'] as const) {
       expect(a.uniforms[k]).toBe(motionUniforms[k]);
       expect(b.uniforms[k]).toBe(motionUniforms[k]);
     }
@@ -243,5 +257,174 @@ describe('light patterns', () => {
     expect(() => packLight(0, 'flash' as never)).toThrow(/unknown light/);
     expect(MOTION_VERTEX_SETUP).toContain('vLight');
     expect(MOTION_FRAGMENT_PARS).toContain('varying float vLight');
+  });
+});
+
+describe('water look', () => {
+  type Look = 'pond' | 'pool';
+  const lum = ([r, g, b]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  /** A 4 x 4 unit patch of water sampled every 1.3 cm (about 95 000 points, several glint cells per unit). */
+  const patch = (fn: (x: number, z: number) => number) => {
+    const out: number[] = [];
+    for (let i = 0; i < 308; i++) for (let j = 0; j < 308; j++) out.push(fn(3.1 + i * 0.013, 7.4 + j * 0.013));
+    return out;
+  };
+  const night = { night: 1, moon: 1 };
+  const reversalsPerSecond = (fn: (t: number) => number, seconds = 60, hz = 120) => {
+    let flips = 0;
+    let prevSlope = 0;
+    let prev = fn(0);
+    for (let i = 1; i <= seconds * hz; i++) {
+      const v = fn(i / hz);
+      const slope = Math.sign(Math.round((v - prev) * 1e6));
+      if (slope !== 0 && prevSlope !== 0 && slope !== prevSlope) flips++;
+      if (slope !== 0) prevSlope = slope;
+      prev = v;
+    }
+    return flips / seconds;
+  };
+
+  it('by day, both waters show slow highlight bands over part of the surface and emit nothing', () => {
+    for (const look of ['pond', 'pool'] as Look[]) {
+      const day = { time: 3, night: 0, moon: 0 };
+      const bands = patch((x, z) => waterLight(look, x, z, day).highlight);
+      const lit = bands.filter((v) => v > WATER.band.mix * 0.5).length / bands.length;
+      expect(lit, look).toBeGreaterThan(0.08);
+      expect(lit, look).toBeLessThan(0.45);
+      expect(Math.max(...bands), look).toBeLessThanOrEqual(WATER.band.mix + 1e-9);
+      expect(Math.max(...patch((x, z) => lum(waterLight(look, x, z, day).glow))), look).toBe(0);
+    }
+  });
+
+  it('the bands drift: a point brightens and darkens slowly, never faster than 3 Hz', () => {
+    const at = (t: number) => waterLight('pond', 3.3, 7.9, { time: t, night: 0, moon: 0 }).highlight;
+    const seen = new Set(Array.from({ length: 600 }, (_, i) => Math.round(at(i / 10) * 100)));
+    expect(seen.size).toBeGreaterThan(5); // it does move
+    expect(reversalsPerSecond(at)).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+  });
+
+  it('a moonlit pond is dark water with sparse silver glints, not a glowing disc', () => {
+    const glow = patch((x, z) => lum(waterLight('pond', x, z, { time: 11, ...night }).glow));
+    const peak = Math.max(...glow);
+    const lit = glow.filter((v) => v > 0.1 * peak).length / glow.length;
+    const mean = glow.reduce((a, b) => a + b, 0) / glow.length;
+    const sorted = [...glow].sort((a, b) => a - b);
+    expect(peak).toBeGreaterThan(0.5); // a glint is bright
+    expect(sorted[Math.floor(glow.length / 2)]).toBe(0); // most of the pond does not glow at all
+    expect(lit).toBeGreaterThan(0.002);
+    expect(lit).toBeLessThan(0.05); // sparse
+    expect(mean).toBeLessThan(0.03); // the pond as a whole stays dark
+  });
+
+  it('pond glints follow the moonlight: fainter at dusk, none in rain or by day', () => {
+    const total = (moon: number, nightness: number) =>
+      patch((x, z) => lum(waterLight('pond', x, z, { time: 11, night: nightness, moon }).glow)).reduce((a, b) => a + b, 0);
+    expect(total(0.35, 0.6)).toBeCloseTo(0.35 * total(1, 1));
+    expect(total(0, 1)).toBe(0); // rain at night: clouds hide the moon
+    expect(total(0, 0)).toBe(0);
+  });
+
+  it('glints twinkle and drift slowly (under 3 Hz) and are still there, unmoving, with reduced motion', () => {
+    const point = (t: number, motion = 1) => lum(waterLight('pond', 3.37, 8.02, { time: t, ...night, motion }).glow);
+    const glints = (t: number, motion = 1) => patch((x, z) => lum(waterLight('pond', x, z, { time: t, ...night, motion }).glow));
+    expect(reversalsPerSecond(point)).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+    expect(glints(4)).not.toEqual(glints(9));
+    const still = glints(4, 0);
+    expect(still).toEqual(glints(97, 0));
+    expect(Math.max(...still)).toBeGreaterThan(0.5); // reduced motion still shows the moonlight
+  });
+
+  it('a pool glows soft cyan all over at night, with a slow brighter shimmer', () => {
+    const glow = patch((x, z) => lum(waterLight('pool', x, z, { time: 6, ...night }).glow));
+    const min = Math.min(...glow);
+    const max = Math.max(...glow);
+    expect(min).toBeGreaterThan(0.15); // every bit of the pool glows
+    expect(max).toBeGreaterThan(min * 1.3); // the shimmer shows
+    expect(max).toBeLessThan(1.2); // soft: at most a gentle bloom on pretty
+    const [r, g, b] = waterLight('pool', 3.5, 8, { time: 6, ...night }).glow;
+    expect(g).toBeGreaterThan(2 * r);
+    expect(b).toBeGreaterThan(2 * r);
+    const at = (t: number) => lum(waterLight('pool', 3.5, 8, { time: t, ...night }).glow);
+    expect(reversalsPerSecond(at)).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+  });
+
+  it('the pool glow follows the lights (dusk 0.6, also in rain) and is off by day; reduced motion holds it still', () => {
+    const at = (nightness: number, moon: number, t = 6, motion = 1) => waterLight('pool', 3.5, 8, { time: t, night: nightness, moon, motion }).glow;
+    expect(lum(at(0.6, 0.35))).toBeCloseTo(0.6 * lum(at(1, 1)));
+    expect(lum(at(1, 0))).toBeCloseTo(lum(at(1, 1))); // rain: the pool lights stay on
+    expect(lum(at(0, 0))).toBe(0);
+    expect(at(1, 1, 5, 0)).toEqual(at(1, 1, 50, 0));
+    expect(lum(at(1, 1, 5, 0))).toBeGreaterThan(0.15);
+  });
+
+  it('night darkens the water itself (the pool most, so its glow reads as light from below); day leaves it be', () => {
+    const dim = (look: Look, nightness: number) => waterLight(look, 3.5, 8, { time: 6, night: nightness, moon: 0 }).dim;
+    expect(dim('pond', 0)).toBe(1);
+    expect(dim('pool', 0)).toBe(1);
+    expect(dim('pond', 1)).toBeLessThan(1);
+    expect(dim('pool', 1)).toBeLessThan(dim('pond', 1));
+    expect(dim('pool', 1)).toBeGreaterThan(0.2);
+    expect(dim('pool', 0.6)).toBeCloseTo(1 - 0.6 * (1 - dim('pool', 1)));
+  });
+
+  it('amount scales the look and speed its pace', () => {
+    const glow = (amount: number) => lum(waterLight('pool', 3.5, 8, { time: 6, ...night, amount }).glow);
+    expect(glow(0.5)).toBeCloseTo(0.5 * glow(1));
+    const band = (speed: number, t: number) => waterLight('pond', 3.3, 7.9, { time: t, night: 0, moon: 0, speed }).highlight;
+    expect(band(2, 3)).toBeCloseTo(band(1, 6));
+  });
+});
+
+describe('water shader', () => {
+  const standard = () => ({
+    uniforms: {} as Record<string, THREE.IUniform>,
+    vertexShader: THREE.ShaderLib.standard.vertexShader,
+    fragmentShader: THREE.ShaderLib.standard.fragmentShader,
+  });
+
+  it('draws pond and pool in the fragment shader after the vertex colour, and never moves a vertex', () => {
+    const s = standard();
+    patchMotionShader(s);
+    const vertex = s.vertexShader;
+    patchWaterShader(s);
+    expect(s.vertexShader).toBe(vertex);
+    const f = s.fragmentShader;
+    expect(f.indexOf('#include <color_fragment>')).toBeLessThan(f.indexOf('int waterKind'));
+    expect(f.indexOf('int waterKind')).toBeLessThan(f.indexOf('#include <lights_fragment_begin>'));
+    expect(f.indexOf('float waterGlint(')).toBeLessThan(f.indexOf('void main()'));
+    expect(WATER_FRAGMENT).toContain(`waterKind == ${MOTION_CODE.pond}`);
+    expect(WATER_FRAGMENT).toContain(`waterKind == ${MOTION_CODE.pool}`);
+    for (const u of ['uTime', 'uMotion', 'uNight', 'uMoon', 'totalEmissiveRadiance', 'diffuseColor']) expect(WATER_FRAGMENT).toContain(u);
+    expect(WATER_FRAGMENT).toContain(glslFloat(WATER.nightDim.pond));
+    expect(WATER_FRAGMENT).toContain(glslFloat(WATER.nightDim.pool));
+    // water never moves: the vertex shader only moves sway..swing
+    expect(MOTION_CODE.pond).toBeGreaterThan(MOTION_CODE.swing);
+    expect(MOTION_VERTEX_SETUP).toContain(`motionKind <= ${MOTION_CODE.swing}`);
+  });
+
+  it('declares the moon uniform for the fragment and shares it', () => {
+    expect(MOTION_FRAGMENT_PARS).toContain('uniform float uMoon;');
+    const s = standard();
+    patchMotionShader(s);
+    expect(s.uniforms.uMoon).toBe(motionUniforms.uMoon);
+  });
+
+  it('fails loudly when three renames the chunk it hooks into', () => {
+    const s = standard();
+    patchMotionShader(s);
+    s.fragmentShader = s.fragmentShader.replace('#include <color_fragment>', '');
+    expect(() => patchWaterShader(s)).toThrow(/color_fragment/);
+  });
+
+  it('writes the TS constants into the GLSL exactly', () => {
+    for (const v of [1, 0, 0.45, 1.1, -4.6, 6.2831853, 12.9898, 1e-3, 0.17]) {
+      const g = glslFloat(v);
+      expect(g, String(v)).toMatch(/^-?\d+\.\d+$/);
+      expect(Number(g)).toBe(v);
+    }
+    const glsl = WATER_FRAGMENT_PARS + WATER_FRAGMENT;
+    for (const v of [WATER.glint.share, WATER.glint.cell, WATER.glint.power, WATER.band.mix, WATER.band.speed, WATER.pool.base, WATER.pool.scale]) {
+      expect(glsl).toContain(glslFloat(v));
+    }
   });
 });

@@ -131,6 +131,8 @@ export const motionUniforms = {
   uMotion: { value: 1 },
   /** 0 by day to 1 at night (for lights and water). */
   uNight: { value: 0 },
+  /** Moonlight, 0..1: how much the moon shows (night 1, dusk and dawn faint, none by day or in rain); pond glints follow it. */
+  uMoon: { value: 0 },
 };
 
 export function advanceMotion(dtMs: number): void {
@@ -143,6 +145,10 @@ export function setWind(w: number): void {
 
 export function setNight(n: number): void {
   motionUniforms.uNight.value = Math.min(1, Math.max(0, n));
+}
+
+export function setMoon(m: number): void {
+  motionUniforms.uMoon.value = Math.min(1, Math.max(0, m));
 }
 
 export function setReducedMotion(reduce: boolean): void {
@@ -165,15 +171,22 @@ export function watchReducedMotion(matchMedia: MatchMedia | undefined = globalTh
   return () => mql.removeEventListener('change', onChange);
 }
 
-/** Rest pose at time 0 (a thumbnail must not bake a random moment); call the result to restore. */
+/**
+ * Rest pose at time 0, with daylight water (a thumbnail must not bake a random moment, nor the night
+ * pool glow or moon glints: thumbnails also turn the glow off); call the result to restore.
+ */
 export function freezeMotion(): () => void {
-  const { uTime, uMotion } = motionUniforms;
-  const saved = { time: uTime.value, motion: uMotion.value };
+  const { uTime, uMotion, uNight, uMoon } = motionUniforms;
+  const saved = { time: uTime.value, motion: uMotion.value, night: uNight.value, moon: uMoon.value };
   uTime.value = 0;
   uMotion.value = 0;
+  uNight.value = 0;
+  uMoon.value = 0;
   return () => {
     uTime.value = saved.time;
     uMotion.value = saved.motion;
+    uNight.value = saved.night;
+    uMoon.value = saved.moon;
   };
 }
 
@@ -273,9 +286,177 @@ uniform float uTime;
 uniform float uWind;
 uniform float uMotion;
 uniform float uNight;
+uniform float uMoon;
 varying vec4 vAnim;
 varying float vLight;
 `;
+
+/** A number as a GLSL float literal that parses back to exactly the same value (1 -> "1.0", 0.45 -> "0.45"). */
+export function glslFloat(v: number): string {
+  if (!Number.isFinite(v)) throw new Error(`motion shader: ${v} is not a GLSL float`);
+  const s = String(v);
+  return /[.e]/.test(s) ? s : `${s}.0`;
+}
+const glslVec = (v: readonly number[]) => `vec${v.length}( ${v.map(glslFloat).join(', ')} )`;
+
+/**
+ * Water surfaces (`motion: { kind: 'water' }`, codes pond and pool) never move; the body material's
+ * fragment shader draws them, in world space so a pattern runs on across parts and turned items:
+ * - any time: slow highlight bands, a warped ripple whose crests are lightened (faded at night);
+ * - a pond in moonlight: sparse silver glints that drift and twinkle slowly (no glow of its own, so
+ *   night water stays dark); they follow `uMoon`, so dusk is faint and rain clouds hide them;
+ * - a pool at night: a soft cyan glow with a slow brighter caustic shimmer, like underwater lights;
+ *   it follows `uNight` (the lights), rain or not;
+ * - at night the water's own (lit) colour darkens, the pool most, so glints and glow read on dark water.
+ * `amount` scales the look, `speed` its pace. Reduced motion freezes the pattern at time 0, still lit.
+ * Colours are linear RGB.
+ */
+export const WATER = {
+  band: {
+    k: [9, 5.5], speed: 1.1, // the ripple: crests about 0.6 apart, drifting about 0.1 units a second
+    warpK: [-4.6, 8.4], warpSpeed: 0.7, warp: 0.9, // a slow cross-ripple bends the crests
+    from: 0.55, to: 0.95, // the top of each crest (the swell runs -1..1)
+    slope: 10.5, // about how fast the swell changes per unit: widens the edges to a pixel when far away
+    mix: 0.3, nightFade: 0.75, colour: [0.75, 0.9, 1],
+  },
+  glint: {
+    cell: 0.17, share: 0.45, // one glint in 45 % of 0.17-unit cells
+    len: 0.22, wid: 0.06, axis: [0.7071, -0.7071], // a short streak (in cell units) across the default view
+    drift: [0.25, 0.15], // cells a second
+    twinkleMin: 0.6, twinkleRange: 0.8, twinkleFrom: 0.55, // each at its own 0.6..1.4 rad/s (4.5..10 s a twinkle), bright about a third of it
+    colour: [0.85, 0.9, 1], power: 2.2,
+  },
+  pool: {
+    colour: [0.02, 0.4, 0.5], base: 0.55, shimmer: 0.6, // soft cyan everywhere, brighter on the caustic lines
+    scale: 12, width: 0.45, slope: 18,
+  },
+  /** How much night darkens the surface colour (times uNight). */
+  nightDim: { pond: 0.3, pool: 0.6 },
+} as const;
+
+export interface WaterInputs {
+  time: number; night: number; moon: number;
+  /** uMotion (0 = reduced motion: the pattern holds still). */
+  motion?: number;
+  /** The part's motion amount and speed. */
+  amount?: number; speed?: number;
+}
+/** `highlight`: how far the surface colour moves towards the band colour; `dim`: what the result is then multiplied by; `glow`: emitted light. */
+export interface WaterLook { highlight: number; dim: number; glow: [number, number, number] }
+
+const fract = (x: number) => x - Math.floor(x);
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const waterHash = (x: number, y: number) => fract(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453);
+
+/**
+ * The water look at world point (x, z): the same maths as WATER_FRAGMENT, minus its pixel-size
+ * anti-aliasing (see WaterLook; colours linear RGB).
+ */
+export function waterLight(look: 'pond' | 'pool', x: number, z: number, u: WaterInputs): WaterLook {
+  const { band: B, glint: G, pool: P } = WATER;
+  const t = u.time * (u.motion ?? 1) * (u.speed ?? 1);
+  const amount = u.amount ?? 1;
+  const swell = Math.sin(x * B.k[0] + z * B.k[1] + B.speed * t + B.warp * Math.sin(x * B.warpK[0] + z * B.warpK[1] - B.warpSpeed * t));
+  const highlight = Math.min(1, Math.max(0, smoothstep(B.from, B.to, swell) * B.mix * amount * (1 - B.nightFade * u.night)));
+  let level = 0;
+  let colour: readonly number[] = G.colour;
+  if (look === 'pond') {
+    const gx = x / G.cell + G.drift[0] * t;
+    const gz = z / G.cell + G.drift[1] * t;
+    const cx = Math.floor(gx);
+    const cz = Math.floor(gz);
+    const h1 = waterHash(cx, cz);
+    if (h1 < G.share) {
+      const h2 = waterHash(cx + 19.19, cz + 19.19);
+      const s = h1 / G.share;
+      const dx = gx - cx - 0.5 - (s - 0.5) * 0.5;
+      const dz = gz - cz - 0.5 - (h2 - 0.5) * 0.5;
+      const ea = (dx * G.axis[0] + dz * G.axis[1]) / G.len;
+      const eb = (-dx * G.axis[1] + dz * G.axis[0]) / G.wid;
+      const twinkle = 0.5 + 0.5 * Math.sin(t * (G.twinkleMin + G.twinkleRange * h2) + 2 * Math.PI * s);
+      level = Math.max(1 - ea * ea - eb * eb, 0) * smoothstep(G.twinkleFrom, 1, twinkle) * G.power * u.moon * amount;
+    }
+  } else {
+    const qx = x * P.scale;
+    const qz = z * P.scale;
+    const a = Math.sin(qx + 0.6 * t + 1.3 * Math.sin(0.9 * qz - 0.4 * t));
+    const b = Math.sin(qz - 0.5 * t + 1.3 * Math.sin(1.1 * qx + 0.35 * t));
+    level = (P.base + P.shimmer * (1 - smoothstep(0, P.width, Math.abs(a + b)))) * u.night * amount;
+    colour = P.colour;
+  }
+  const dim = 1 - WATER.nightDim[look] * u.night;
+  return { highlight, dim, glow: [colour[0] * level, colour[1] * level, colour[2] * level] };
+}
+
+/** Prepended to the body fragment shader: the water helpers (they take everything as arguments). */
+export const WATER_FRAGMENT_PARS = /* glsl */ `
+float waterHash( vec2 p ) {
+  return fract( sin( dot( p, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+}
+float waterSwell( vec2 p, float t ) {
+  return sin( dot( p, ${glslVec(WATER.band.k)} ) + ${glslFloat(WATER.band.speed)} * t
+    + ${glslFloat(WATER.band.warp)} * sin( dot( p, ${glslVec(WATER.band.warpK)} ) - ${glslFloat(WATER.band.warpSpeed)} * t ) );
+}
+// px: cell units per pixel; a far glint widens to about a pixel and dims to match (no sparkle aliasing)
+float waterGlint( vec2 p, float t, float px ) {
+  vec2 g = p / ${glslFloat(WATER.glint.cell)} + ${glslVec(WATER.glint.drift)} * t;
+  vec2 cell = floor( g );
+  float h1 = waterHash( cell );
+  if ( h1 >= ${glslFloat(WATER.glint.share)} ) return 0.0;
+  float h2 = waterHash( cell + 19.19 );
+  float s = h1 / ${glslFloat(WATER.glint.share)};
+  vec2 d = g - cell - 0.5 - ( vec2( s, h2 ) - 0.5 ) * 0.5;
+  vec2 size = max( vec2( ${glslFloat(WATER.glint.len)}, ${glslFloat(WATER.glint.wid)} ), vec2( px ) );
+  vec2 axis = ${glslVec(WATER.glint.axis)};
+  vec2 e = vec2( dot( d, axis ), dot( d, vec2( -axis.y, axis.x ) ) ) / size;
+  float shape = max( 1.0 - dot( e, e ), 0.0 ) * sqrt( ${glslFloat(WATER.glint.len * WATER.glint.wid)} / ( size.x * size.y ) );
+  float twinkle = 0.5 + 0.5 * sin( t * ( ${glslFloat(WATER.glint.twinkleMin)} + ${glslFloat(WATER.glint.twinkleRange)} * h2 ) + 6.2831853 * s );
+  return shape * smoothstep( ${glslFloat(WATER.glint.twinkleFrom)}, 1.0, twinkle );
+}
+float waterCaustic( vec2 p, float t, float aa ) {
+  vec2 q = p * ${glslFloat(WATER.pool.scale)};
+  float a = sin( q.x + 0.6 * t + 1.3 * sin( 0.9 * q.y - 0.4 * t ) );
+  float b = sin( q.y - 0.5 * t + 1.3 * sin( 1.1 * q.x + 0.35 * t ) );
+  return 1.0 - smoothstep( 0.0, ${glslFloat(WATER.pool.width)} + aa, abs( a + b ) );
+}
+`;
+
+/**
+ * After `color_fragment` in the body material: the water look (see WATER and waterLight). The world
+ * position comes from the view-space one (the view matrix is a rotation and a shift, so its
+ * rotation's transpose undoes it); its pixel footprint is taken here, outside any branch.
+ */
+export const WATER_FRAGMENT = /* glsl */ `
+vec2 waterXZ = ( cameraPosition - vViewPosition * mat3( viewMatrix ) ).xz;
+float waterPx = max( fwidth( waterXZ.x ), fwidth( waterXZ.y ) );
+int waterKind = int( vAnim.x + 0.5 );
+if ( waterKind == ${MOTION_CODE.pond} || waterKind == ${MOTION_CODE.pool} ) {
+  float waterT = uTime * uMotion * vAnim.z;
+  float waterAa = ${glslFloat(WATER.band.slope)} * waterPx;
+  float waterBand = smoothstep( ${glslFloat(WATER.band.from)} - waterAa, ${glslFloat(WATER.band.to)} + waterAa, waterSwell( waterXZ, waterT ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, ${glslVec(WATER.band.colour)},
+    clamp( waterBand * ${glslFloat(WATER.band.mix)} * vAnim.y * ( 1.0 - ${glslFloat(WATER.band.nightFade)} * uNight ), 0.0, 1.0 ) );
+  diffuseColor.rgb *= 1.0 - ( waterKind == ${MOTION_CODE.pond} ? ${glslFloat(WATER.nightDim.pond)} : ${glslFloat(WATER.nightDim.pool)} ) * uNight;
+  if ( waterKind == ${MOTION_CODE.pond} ) {
+    float glint = waterGlint( waterXZ, waterT, waterPx / ${glslFloat(WATER.glint.cell)} );
+    totalEmissiveRadiance += ${glslVec(WATER.glint.colour)} * ( glint * ${glslFloat(WATER.glint.power)} * uMoon * vAnim.y );
+  } else {
+    float shimmer = waterCaustic( waterXZ, waterT, ${glslFloat(WATER.pool.slope)} * waterPx );
+    totalEmissiveRadiance += ${glslVec(WATER.pool.colour)}
+      * ( ( ${glslFloat(WATER.pool.base)} + ${glslFloat(WATER.pool.shimmer)} * shimmer ) * uNight * vAnim.y );
+  }
+}
+`;
+
+/** Add the water look to the body material's fragment shader (call after patchMotionShader). */
+export function patchWaterShader(s: PatchableShader): void {
+  const hook = '#include <color_fragment>';
+  if (!s.fragmentShader.includes(hook)) throw new Error(`water shader: three's shader has no ${hook} to hook into`);
+  s.fragmentShader = WATER_FRAGMENT_PARS + s.fragmentShader.replace(hook, `${hook}\n${WATER_FRAGMENT}`);
+}
 
 export interface PatchableShader { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }
 

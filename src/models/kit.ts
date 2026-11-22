@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE, packLight, patchMotionShader, resolveMotion, type LightKind, type MotionOpts } from './motion';
+import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE, packLight, patchMotionShader, patchWaterShader, resolveMotion, type LightKind, type MotionOpts } from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
@@ -34,8 +34,10 @@ export interface PartOpts {
    * Animate the part on the GPU (no extra draw calls): `sway` leans it downwind from `pivot` (its
    * base by default), `wave` ripples cloth out along `axis` from the pole at `pivot`, `spin` turns
    * it about `axis` through `pivot`, `swing` rocks it about `axis` through `pivot`; `water` marks a
-   * water surface (drawn in the fragment shader). `pivot` and `axis` are in item space, like `at`.
-   * See MotionOpts (motion.ts) for the defaults.
+   * water surface that stays put and is drawn in the fragment shader: slow highlight bands by day,
+   * moonlight glints on a `pond` (default) and a soft cyan glow on a `pool` at night (body parts
+   * only: no `glow`). `pivot` and `axis` are in item space, like `at`. See MotionOpts and WATER
+   * (motion.ts) for the defaults.
    */
   motion?: MotionOpts;
 }
@@ -101,6 +103,9 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   if (glow) fill('glowColor', glow === true ? color : glow);
   const m = opts?.motion ? resolveMotion(opts.motion, at, lowestY(g)) : null;
   if (opts?.light && !glow) throw new Error('style kit: light only applies to glow parts (set glow too)');
+  if (glow && opts?.motion?.kind === 'water') {
+    throw new Error('style kit: water is drawn by the body material (its night look is built in): drop glow');
+  }
   let anim: readonly number[] | null = m?.anim ?? null;
   if (opts?.light && opts.light !== 'steady') {
     // the pattern code rides in anim.x; a window pane's brightness comes from a hash of its own position
@@ -215,7 +220,10 @@ function createKit(): StyleKit {
   const body = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
   const glow = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
   // Both read the motion attributes (motion.ts). Explicit cache keys: the two must never share a program.
-  body.onBeforeCompile = (s) => patchMotionShader(s);
+  body.onBeforeCompile = (s) => {
+    patchMotionShader(s);
+    patchWaterShader(s); // pond and pool surfaces (motion kind water)
+  };
   body.customProgramCacheKey = () => 'kit-body';
   glow.customProgramCacheKey = () => 'kit-glow';
   glow.onBeforeCompile = (s) => {

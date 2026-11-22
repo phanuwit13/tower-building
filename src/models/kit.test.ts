@@ -356,6 +356,17 @@ describe('style kit materials', () => {
     const { body, glow } = kit.materials;
     expect(body.customProgramCacheKey()).not.toBe(glow.customProgramCacheKey());
   });
+  it('the body material draws water (pond glints, pool glow); glow parts never carry water', () => {
+    const body = standard();
+    kit.materials.body.onBeforeCompile(body as never, null as never);
+    expect(body.fragmentShader).toContain('int waterKind');
+    expect(body.uniforms.uMoon).toBe(motionUniforms.uMoon);
+    const glow = standard();
+    kit.materials.glow.onBeforeCompile(glow as never, null as never);
+    expect(glow.fragmentShader).not.toContain('int waterKind');
+    expect(() => kit.box([1, 0.1, 1], [0, 0.05, 0], 'skyBlue', { glow: true, motion: { kind: 'water', water: 'pool' } })).toThrow(/style kit: water/);
+    expect(() => kit.box([1, 0.1, 1], [0, 0.05, 0], 'skyBlue', { motion: { kind: 'water', water: 'pool' } })).not.toThrow();
+  });
 });
 
 describe('style kit light patterns', () => {
