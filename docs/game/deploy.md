@@ -1,22 +1,47 @@
-# Deploying the city builder to Cloudflare
+# Deploying the city builder to Cloudflare Pages
 
-The game is a static Vite site (`npm run build` writes `dist/`), served by Cloudflare Workers static assets. Configuration lives in `wrangler.jsonc`.
+The game is a static Vite site. `npm run build` writes `dist/`, and Cloudflare Pages serves that folder. The Pages project is connected to the GitHub repository, so the owner's dashboard settings drive every build. The repository has no Pages config file.
 
-## One-time setup (repository owner)
+## What is deployed
 
-1. Merge the pull request that adds the game first. The current `main` has no `package.json`, and preview builds need the production Worker to exist. Connect Cloudflare only after the merge.
-2. Open the Cloudflare dashboard, go to **Workers & Pages**, then **Create** and **Import a repository**.
-3. Select the GitHub repository `phanuwit13/tower-building`.
-4. Set the Worker name to **`city-builder`**. It must match `name` in `wrangler.jsonc`, otherwise the build fails with a name-mismatch error.
-5. Build command: `npm run build`.
-6. Deploy command: `npx wrangler deploy` (the default).
-7. Production branch: `main` (the default). Workers Builds (Cloudflare's build system) uses the Wrangler version pinned in `package.json`.
-8. Enable builds for non-production branches. Their default deploy command is `npx wrangler preview` (needs Wrangler 4.135.0 or newer), which creates a Preview URL of the form `<preview-name>-city-builder.<subdomain>.workers.dev`. GitHub pull requests get that URL as a comment. The empty `previews` block in `wrangler.jsonc` is what lets these PR preview builds run.
-9. Preview URLs are served on workers.dev (or a custom domain), so keep workers.dev enabled.
+- The Vite build in `dist/`.
+- `public/_headers` is copied into `dist/`. Pages applies it to every response. It sets the Content-Security-Policy, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
+- `public/favicon.svg` and `public/boot-check.js` are copied into `dist/` as well.
 
-## Notes
+## Current Pages settings (owner's dashboard)
 
-- Preview URLs are public by default. Do not put anything private on a branch you preview.
-- If the school network blocks `*.workers.dev`, add a custom domain under the Worker's **Domains & Routes**.
-- CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every pull request and on pushes to `main`. It does not deploy; Cloudflare Workers Builds does.
-- Local check without a Cloudflare login: `npm run build && npx wrangler deploy --dry-run`.
+- Project: **`tower-building`**
+- Production branch: **`main`**
+- Build command: **`npm run build`**
+- Build output directory: **`dist`**
+- Node version: **22**, read from `.node-version`. If a build ever uses the wrong Node version, add the environment variable `NODE_VERSION=22` in the Pages project settings.
+
+## Previews
+
+- Every pushed branch gets a preview deployment at `https://<branch-with-slashes-as-dashes>.tower-building.pages.dev`. For example, `feat/stage1c-style-lock` is served at `https://feat-stage1c-style-lock.tower-building.pages.dev`.
+- Pages lowercases the branch name, turns every non-alphanumeric character into `-` and may truncate long names, so the alias you work out by hand can be wrong. The link the Cloudflare Pages GitHub app comments on the pull request is the authoritative one.
+- Preview links are public. Do not put anything private on a branch you preview.
+
+## Production
+
+- Merging to `main` deploys production at **https://tower-building.pages.dev**.
+
+## Local check of the production build (with headers)
+
+```bash
+npm run build && npx wrangler pages dev dist
+```
+
+This runs a local server only. It does not need a Cloudflare login. Open the URL it prints and check the response headers with `curl -sI`. A `compatibility_date` warning from `wrangler pages dev` is harmless.
+
+## Blocked domains
+
+If the school network blocks `*.pages.dev`, add a custom domain under the Pages project's **Custom domains**. No code change is needed.
+
+## Troubleshooting
+
+- **The site shows only the title, or the browser loads `/src/main.ts`:** the build command or the output directory is missing in the Pages settings. Set the build command to `npm run build` and the output directory to `dist`, then retry the deployment.
+
+## CI
+
+`.github/workflows/ci.yml` runs typecheck, tests, build and the Playwright e2e tests on every pull request and on pushes to `main`. CI does not deploy. Cloudflare Pages builds and deploys.

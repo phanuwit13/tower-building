@@ -7,7 +7,9 @@ import { T } from './strings';
 
 export interface SettingsHandlers {
   onWeather(w: WeatherId): void; onTime(t: TimeId): void; onGround(g: GroundId): void;
-  onQuality(q: QualityTier): void; onRestart(): void; onClear(): void;
+  onQuality(q: QualityTier): void;
+  /** Restart and clear are left out of the panel when their handler is (the gallery has no game). */
+  onRestart?(): void; onClear?(): void;
 }
 
 function group<V extends string>(title: string, ids: readonly V[], labels: Record<V, string>, pick: (v: V) => void) {
@@ -40,13 +42,17 @@ export function createSettingsPanel(
   const ground = group(T.ground.title, GROUND_IDS, T.ground, h.onGround);
   const quality = group(T.quality.title, QUALITY_TIERS, T.quality, h.onQuality);
   const closeBtn = button(T.close, () => close(), 'btn-close');
+  const danger = [
+    h.onRestart ? button(T.restart, h.onRestart) : null,
+    h.onClear ? button(T.clear, h.onClear) : null,
+  ].filter((b) => b !== null);
   const panel = el('div', { class: 'settings-sheet', attrs: { role: 'dialog', 'aria-label': T.settings } }, [
     el('div', { class: 'settings-head' }, [
       el('h2', { text: T.settings }),
       closeBtn,
     ]),
     weather.box, time.box, ground.box, quality.box,
-    el('div', { class: 'settings-danger' }, [button(T.restart, h.onRestart), button(T.clear, h.onClear)]),
+    danger.length > 0 ? el('div', { class: 'settings-danger' }, danger) : null,
   ]);
   const wrap = el('div', { class: 'settings screen' }, [panel]);
   wrap.hidden = true;

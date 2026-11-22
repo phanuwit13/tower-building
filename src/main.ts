@@ -2,6 +2,7 @@ import '@fontsource/mitr/400.css';
 import '@fontsource/mitr/600.css';
 import './styles.css';
 import type { QualityTier, SceneSettings } from './game/types';
+import { loadQuality } from './game/save';
 import { getStyleKit } from './models/kit';
 import { createController, type AppState } from './app/controller';
 import { detectTier, FpsMonitor } from './app/quality';
@@ -9,17 +10,20 @@ import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
+import type { ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
 import { attachFpsOverlay } from './render/debug';
+import { attachGallery } from './render/gallery';
 import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
 import { createThemeSelect } from './ui/themeSelect';
 import { createHud, type ItemCard } from './ui/hud';
 import { createSettingsPanel } from './ui/settings';
+import { button, el } from './ui/dom';
 import { confirmDialog } from './ui/dialogs';
 import { createEndScreen } from './ui/endScreen';
 import { showNotice } from './ui/notices';
@@ -218,14 +222,59 @@ function boot(app: HTMLElement): void {
   if (import.meta.env.DEV) Object.assign(window, { __scene: { stage, kit, controller } });
 }
 
+/**
+ * `?gallery=<themeId>`: a review page with every item of the theme laid out on the map. No game:
+ * nothing is loaded or saved; the settings panel only switches the lighting, ground and tier.
+ * An unknown theme id starts the normal game.
+ */
+function bootGallery(app: HTMLElement, theme: ThemeDef): void {
+  let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
+  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: theme.defaultGround };
+  const kit = getStyleKit();
+  const stage = createStage(app, quality);
+  const ground = createGround(stage);
+  const environment = createEnvironment(stage, kit);
+  attachFpsOverlay(stage, () => quality);
+  attachGallery(stage, kit, theme);
+
+  const apply = (): void => {
+    environment.apply(scene, quality);
+    ground.setGround(scene.ground, scene.weather === 'rain');
+  };
+  const openSettings = (): void => settings.open({ settings: scene, quality });
+  const change = (patch: Partial<SceneSettings>): void => {
+    scene = { ...scene, ...patch };
+    apply();
+    openSettings();
+  };
+  const settings = createSettingsPanel(app, {
+    onWeather: (weather) => change({ weather }),
+    onTime: (time) => change({ time }),
+    onGround: (g) => change({ ground: g }),
+    onQuality: (q) => {
+      quality = q;
+      stage.setQuality(q);
+      change({});
+    },
+  });
+  app.appendChild(el('div', { class: 'gallery-tools' }, [button(T.settings, openSettings)]));
+  apply();
+}
+
 const app = document.getElementById('app');
 if (app) {
   try {
-    if (hasWebGL2()) boot(app); else showFatal(app);
+    const galleryTheme = new URLSearchParams(location.search).get('gallery');
+    const gallery = galleryTheme === null ? undefined : getTheme(galleryTheme);
+    if (!hasWebGL2()) showFatal(app);
+    else if (gallery) bootGallery(app, gallery);
+    else boot(app);
   } catch (e) {
     console.error('boot failed', e);
     showFatal(app); // never leave a blank page
   }
-  // public/boot-check.js shows the same message if this flag is still unset after a few seconds
+  // public/boot-check.js shows the same message if this flag is still unset a few seconds after the
+  // page has loaded; if it is already showing (an extremely slow load), take it away.
   (window as unknown as { __cityBooted?: boolean }).__cityBooted = true;
+  document.getElementById('boot-fallback')?.remove();
 }

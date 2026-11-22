@@ -6,9 +6,17 @@ import type { StyleKit } from '../models/kit';
 import type { ThemeDef } from '../themes/types';
 import type { Stage } from './stage';
 
-export const GHOST_VALID = 0x4caf50;
-export const GHOST_INVALID = 0xe53935;
-const GHOST_OPACITY = 0.55;
+/**
+ * Ghost tints. Valid is a pale mint "hologram": lighter than the grass and the leaf greens, so it
+ * stands out on the default ground and next to real trees. Invalid is a strong red, drawn more
+ * opaque: a see-through red over yellow-green grass or sand otherwise blends to orange.
+ * The ✓/✗ markers use deeper shades so their white glyph stays readable.
+ */
+export const GHOST_VALID = 0x7ff5b5;
+export const GHOST_INVALID = 0xff2a4d;
+const MARK_VALID = 0x1f9a4c;
+const MARK_INVALID = 0xc4162f;
+const OPACITY = { valid: { body: 0.6, fill: 0.45 }, invalid: { body: 0.75, fill: 0.7 } } as const;
 
 /** World transform of an item whose rotated footprint's min-corner tile is (x, z). Models are centred on the footprint. */
 export function placementTransform(fp: Footprint, x: number, z: number, r: Rotation): { x: number; y: number; z: number; rotY: number } {
@@ -81,14 +89,14 @@ export function createCityView(
 
   // Ghost: materials owned here, created once and reused.
   const ghostMat = new THREE.MeshLambertMaterial({
-    color: GHOST_VALID, transparent: true, opacity: GHOST_OPACITY, depthWrite: false,
+    color: GHOST_VALID, transparent: true, opacity: OPACITY.valid.body, depthWrite: false,
   });
   const fillMat = new THREE.MeshBasicMaterial({
-    color: GHOST_VALID, transparent: true, opacity: 0.3, depthWrite: false,
+    color: GHOST_VALID, transparent: true, opacity: OPACITY.valid.fill, depthWrite: false,
   });
   const lineMat = new THREE.LineBasicMaterial({ color: GHOST_VALID });
-  const okTex = markTexture('✓', GHOST_VALID);
-  const noTex = markTexture('✗', GHOST_INVALID);
+  const okTex = markTexture('✓', MARK_VALID);
+  const noTex = markTexture('✗', MARK_INVALID);
   // A one-vertex Points billboard rather than a Sprite: GTAOPass hides Points but renders Sprites as dark quads.
   const spriteMat = new THREE.PointsMaterial({
     map: okTex, size: 2.4, sizeAttenuation: true, depthTest: false, depthWrite: false, transparent: true,
@@ -192,8 +200,11 @@ export function createCityView(
     }
     const top = setGhostModel(game.themeId, item.id);
     const color = g.valid ? GHOST_VALID : GHOST_INVALID;
+    const opacity = g.valid ? OPACITY.valid : OPACITY.invalid;
     ghostMat.color.setHex(color);
+    ghostMat.opacity = opacity.body;
     fillMat.color.setHex(color);
+    fillMat.opacity = opacity.fill;
     lineMat.color.setHex(color);
     spriteMat.map = g.valid ? okTex : noTex;
     const { w, d } = rotatedFootprint(item.footprint, g.rotation);
