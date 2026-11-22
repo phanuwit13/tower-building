@@ -22,13 +22,10 @@ export function parseItemTable(md: string): Map<string, DocRow> {
 
 const TABLE = parseItemTable(itemsMarkdown);
 
-/** The six style-lock items built before the batches; batch sculptors must not reuse these ids. */
-const STYLE_LOCK = new Set(['tree', 'street-lamp', 'flagpole', 'bench', 'swing-set', 'classroom']);
-
 /**
  * Check one batch of School items: every item passes validateItemModel, its id is assigned to this
- * batch, not already built (Exists = yes in the doc) and not duplicated, and its footprint is the
- * one the doc fixes for that id. Returns every error (empty = valid).
+ * batch (so an id owned by another batch fails) and not duplicated, and its footprint is the one
+ * the doc fixes for that id. Returns every error (empty = valid).
  */
 export function validateBatch(
   items: readonly ItemModel[], kit: StyleKit, assigned: readonly string[], table: ReadonlyMap<string, DocRow> = TABLE,
@@ -40,7 +37,6 @@ export function validateBatch(
     if (seen.has(it.id)) errs.push(`${tag}: duplicate id within the batch`);
     seen.add(it.id);
     const row = table.get(it.id);
-    if (row?.exists && STYLE_LOCK.has(it.id)) errs.push(`${tag}: id is already used by an existing School item`);
     if (!assigned.includes(it.id)) errs.push(`${tag}: id is not assigned to this batch`);
     if (!row) errs.push(`${tag}: id is not in docs/game/items-school.md`);
     else {

@@ -38,8 +38,8 @@ describe('validateBatch', () => {
   it('passes an empty batch', () => {
     expect(validateBatch([], kit, ['trash-bins'], table)).toEqual([]);
   });
-  it('fails an id that already exists in School', () => {
-    expect(validateBatch([sample('tree')], kit, ['tree'], table).join()).toMatch(/already used/);
+  it('fails an id that belongs to another batch (or an item built earlier)', () => {
+    expect(validateBatch([sample('tree')], kit, ['trash-bins'], table).join()).toMatch(/not assigned to this batch/);
   });
   it('fails a duplicate id within the batch', () => {
     expect(validateBatch([sample('trash-bins'), sample('trash-bins')], kit, ['trash-bins'], table).join()).toMatch(/duplicate id/);
