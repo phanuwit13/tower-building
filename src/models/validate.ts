@@ -14,8 +14,8 @@ const PALETTE_LINEAR = Object.values(PALETTE).map((hex) => {
   return [c.r, c.g, c.b] as const;
 });
 
-function offPaletteColor(g: THREE.BufferGeometry): boolean {
-  const c = g.attributes.color;
+function offPaletteColor(g: THREE.BufferGeometry, attr: 'color' | 'glowColor'): boolean {
+  const c = g.attributes[attr];
   const seen = new Set<string>();
   for (let i = 0; i < c.count; i++) {
     const r = c.getX(i), gg = c.getY(i), b = c.getZ(i);
@@ -65,11 +65,13 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
       errs.push(`${tag}: mesh does not use a kit material`);
     }
     const g = mesh.geometry;
+    const isGlow = mesh.material === kit.materials.glow;
     const names = Object.keys(g.attributes).sort().join(',');
-    if (names !== 'color,normal,position') {
-      errs.push(`${tag}: geometry must have exactly position, normal and color attributes (has ${names || 'none'}); build parts with the kit`);
-    } else if (offPaletteColor(g)) {
-      errs.push(`${tag}: vertex colour is not a palette colour`);
+    if (names !== (isGlow ? 'color,glowColor,normal,position' : 'color,normal,position')) {
+      errs.push(`${tag}: ${isGlow ? 'glow' : 'body'} geometry must have exactly ${isGlow ? 'position, normal, color and glowColor' : 'position, normal and color'} attributes (has ${names || 'none'}); build parts with the kit`);
+    } else {
+      if (offPaletteColor(g, 'color')) errs.push(`${tag}: vertex colour is not a palette colour`);
+      if (isGlow && offPaletteColor(g, 'glowColor')) errs.push(`${tag}: glow colour is not a palette colour`);
     }
     triangles += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
   }

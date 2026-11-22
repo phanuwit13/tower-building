@@ -49,8 +49,42 @@ describe('style kit wedge', () => {
     const col = p.geometry.attributes.color;
     expect(col.getX(0)).toBeCloseTo(want.r);
     expect(col.getZ(5)).toBeCloseTo(want.b);
-    expect(Object.keys(p.geometry.attributes).sort()).toEqual(['color', 'normal', 'position']);
+    expect(Object.keys(p.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
     const g = kit.finish([p, kit.box([1, 1, 1], [0, 0, 0], 'red')]);
     expect(g.children).toHaveLength(2);
+  });
+});
+
+describe('style kit glow colour', () => {
+  const first = (g: THREE.BufferGeometry, name: string) => new THREE.Color().fromBufferAttribute(g.attributes[name] as THREE.BufferAttribute, 0);
+  it('glow: palette colour keeps the surface colour and emits the given colour', () => {
+    const p = kit.box([1, 1, 1], [0, 0, 0], 'glassBlue', { glow: 'windowWarm' });
+    expect(p.glow).toBe(true);
+    expect(first(p.geometry, 'color').getHex()).toBe(new THREE.Color(PALETTE.glassBlue).getHex());
+    expect(first(p.geometry, 'glowColor').getHex()).toBe(new THREE.Color(PALETTE.windowWarm).getHex());
+    expect(p.geometry.attributes.glowColor.count).toBe(p.geometry.attributes.color.count);
+  });
+  it('glow: true emits its own colour', () => {
+    const p = kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true });
+    expect(first(p.geometry, 'glowColor').getHex()).toBe(first(p.geometry, 'color').getHex());
+  });
+  it('body parts get no glowColor and finish merges body + both glow kinds', () => {
+    const body = kit.box([1, 1, 1], [0, 0, 0], 'red');
+    expect(body.glow).toBe(false);
+    expect(Object.keys(body.geometry.attributes).sort()).toEqual(['color', 'normal', 'position']);
+    const g = kit.finish([
+      body,
+      kit.box([1, 1, 1], [0, 0, 0], 'glassBlue', { glow: 'windowWarm' }),
+      kit.sphere(0.2, [0, 0, 0], 'lampWarm', { glow: true }),
+    ]);
+    expect(g.children).toHaveLength(2);
+    const glowMesh = g.children[1] as THREE.Mesh;
+    expect(Object.keys(glowMesh.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+  });
+  it('the glow shader emits glowColor, not vColor', () => {
+    const shader = { uniforms: {}, vertexShader: 'void main() {\n}', fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
+    kit.materials.glow.onBeforeCompile(shader as never, null as never);
+    expect(shader.fragmentShader).toContain('vGlowColor * glowStrength');
+    expect(shader.vertexShader).toContain('vGlowColor = glowColor');
   });
 });

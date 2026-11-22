@@ -78,7 +78,7 @@ describe('validateItemModel', () => {
   });
   it('setGlowStrength updates the shared uniform', () => {
     kit.setGlowStrength(0.7);
-    const shader = { uniforms: {} as Record<string, { value: number }>, fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
+    const shader = { uniforms: {} as Record<string, { value: number }>, vertexShader: 'void main() {}', fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
     kit.materials.glow.onBeforeCompile(shader as never, null as never);
     expect(shader.uniforms.glowStrength.value).toBe(0.7);
     kit.setGlowStrength(0);
@@ -133,5 +133,39 @@ describe('validateTheme', () => {
   });
   it('passes a clean theme', () => {
     expect(validateTheme(theme([model(), model({ id: 'other', name: 'อื่น' })]), kit, { minItems: 2 })).toEqual([]);
+  });
+});
+
+describe('validateItemModel glow attributes', () => {
+  const glowModel = (mutate: (g: THREE.BufferGeometry) => void) => model({
+    build: (k) => {
+      const g = k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'glassBlue', { glow: 'windowWarm' })]);
+      mutate((g.children[0] as THREE.Mesh).geometry);
+      return g;
+    },
+  });
+  it('accepts a glow mesh with a palette glowColor', () => {
+    expect(validateItemModel(glowModel(() => {}), kit)).toEqual([]);
+  });
+  it('rejects a glow mesh missing glowColor', () => {
+    expect(validateItemModel(glowModel((g) => g.deleteAttribute('glowColor')), kit).join('|')).toContain('exactly');
+  });
+  it('rejects an off-palette glowColor', () => {
+    const errs = validateItemModel(glowModel((g) => {
+      const a = g.attributes.glowColor;
+      for (let i = 0; i < a.count; i++) a.setXYZ(i, 0.123, 0.456, 0.789);
+    }), kit);
+    expect(errs.join('|')).toContain('glow colour is not a palette colour');
+  });
+  it('rejects a body mesh carrying glowColor', () => {
+    const m = model({
+      build: (k) => {
+        const g = k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream')]);
+        const geo = (g.children[0] as THREE.Mesh).geometry;
+        geo.setAttribute('glowColor', geo.attributes.color.clone());
+        return g;
+      },
+    });
+    expect(validateItemModel(m, kit).join('|')).toContain('exactly');
   });
 });

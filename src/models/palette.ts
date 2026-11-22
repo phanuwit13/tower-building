@@ -7,9 +7,9 @@
  * slightly warm and a little soft, so nothing goes neon at noon or muddy at dusk. Darker shades
  * are for trim and shaded parts of the same object, not for whole items.
  *
- * Any palette colour may be used for a glow part (`glow: true`): it keeps its colour by day and
- * lights up at dusk and night. `lampWarm` and `windowWarm` are made for it: they read as pale
- * bulbs and sunny panes by day.
+ * Any palette colour may be used for a glow part. `glow: true` keeps its colour by day and emits
+ * it at dusk and night (`lampWarm`: a pale bulb). `glow: 'windowWarm'` on a `glassBlue` part gives
+ * glass-blue windows by day that glow warm at night.
  */
 export const PALETTE = {
   // neutrals
@@ -41,7 +41,7 @@ export const PALETTE = {
   blue: '#3f7fdb',
   navy: '#2f4a86',
   glassBlue: '#c2e8f7',
-  // glow: use with `glow: true`
+  // glow colours: `lampWarm` with `glow: true`, `windowWarm` as the `glow` of a glassBlue part
   lampWarm: '#ffeaa6',
   windowWarm: '#ffd873',
 } as const;

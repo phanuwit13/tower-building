@@ -17,11 +17,11 @@ const TOWER = { x0: 0.5, x1: 0.94, d: 0.72, top: 1.98 };
 const WIN = { w: 0.3, h: 0.32 };
 const ROWS = [PLINTH + STOREY / 2 + 0.02, PLINTH + STOREY * 1.5 + 0.02];
 
-/** A two-pane glowing window in a coloured frame on a wall facing +x (side 1) or -x (side -1) at x = ±face. */
+/** A glass-blue window that glows warm at night in a coloured frame on a wall facing +x (side 1) or -x (side -1) at x = ±face. */
 function sideWindow(kit: StyleKit, side: 1 | -1, face: number, y: number, z: number): Part[] {
   return [
     kit.box([0.02, WIN.h + 0.08, WIN.w + 0.08], [side * (face + 0.01), y, z], 'teal'),
-    kit.box([0.03, WIN.h, WIN.w], [side * (face + 0.015), y, z], 'windowWarm', { glow: true }),
+    kit.box([0.03, WIN.h, WIN.w], [side * (face + 0.015), y, z], 'glassBlue', { glow: 'windowWarm' }),
     kit.box([0.04, WIN.h, 0.035], [side * (face + 0.02), y, z], 'teal'),
   ];
 }
@@ -30,7 +30,7 @@ function sideWindow(kit: StyleKit, side: 1 | -1, face: number, y: number, z: num
 function endWindow(kit: StyleKit, side: 1 | -1, face: number, y: number, x: number): Part[] {
   return [
     kit.box([WIN.w + 0.08, WIN.h + 0.08, 0.02], [x, y, side * (face + 0.01)], 'teal'),
-    kit.box([WIN.w, WIN.h, 0.03], [x, y, side * (face + 0.015)], 'windowWarm', { glow: true }),
+    kit.box([WIN.w, WIN.h, 0.03], [x, y, side * (face + 0.015)], 'glassBlue', { glow: 'windowWarm' }),
     kit.box([0.035, WIN.h, 0.04], [x, y, side * (face + 0.02)], 'teal'),
   ];
 }

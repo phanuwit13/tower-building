@@ -5,7 +5,14 @@ import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
 type Vec3 = [number, number, number];
-interface PartOpts { rotate?: Vec3; glow?: boolean }
+interface PartOpts {
+  rotate?: Vec3;
+  /**
+   * Lights up at dusk and night. `true` emits the part's own colour; a palette colour makes the
+   * surface use `color` by day and emit that colour at night (glass-blue windows, warm glow).
+   */
+  glow?: boolean | PaletteColor;
+}
 
 export interface StyleKit {
   materials: { body: THREE.MeshStandardMaterial; glow: THREE.MeshStandardMaterial };
@@ -24,7 +31,7 @@ export interface StyleKit {
   finish(parts: Part[]): THREE.Group;
 }
 
-/** Non-indexed geometry with exactly position, normal, color; transformed and coloured. */
+/** Non-indexed geometry with exactly position, normal, color (+ glowColor on glow parts); transformed and coloured. */
 function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?: PartOpts): Part {
   let g = src.index ? src.toNonIndexed() : src;
   if (g !== src) src.dispose();
@@ -35,12 +42,17 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
     g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...opts.rotate)));
   }
   g.translate(at[0], at[1], at[2]);
-  const c = new THREE.Color(PALETTE[color]);
   const n = g.attributes.position.count;
-  const colors = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b; }
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  return { geometry: g, glow: opts?.glow ?? false };
+  const fill = (name: string, key: PaletteColor) => {
+    const c = new THREE.Color(PALETTE[key]);
+    const arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+    g.setAttribute(name, new THREE.BufferAttribute(arr, 3));
+  };
+  fill('color', color);
+  const glow = opts?.glow;
+  if (glow) fill('glowColor', glow === true ? color : glow);
+  return { geometry: g, glow: !!glow };
 }
 
 function wedgeGeometry([w, h, d]: Vec3, apex: number): THREE.BufferGeometry {
@@ -61,9 +73,11 @@ function createKit(): StyleKit {
   const glow = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
   glow.onBeforeCompile = (s) => {
     s.uniforms.glowStrength = glowUniform;
-    s.fragmentShader = 'uniform float glowStrength;\n' + s.fragmentShader.replace(
+    s.vertexShader = ('attribute vec3 glowColor;\nvarying vec3 vGlowColor;\n' + s.vertexShader)
+      .replace(/void main\(\) ?\{/, 'void main() {\n  vGlowColor = glowColor;');
+    s.fragmentShader = 'uniform float glowStrength;\nvarying vec3 vGlowColor;\n' + s.fragmentShader.replace(
       'vec3 totalEmissiveRadiance = emissive;',
-      'vec3 totalEmissiveRadiance = vColor.rgb * glowStrength * 1.5;');
+      'vec3 totalEmissiveRadiance = vGlowColor * glowStrength * 1.5;');
   };
 
   const merge = (parts: Part[], material: THREE.Material): THREE.Mesh | null => {
