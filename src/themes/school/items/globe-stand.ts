@@ -66,8 +66,8 @@ export const item: ItemModel = {
       const pinLen = RING.r - GLOBE.r;
       parts.push(
         kit.sphere(POLE_CAP.r, at(n, GLOBE.r - POLE_CAP.r * POLE_CAP.squash * 0.4), 'white', { detail: 0, scale: [1, POLE_CAP.squash, 1], rotate: aim(n, 'y') }),
-        kit.cylinder(PIN.r, PIN.r, pinLen, at(n, GLOBE.r + pinLen / 2), 'sunYellow', { segments: 4, rotate: aim(n, 'y') }),
-        kit.sphere(PIN.cap, at(n, RING.r), 'sunYellow', { detail: 0 }),
+        kit.cylinder(PIN.r, PIN.r, pinLen, at(n, GLOBE.r + pinLen / 2), 'brass', { segments: 4, rotate: aim(n, 'y') }),
+        kit.sphere(PIN.cap, at(n, RING.r), 'brass', { detail: 0 }),
       );
     }
     return kit.finish(parts);

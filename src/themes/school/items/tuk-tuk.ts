@@ -91,8 +91,8 @@ export const item: ItemModel = {
       parts.push(
         kit.box([POST, screenH + 0.02, POST], [s * (SCREEN.w / 2 + POST / 2), noseTop + screenH / 2, screenZ], 'leaf', { rotate: [-SCREEN.tilt, 0, 0] }),
         // thin roof posts at the front of the passenger seat, and a grab rail along each open side
-        kit.box([0.03, ROOF.y + ROOF_GRIP - BODY.y1, 0.03], [s * (BODY.w / 2 - 0.015), (ROOF.y + ROOF_GRIP + BODY.y1) / 2, BODY.z1 - 0.015], 'stoneDark'),
-        kit.box([0.03, 0.03, bodyLen - 0.06], [s * (BODY.w / 2 - 0.015), BODY.y1 + 0.24, bodyZ + 0.01], 'stoneDark'),
+        kit.box([0.03, ROOF.y + ROOF_GRIP - BODY.y1, 0.03], [s * (BODY.w / 2 - 0.015), (ROOF.y + ROOF_GRIP + BODY.y1) / 2, BODY.z1 - 0.015], 'chrome'),
+        kit.box([0.03, 0.03, bodyLen - 0.06], [s * (BODY.w / 2 - 0.015), BODY.y1 + 0.24, bodyZ + 0.01], 'chrome'),
       );
     }
     // the canopy roof: a flattened green drum with a yellow belt round it at its widest

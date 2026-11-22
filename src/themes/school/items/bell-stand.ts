@@ -30,9 +30,9 @@ export const item: ItemModel = {
       kit.box([BEAM.w, BEAM.h, BEAM.len], [0, BEAM.y, 0], 'wood'),
       kit.box([HANGER.w, HANGER.h, HANGER.w], [0, BEAM.y - BEAM.h / 2 - HANGER.h / 2 + 0.01, 0], 'charcoal'),
       // the bell: dome crown, flared body, thick lip
-      kit.dome(BELL.rTop, [0, BELL.top, 0], 'sunYellow', { segments: 12, scale: [1, 0.75, 1] }),
-      kit.cylinder(BELL.rTop, BELL.rMouth, BELL.h, [0, bodyMid, 0], 'sunYellow', { segments: 12 }),
-      kit.cylinder(BELL.rMouth + LIP.over, BELL.rMouth + LIP.over, LIP.h, [0, mouth + LIP.h / 2 - LIP.drop, 0], 'orange', { segments: 12 }),
+      kit.dome(BELL.rTop, [0, BELL.top, 0], 'brass', { segments: 12, scale: [1, 0.75, 1] }),
+      kit.cylinder(BELL.rTop, BELL.rMouth, BELL.h, [0, bodyMid, 0], 'brass', { segments: 12 }),
+      kit.cylinder(BELL.rMouth + LIP.over, BELL.rMouth + LIP.over, LIP.h, [0, mouth + LIP.h / 2 - LIP.drop, 0], 'woodDark', { segments: 12 }),
       kit.sphere(CLAPPER.r, [0, clapperY, 0], 'charcoal', { detail: 0 }),
       kit.cylinder(ROPE.r, ROPE.r, clapperY - ROPE.bottom, [0, (clapperY + ROPE.bottom) / 2, 0], 'sand', { segments: 6 }),
       kit.sphere(KNOB.r, [0, ROPE.bottom, 0], 'red', { detail: 0 }),

@@ -44,7 +44,7 @@ export const item: ItemModel = {
     for (const s of [-1, 1]) {
       const z = s * SPOUT.z;
       parts.push(
-        kit.cylinder(SPOUT.r * 0.8, SPOUT.r, SPOUT.h, [SPOUT.x, waterTop + SPOUT.h / 2, z], 'stone', { segments: 8 }),
+        kit.cylinder(SPOUT.r * 0.8, SPOUT.r, SPOUT.h, [SPOUT.x, waterTop + SPOUT.h / 2, z], 'chrome', { segments: 8 }),
         // the ring starts at angle 0 (its +x end) on the nozzle tip and sweeps up, back and down to the water
         kit.torus(ARC.r, ARC.tube, [SPOUT.x - ARC.r, tipY, z], 'skyBlue', { arc: ARC.sweep, radialSegments: 4, tubularSegments: 8 }),
       );

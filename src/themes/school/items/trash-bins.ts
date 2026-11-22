@@ -16,7 +16,7 @@ const TOP = PAD.h + BIN.h; // top of the bodies
 /** z, body colour, lid colour (its darker shade), lid open? */
 const BINS: Array<[number, PaletteColor, PaletteColor, boolean]> = [
   [-GAP, 'leaf', 'leafDark', false],
-  [0, 'sunYellow', 'sunYellow', true], // the palette has no darker yellow (orange read as brown in shade)
+  [0, 'sunYellow', 'brass', true],
   [GAP, 'blue', 'navy', false],
 ];
 

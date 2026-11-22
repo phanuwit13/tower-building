@@ -2,7 +2,7 @@ import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
 
-// The palette has no terracotta: `orange` is the pot and `redDark` its darker foot.
+// A terracotta pot on a `redDark` foot.
 const FOOT = { r: 0.22, h: 0.05 }; // little foot ring under the pot
 const POT = { rTop: 0.3, rBottom: 0.22, h: 0.34 };
 const POT_TOP = FOOT.h + POT.h;
@@ -29,8 +29,8 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [
       kit.cylinder(FOOT.r, FOOT.r, FOOT.h, [0, FOOT.h / 2, 0], 'redDark'),
-      kit.cylinder(POT.rTop, POT.rBottom, POT.h, [0, FOOT.h + POT.h / 2, 0], 'orange'),
-      kit.cylinder(RIM.r, RIM.r - 0.02, RIM.h, [0, POT_TOP + RIM.h / 2, 0], 'orange'),
+      kit.cylinder(POT.rTop, POT.rBottom, POT.h, [0, FOOT.h + POT.h / 2, 0], 'terracotta'),
+      kit.cylinder(RIM.r, RIM.r - 0.02, RIM.h, [0, POT_TOP + RIM.h / 2, 0], 'terracotta'),
       kit.sphere(MOUND.r, [0, RIM_TOP - MOUND.sink, 0], 'leaf', { scale: [1, MOUND.squash, 1] }),
     ];
     for (const [a, color] of SPILL) {

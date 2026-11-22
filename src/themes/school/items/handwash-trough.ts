@@ -62,8 +62,8 @@ export const item: ItemModel = {
     TAP_Z.forEach((z, i) => {
       const tipX = pipeX + TAP.reach;
       parts.push(
-        kit.cylinder(TAP.r, TAP.r, TAP.reach, [pipeX + TAP.reach / 2, PIPE.y, z], 'white', { rotate: [0, 0, Math.PI / 2], segments: 6 }),
-        kit.cylinder(TAP.r, TAP.r * 0.85, TAP.spout, [tipX, PIPE.y - TAP.spout / 2, z], 'white', { segments: 6 }),
+        kit.cylinder(TAP.r, TAP.r, TAP.reach, [pipeX + TAP.reach / 2, PIPE.y, z], 'chrome', { rotate: [0, 0, Math.PI / 2], segments: 6 }),
+        kit.cylinder(TAP.r, TAP.r * 0.85, TAP.spout, [tipX, PIPE.y - TAP.spout / 2, z], 'chrome', { segments: 6 }),
         kit.sphere(TAP.handle, [pipeX + 0.03, PIPE.y + PIPE.r + 0.02, z], 'blue', { detail: 0, scale: [1, 0.6, 1] }),
       );
       if (i === RUNNING) {
