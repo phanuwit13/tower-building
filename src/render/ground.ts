@@ -2,15 +2,20 @@ import * as THREE from 'three';
 import { GRID_SIZE, type GroundId } from '../game/types';
 import type { Stage } from './stage';
 
-/** Map ground colours (sRGB hex). Bright, slightly saturated: tone mapping softens them. */
+/**
+ * Map ground colours (sRGB hex), tone mapping softens them. Every master palette colour stays at
+ * least CIE76 dE 12 away from every ground (ground.test.ts), so item parts never vanish into the
+ * map: concrete is a warm mid grey (not stone), sand a golden sand (not the item `sand`), snow a
+ * cool lilac white, the wood deck a weathered tan, the moon a pale lavender grey.
+ */
 export const GROUND_COLORS: Record<GroundId, number> = {
   grass: 0x7ccb52,
-  dirt: 0xc28f5c,
-  concrete: 0xbcc1c8,
-  sand: 0xf0d595,
-  snow: 0xe6edf5,
-  wood: 0xcf9458,
-  moon: 0xb7b9c7,
+  dirt: 0x9b7b54,
+  concrete: 0xa29d94,
+  sand: 0xdcaa5a,
+  snow: 0xe6e0f0,
+  wood: 0xb8a386,
+  moon: 0xd2c8e8,
 };
 
 const WET = 0.85;

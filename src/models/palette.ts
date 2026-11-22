@@ -7,8 +7,9 @@
  * slightly warm and a little soft, so nothing goes neon at noon or muddy at dusk. Darker shades
  * are for trim and shaded parts of the same object, not for whole items.
  *
- * Glow colours (`lampWarm`, `windowWarm`) are meant for parts built with `glow: true`: they read as
- * pale bulbs and sunny panes by day and light up at dusk and night.
+ * Any palette colour may be used for a glow part (`glow: true`): it keeps its colour by day and
+ * lights up at dusk and night. `lampWarm` and `windowWarm` are made for it: they read as pale
+ * bulbs and sunny panes by day.
  */
 export const PALETTE = {
   // neutrals
@@ -21,6 +22,7 @@ export const PALETTE = {
   sand: '#e8c78e',
   wood: '#c4874f',
   woodDark: '#8a5935',
+  bark: '#5a3a22', // shaded bark, chocolate, soil
   // warm
   red: '#e5534b',
   redDark: '#b03a3c',
@@ -28,9 +30,10 @@ export const PALETTE = {
   sunYellow: '#ffc83d',
   pink: '#f59ac2',
   purple: '#9b78d8',
-  // greens (darker and bluer than the grass ground so plants stand out on it)
+  // greens (leaf is darker and bluer than the grass ground so plants stand out on it)
   leaf: '#4aa84e',
   leafDark: '#2e8549',
+  lime: '#a8d93c', // lawns, young leaves, fruit, aliens
   mint: '#94dcc1',
   // blues
   teal: '#2aa6a2',
