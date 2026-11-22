@@ -7,7 +7,7 @@ import { createController, type AppState } from './app/controller';
 import { detectTier, FpsMonitor } from './app/quality';
 import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
-import type { KeyValueStore } from './game/save';
+import { browserStore } from './app/browserStore';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
@@ -29,28 +29,21 @@ const BACKDROP: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass'
 
 function hasWebGL2(): boolean {
   try {
-    return document.createElement('canvas').getContext('webgl2') !== null;
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext(); // release the probe: contexts are limited
+    return true;
   } catch {
     return false;
   }
 }
 
-/** Accessing `localStorage` itself can throw (Safari with storage blocked): then saving fails visibly. */
-function browserStore(): KeyValueStore {
-  try {
-    const ls = window.localStorage;
-    return {
-      getItem: (k) => ls.getItem(k),
-      setItem: (k, v) => ls.setItem(k, v),
-      removeItem: (k) => ls.removeItem(k),
-    };
-  } catch {
-    return {
-      getItem: () => null,
-      setItem: () => { throw new Error('storage unavailable'); },
-      removeItem: () => { throw new Error('storage unavailable'); },
-    };
-  }
+function showFatal(app: HTMLElement): void {
+  const p = document.createElement('p');
+  p.className = 'no-webgl';
+  p.setAttribute('role', 'alert');
+  p.textContent = T.noWebGL;
+  app.replaceChildren(p);
 }
 
 function detectQuality(): QualityTier {
@@ -64,16 +57,8 @@ function detectQuality(): QualityTier {
 }
 
 function boot(app: HTMLElement): void {
-  if (!hasWebGL2()) {
-    const p = document.createElement('p');
-    p.className = 'no-webgl';
-    p.textContent = T.noWebGL;
-    app.appendChild(p);
-    return;
-  }
-
   const controller = createController({
-    store: browserStore(), getTheme, getCatalog, seed: randomSeed, detectQuality,
+    store: browserStore(() => window.localStorage), getTheme, getCatalog, seed: randomSeed, detectQuality,
   });
   let tier = controller.getState().quality;
   let appliedKey = '';
@@ -83,7 +68,12 @@ function boot(app: HTMLElement): void {
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
   const cityView = createCityView(stage, kit, getTheme);
-  attachInput(stage, controller);
+  let dialogOpen = false;
+  attachInput(stage, controller, {
+    ghostBox: () => cityView.ghostBox(),
+    // settings, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
+    isBlocked: () => dialogOpen || settings.isOpen() || endScreen.isVisible(),
+  });
   const thumbnailer = createThumbnailer(kit);
   const fpsMonitor = new FpsMonitor();
   attachFpsOverlay(stage, () => tier);
@@ -112,7 +102,14 @@ function boot(app: HTMLElement): void {
 
   const askAndRun = async (message: string, confirmLabel: string, action: () => void): Promise<void> => {
     settings.close(); // both listen for Escape on document: never stack them
-    if (await confirmDialog(app, { message, confirmLabel })) action();
+    dialogOpen = true;
+    let ok = false;
+    try {
+      ok = await confirmDialog(app, { message, confirmLabel });
+    } finally {
+      dialogOpen = false;
+    }
+    if (ok) action();
   };
   const restart = () => askAndRun(T.confirmRestart, T.confirmRestartOk, () => {
     fpsMonitor.reset();
@@ -125,7 +122,14 @@ function boot(app: HTMLElement): void {
     const themeId = controller.getState().game?.themeId;
     if (!themeId) return;
     try {
-      const blob = await captureCanvas(stage);
+      // The ghost and its ✓/✗ marker are an aid, not part of the city: leave them out of the picture.
+      cityView.setGhostVisible(false);
+      let blob: Blob;
+      try {
+        blob = await captureCanvas(stage);
+      } finally {
+        cityView.setGhostVisible(true);
+      }
       const result = await deliverImage(blob, screenshotFilename(themeId, new Date()), shareEnv);
       if (result === 'downloaded') showNotice(app, T.noticeShotSaved);
     } catch {
@@ -158,6 +162,7 @@ function boot(app: HTMLElement): void {
     onPlace: () => { controller.place(); },
     onSettings: openSettings,
     onScreenshot: () => void screenshot(),
+    onRestart: () => void restart(),
   });
 
   const card = (itemId: string, themeId: string): ItemCard | null => {
@@ -183,6 +188,7 @@ function boot(app: HTMLElement): void {
       canPlace: s.ghost?.valid === true,
       canRotate: s.ghost !== null,
       hint: playing && s.ghost === null ? T.hintTap : null,
+      finished: s.screen === 'finished',
     });
 
     if (s.screen !== 'finished') viewing = false;
@@ -213,4 +219,13 @@ function boot(app: HTMLElement): void {
 }
 
 const app = document.getElementById('app');
-if (app) boot(app);
+if (app) {
+  try {
+    if (hasWebGL2()) boot(app); else showFatal(app);
+  } catch (e) {
+    console.error('boot failed', e);
+    showFatal(app); // never leave a blank page
+  }
+  // public/boot-check.js shows the same message if this flag is still unset after a few seconds
+  (window as unknown as { __cityBooted?: boolean }).__cityBooted = true;
+}

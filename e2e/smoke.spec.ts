@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { test as plain } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { T } from '../src/ui/strings';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
@@ -38,4 +39,22 @@ test('clear returns to theme select', async ({ page }) => {
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await expect(page.getByRole('button', { name: 'โรงเรียน' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('city-builder/save'))).toBeNull();
+});
+
+test('keyboard shortcuts do nothing while settings are open', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'โรงเรียน' }).click();
+  await page.keyboard.press('ArrowRight'); // ghost appears
+  await page.getByRole('button', { name: T.settings }).click();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press(' ');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(placed(0))).toBeVisible();
+});
+
+// Plain test: aborting the bundle is expected to log a failed-request console error.
+plain('fallback message shows when the app bundle never boots', async ({ page }) => {
+  await page.route('**/assets/index-*.js', (r) => r.abort());
+  await page.goto('/');
+  await expect(page.getByText(T.noWebGL)).toBeVisible({ timeout: 8000 });
 });
