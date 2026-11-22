@@ -3,3 +3,8 @@
 .claude/worktrees/
 .worktrees/
 .claude/settings.local.json
+node_modules/
+dist/
+.wrangler/
+test-results/
+playwright-report/
