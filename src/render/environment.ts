@@ -193,6 +193,8 @@ export const MOON = {
 } as const;
 /** Smooth has no bloom, so the moon draws its whole halo; on pretty, bloom makes most of it. */
 const MOON_HALO: Record<QualityTier, number> = { smooth: 1, pretty: 0.35 };
+/** The disc's brightness: pretty's bloom would turn anything brighter than this into a flat white blob (the seas must show). */
+const MOON_FACE: Record<QualityTier, number> = { smooth: 0.95, pretty: 0.62 };
 
 /**
  * One camera-facing quad (one draw call, and only while the moon shows). Its colour is
@@ -203,7 +205,7 @@ function createMoon() {
   const ratio = MOON.haloRadius / MOON.discRadius; // quad half-size, in disc radii
   const f = glslFloat;
   const material = new THREE.ShaderMaterial({
-    uniforms: { visibility: { value: 0 }, halo: { value: 1 } },
+    uniforms: { visibility: { value: 0 }, halo: { value: 1 }, faceGain: { value: 1 } },
     vertexShader: /* glsl */ `
       varying vec2 vQuad;
       void main() {
@@ -215,6 +217,7 @@ function createMoon() {
     fragmentShader: /* glsl */ `
       uniform float visibility;
       uniform float halo;
+      uniform float faceGain;
       varying vec2 vQuad;
       float moonSpot( vec2 q, vec2 c, float r ) { return 1.0 - smoothstep( 0.4 * r, r, length( q - c ) ); }
       void main() {
@@ -224,7 +227,7 @@ function createMoon() {
         float disc = 1.0 - smoothstep( 1.0 - aa, 1.0 + aa, r );
         // a friendly full moon: cream, a touch darker at the rim, three soft grey seas
         float seas = moonSpot( q, vec2( -0.32, 0.22 ), 0.36 ) + moonSpot( q, vec2( 0.3, 0.32 ), 0.22 ) + moonSpot( q, vec2( 0.12, -0.38 ), 0.26 );
-        vec3 face = vec3( 1.3, 1.24, 1.05 ) * ( 1.0 - 0.16 * min( seas, 1.0 ) ) * ( 0.88 + 0.12 * sqrt( max( 1.0 - r * r, 0.0 ) ) );
+        vec3 face = vec3( 1.0, 0.958, 0.81 ) * faceGain * ( 1.0 - 0.16 * min( seas, 1.0 ) ) * ( 0.88 + 0.12 * sqrt( max( 1.0 - r * r, 0.0 ) ) );
         float glow = halo * 0.34 * exp( -1.6 * max( r - 1.0, 0.0 ) ) * ( 1.0 - smoothstep( ${f(0.55 * ratio)}, ${f(ratio)}, r ) );
         gl_FragColor = vec4( mix( vec3( 0.66, 0.68, 0.82 ) * glow, face, disc ), 1.0 );
         #include <tonemapping_fragment>
@@ -238,7 +241,7 @@ function createMoon() {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
   mesh.name = 'moon';
   mesh.frustumCulled = false; // placed by its shader, not by its geometry
-  mesh.renderOrder = -1; // the first of the see-through things: everything nearer draws over it
+  mesh.renderOrder = -1; // the first of the see-through things: everything nearer draws over it (the stars skip its face, see createStars)
   mesh.visible = false;
   let on = false;
   return {
@@ -248,6 +251,7 @@ function createMoon() {
       mesh.visible = on;
       material.uniforms.visibility.value = visibility;
       material.uniforms.halo.value = MOON_HALO[q];
+      material.uniforms.faceGain.value = MOON_FACE[q];
     },
     /** Before each scene render: an override pass (the pretty tier's AO normals) leaves the sky picture out. */
     beforeRender(scene: THREE.Scene) {
@@ -286,10 +290,12 @@ function createStars(): THREE.Points {
       '#include <project_vertex>',
       `#include <project_vertex>
       vec3 starDir = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz - cameraPosition;
-      vStarFade = 1.0;
+      // no star shows through the moon's face (it is drawn before them): fade the ones in line with it
+      float moonCos = dot( normalize( starDir ), vec3( ${MOON.dir.map(glslFloat).join(', ')} ) );
+      vStarFade = 1.0 - smoothstep( ${glslFloat(Math.cos(MOON.discRadius * 1.5))}, ${glslFloat(Math.cos(MOON.discRadius * 1.1))}, moonCos );
       if ( starDir.y < 0.0 ) {
         vec2 hit = cameraPosition.xz + starDir.xz * ( ( ${SURROUND_FADE.y.toFixed(2)} - cameraPosition.y ) / starDir.y );
-        vStarFade = smoothstep( ${SURROUND_FADE.start.toFixed(1)}, ${SURROUND_FADE.end.toFixed(1)}, distance( hit, vec2( ${CENTER.x.toFixed(1)}, ${CENTER.z.toFixed(1)} ) ) );
+        vStarFade *= smoothstep( ${SURROUND_FADE.start.toFixed(1)}, ${SURROUND_FADE.end.toFixed(1)}, distance( hit, vec2( ${CENTER.x.toFixed(1)}, ${CENTER.z.toFixed(1)} ) ) );
       }`);
     s.fragmentShader = 'varying float vStarFade;\n' + s.fragmentShader.replace(
       '#include <color_fragment>',

@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  advanceMotion, BLINK_OFF_LEVEL, BLINK_ON, BLINK_PERIOD, BREATHE_PERIOD, WINDOW_VARIATION, CULL_MARGIN, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
+  advanceMotion, BLINK_OFF_LEVEL, BREATHE_AMP, BREATHE_MID, BREATHE_MIN, TAU, snapWind, WIND_EASE_SECONDS, BLINK_ON, BLINK_PERIOD, BREATHE_PERIOD, WINDOW_VARIATION, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
   MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, patchWaterShader, resolveMotion, setMoon, setNight,
   setReducedMotion, setWind, WATER, WATER_FRAGMENT, WATER_FRAGMENT_PARS, waterLight, watchReducedMotion,
 } from './motion';
 
 const reset = () => {
   motionUniforms.uTime.value = 0;
-  setWind(1);
+  snapWind(1);
   setNight(0);
   setMoon(0);
   setReducedMotion(false);
@@ -75,11 +75,7 @@ describe('motion uniforms', () => {
     advanceMotion(NaN);
     expect(motionUniforms.uTime.value).toBeCloseTo(0.75);
   });
-  it('setWind, setNight and setReducedMotion set their uniform, clamped', () => {
-    setWind(1.8);
-    expect(motionUniforms.uWind.value).toBe(1.8);
-    setWind(-1);
-    expect(motionUniforms.uWind.value).toBe(0);
+  it('setNight and setReducedMotion set their uniform, clamped', () => {
     setNight(0.6);
     expect(motionUniforms.uNight.value).toBe(0.6);
     setNight(3);
@@ -94,6 +90,42 @@ describe('motion uniforms', () => {
     expect(motionUniforms.uMoon.value).toBe(0);
     setMoon(9);
     expect(motionUniforms.uMoon.value).toBe(1);
+  });
+  it('setWind sets a target (clamped); the uniform only moves when time advances', () => {
+    setWind(1.8);
+    expect(motionUniforms.uWind.value).toBe(1);
+    snapWind(9);
+    expect(motionUniforms.uWind.value).toBe(4);
+    snapWind(-1);
+    expect(motionUniforms.uWind.value).toBe(0);
+  });
+  it('the wind eases to its target: a gentle first step, within 1 % after 1.5 s, never overshooting', () => {
+    setWind(1.8);
+    advanceMotion(16);
+    expect(motionUniforms.uWind.value).toBeGreaterThan(1);
+    expect(motionUniforms.uWind.value).toBeLessThan(1.1); // a crown moves only a little this frame
+    for (let i = 0; i < 90; i++) advanceMotion(16); // 1.5 s in all
+    expect(Math.abs(motionUniforms.uWind.value - 1.8)).toBeLessThan(0.018);
+    snapWind(1);
+    setWind(1.8);
+    advanceMotion(100);
+    expect(motionUniforms.uWind.value).toBeLessThan(1.8);
+    advanceMotion(60000); // a huge frame lands on the target, not past it
+    expect(motionUniforms.uWind.value).toBeLessThanOrEqual(1.8);
+    expect(motionUniforms.uWind.value).toBeCloseTo(1.8, 6);
+    setWind(1);
+    for (let i = 0; i < 90; i++) advanceMotion(16);
+    expect(Math.abs(motionUniforms.uWind.value - 1)).toBeLessThan(0.008); // and back down when the rain stops
+  });
+  it('the wind eases at the same pace at any frame rate', () => {
+    setWind(1.8);
+    for (let i = 0; i < 20; i++) advanceMotion(1000 / 60);
+    const fast = motionUniforms.uWind.value;
+    snapWind(1);
+    setWind(1.8);
+    for (let i = 0; i < 10; i++) advanceMotion(1000 / 30);
+    expect(motionUniforms.uWind.value).toBeCloseTo(fast, 2);
+    expect(WIND_EASE_SECONDS).toBeLessThan(0.5);
   });
   it('freezeMotion holds time 0, motion off and daylight water (no night glow) until restored', () => {
     advanceMotion(1234);
@@ -204,9 +236,6 @@ describe('motion shader', () => {
     expect(() => patchMotionShader(s)).toThrow(/worldpos_vertex/);
   });
 
-  it('chunk meshes get a culling margin for sway', () => {
-    expect(CULL_MARGIN).toBe(0.3);
-  });
 });
 
 describe('light patterns', () => {
@@ -221,11 +250,15 @@ describe('light patterns', () => {
     expect(lightPattern('window', 5, 1, 0)).toBe(lightPattern('window', 0, 1, 1));
     expect(lightPattern('window', 5, 1, 0)).not.toBe(lightPattern('window', 5, 3, 0));
   });
-  it('breathe stays within 0.65..1.0 and reaches both ends', () => {
+  it('breathe stays within BREATHE_MIN..1.0, reaches both ends, and is a gentle dip (the floor is not a blink)', () => {
     const v = sample('breathe');
-    expect(Math.min(...v)).toBeGreaterThanOrEqual(0.65 - 1e-9);
+    expect(BREATHE_MID + BREATHE_AMP).toBeCloseTo(1, 12);
+    expect(BREATHE_MID - BREATHE_AMP).toBeCloseTo(BREATHE_MIN, 12);
+    expect(BREATHE_MIN).toBeGreaterThan(BLINK_OFF_LEVEL + 0.1); // never as dark as a blink's off
+    expect(BREATHE_MIN).toBeLessThanOrEqual(0.5); // deep enough to read on smooth, where tone mapping flattens a bright glow
+    expect(Math.min(...v)).toBeGreaterThanOrEqual(BREATHE_MIN - 1e-9);
     expect(Math.max(...v)).toBeLessThanOrEqual(1 + 1e-9);
-    expect(Math.min(...v)).toBeLessThan(0.66);
+    expect(Math.min(...v)).toBeLessThan(BREATHE_MIN + 0.01);
     expect(Math.max(...v)).toBeGreaterThan(0.99);
   });
   it('blink is on or dim, and each phase offset shifts it', () => {
@@ -421,7 +454,7 @@ describe('water shader', () => {
   });
 
   it('writes the TS constants into the GLSL exactly', () => {
-    for (const v of [1, 0, 0.45, 1.1, -4.6, 6.2831853, 12.9898, 1e-3, 0.17]) {
+    for (const v of [1, 0, 0.45, 1.1, -4.6, TAU, 12.9898, 1e-3, 0.17]) {
       const g = glslFloat(v);
       expect(g, String(v)).toMatch(/^-?\d+\.\d+$/);
       expect(Number(g)).toBe(v);
@@ -431,13 +464,20 @@ describe('water shader', () => {
       expect(glsl).toContain(glslFloat(v));
     }
   });
-  it('the shader bakes exactly the TS constants (parity)', () => {
-    for (const n of [BREATHE_PERIOD, BLINK_PERIOD, BLINK_ON, BLINK_OFF_LEVEL, WINDOW_VARIATION]) {
-      expect(MOTION_VERTEX_SETUP).toContain(Number.isInteger(n) ? n.toFixed(1) : String(n));
+  it('the shader bakes exactly the TS constants (parity): whole literals, not substrings', () => {
+    const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /** The literal as a whole GLSL token (not a piece of a longer number or name). */
+    const hasToken = (src: string, n: number) => new RegExp(`(?<![\\w.])${esc(glslFloat(n))}(?![\\w.])`).test(src);
+    for (const n of [TAU, BREATHE_MID, BREATHE_AMP, BREATHE_PERIOD, BLINK_PERIOD, BLINK_ON, BLINK_OFF_LEVEL, WINDOW_VARIATION]) {
+      expect(hasToken(MOTION_VERTEX_SETUP, n), String(n)).toBe(true);
     }
-    expect(MOTION_VERTEX_SETUP).toContain(`uTime / ${BLINK_PERIOD} `);
-    expect(MOTION_VERTEX_SETUP).toContain(`< ${BLINK_ON} ?`);
-    expect(MOTION_VERTEX_SETUP).toContain(`/ ${BREATHE_PERIOD}.0 +`);
+    // the expressions, token for token
+    expect(MOTION_VERTEX_SETUP).toContain(`vLight = ${glslFloat(BREATHE_MID)} + ${glslFloat(BREATHE_AMP)} * sin( ${glslFloat(TAU)} * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase )`);
+    expect(MOTION_VERTEX_SETUP).toContain(`fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / ${glslFloat(TAU)} ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)}`);
+    expect(MOTION_VERTEX_SETUP).toContain(`vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / ${glslFloat(TAU)} ) - 1.0 )`);
+    expect(hasToken('x 0.15 y', 0.15)).toBe(true);
+    expect(hasToken('x 10.15 y', 0.15)).toBe(false); // the matcher itself is strict
+    expect(hasToken('x 0.155 y', 0.15)).toBe(false);
   });
   it('breathing is far below 3 Hz', () => {
     expect(1 / BREATHE_PERIOD).toBeLessThanOrEqual(LIGHT_MAX_HZ);

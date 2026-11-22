@@ -15,7 +15,7 @@ const BUMPER = { r: 0.08, at: 0.76 }; // rubber blocks under each end
 
 // The plank, seats and handles rock together about the axle (x axis). Small on purpose: the low end rests on its
 // bumper, so a big rock would push the plank into it.
-const ROCK: MotionOpts = { kind: 'swing', pivot: [0, PIVOT_Y, 0], axis: [1, 0, 0], amount: 0.07, speed: 1.6 };
+const ROCK: MotionOpts = { kind: 'swing', pivot: [0, PIVOT_Y, 0], axis: [1, 0, 0], amount: 0.04, speed: 1.6 };
 
 const cos = Math.cos(TILT);
 const sin = Math.sin(TILT);

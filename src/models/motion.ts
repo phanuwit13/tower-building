@@ -51,7 +51,16 @@ export const LIGHT_STRIDE = 8;
 if (Object.values(MOTION_CODE).some((c) => c >= LIGHT_STRIDE)) {
   throw new Error('motion: every MOTION_CODE must be below LIGHT_STRIDE (it is packed with the light code in anim.x)');
 }
-/** Breathe: 0.65..1.0 over 3 s. Blink: 1.4 s a cycle (on 55 %, dim 0.1 when off). Window: steady ±15 %. */
+/** A full turn, as the shaders spell it (one place, emitted into GLSL with glslFloat). */
+export const TAU = 6.2831853;
+/**
+ * Breathe: BREATHE_MIN..1.0 over 3 s (a sine about BREATHE_MID with amplitude BREATHE_AMP). The floor is low
+ * because tone mapping saturates a bright glow: on the smooth tier a dip to 0.65 never showed.
+ * Blink: 1.4 s a cycle (on 55 %, dim 0.1 when off). Window: steady ±15 %.
+ */
+export const BREATHE_MIN = 0.22;
+export const BREATHE_MID = (1 + BREATHE_MIN) / 2;
+export const BREATHE_AMP = (1 - BREATHE_MIN) / 2;
 export const BREATHE_PERIOD = 3;
 export const BLINK_PERIOD = 1.4;
 export const BLINK_ON = 0.55;
@@ -66,12 +75,12 @@ export const LIGHT_MAX_HZ = 3;
  */
 export function lightPattern(kind: LightKind, time: number, phase: number, motion = 1): number {
   if (kind === 'steady') return 1;
-  const tau = Math.PI * 2;
+  const tau = TAU;
   const frac = (x: number) => x - Math.floor(x);
   // a window's per-pane variation is a static look, not motion: it stays when motion is off
   if (kind === 'window') return 1 + WINDOW_VARIATION * (2 * frac(phase / tau) - 1);
   if (!(motion > 0)) return 1;
-  if (kind === 'breathe') return 0.825 + 0.175 * Math.sin((tau * time) / BREATHE_PERIOD + phase);
+  if (kind === 'breathe') return BREATHE_MID + BREATHE_AMP * Math.sin((tau * time) / BREATHE_PERIOD + phase);
   if (kind === 'blink') return frac(time / BLINK_PERIOD + phase / tau) < BLINK_ON ? 1 : BLINK_OFF_LEVEL;
   return 1;
 }
@@ -142,12 +151,27 @@ export const motionUniforms = {
   uMoon: { value: 0 },
 };
 
+/** Seconds for the wind to cover about 63 % of the way to a new strength (a gust builds, it does not jump). */
+export const WIND_EASE_SECONDS = 0.3;
+let windTarget = motionUniforms.uWind.value;
+
 export function advanceMotion(dtMs: number): void {
-  if (Number.isFinite(dtMs) && dtMs > 0) motionUniforms.uTime.value += dtMs / 1000;
+  if (!Number.isFinite(dtMs) || dtMs <= 0) return;
+  motionUniforms.uTime.value += dtMs / 1000;
+  // exponential approach: frame-rate independent, never overshoots
+  const u = motionUniforms.uWind;
+  u.value += (windTarget - u.value) * (1 - Math.exp(-dtMs / 1000 / WIND_EASE_SECONDS));
 }
 
+/** Sets the wind to blow towards `w`; `advanceMotion` eases the shared `uWind` there. */
 export function setWind(w: number): void {
-  motionUniforms.uWind.value = Math.min(4, Math.max(0, w));
+  windTarget = Math.min(4, Math.max(0, w));
+}
+
+/** Jump the wind straight to `w` (tests, first frame). */
+export function snapWind(w: number): void {
+  setWind(w);
+  motionUniforms.uWind.value = windTarget;
 }
 
 export function setNight(n: number): void {
@@ -237,15 +261,15 @@ export const MOTION_VERTEX_SETUP = /* glsl */ `
 int motionPacked = int( anim.x + 0.5 );
 int lightCode = motionPacked / ${LIGHT_STRIDE};
 int motionKind = motionPacked - ${LIGHT_STRIDE} * lightCode;
-float motionPhase = anim.w + 6.2831853 * motionHash( ( modelMatrix * vec4( pivot, 1.0 ) ).xz );
+float motionPhase = anim.w + ${glslFloat(TAU)} * motionHash( ( modelMatrix * vec4( pivot, 1.0 ) ).xz );
 vAnim = vec4( float( motionKind ), anim.yz, motionPhase );
 // glow light pattern (mirrors lightPattern in this file); steady and reduced motion hold 1.0
 vLight = 1.0;
 if ( uMotion > 0.0 ) {
-  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = 0.825 + 0.175 * sin( 6.2831853 * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
-  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / 6.2831853 ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
+  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = ${glslFloat(BREATHE_MID)} + ${glslFloat(BREATHE_AMP)} * sin( ${glslFloat(TAU)} * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
+  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / ${glslFloat(TAU)} ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
 }
-if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / 6.2831853 ) - 1.0 );
+if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / ${glslFloat(TAU)} ) - 1.0 );
 bool motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};
 mat3 motionRot = mat3( 1.0 );
 vec3 motionShift = vec3( 0.0 );
@@ -420,7 +444,7 @@ float waterGlint( vec2 p, float t, float px ) {
   vec2 axis = ${glslVec(WATER.glint.axis)};
   vec2 e = vec2( dot( d, axis ), dot( d, vec2( -axis.y, axis.x ) ) ) / size;
   float shape = max( 1.0 - dot( e, e ), 0.0 ) * sqrt( ${glslFloat(WATER.glint.len * WATER.glint.wid)} / ( size.x * size.y ) );
-  float twinkle = 0.5 + 0.5 * sin( t * ( ${glslFloat(WATER.glint.twinkleMin)} + ${glslFloat(WATER.glint.twinkleRange)} * h2 ) + 6.2831853 * s );
+  float twinkle = 0.5 + 0.5 * sin( t * ( ${glslFloat(WATER.glint.twinkleMin)} + ${glslFloat(WATER.glint.twinkleRange)} * h2 ) + ${glslFloat(TAU)} * s );
   return shape * smoothstep( ${glslFloat(WATER.glint.twinkleFrom)}, 1.0, twinkle );
 }
 float waterCaustic( vec2 p, float t, float aa ) {

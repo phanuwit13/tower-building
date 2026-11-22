@@ -84,7 +84,7 @@ Items can move and glow in patterns. It is all done on the graphics card from op
 
 1. Keep it gentle: sways of a few centimetres, a rock of a few degrees, spins of about 15 s a turn. If you can see it from across the room it is too much.
 2. Bases stay: trunks, pots, frames, decks, soil and anything that stands on the ground do not move. Only the free end moves.
-3. Rigid motion must not clip. Check the extremes: a swing seat must clear the ground, a seesaw's low end rests on its bumper, so keep that rock small (the seesaw uses 0.07 rad).
+3. Rigid motion must not clip. Check the extremes: a swing seat must clear the ground, a seesaw's low end rests on its bumper, so keep that rock small (the seesaw uses 0.04 rad).
 4. A spinning or swinging part must stay inside the footprint and clear of walls and the ground in every pose, not only at rest.
 5. Do not change positions or colours to add motion: motion options leave the geometry snapshot as it is. Only a deliberate shape change (like cutting a flag into strips) needs the snapshot regenerated, and then only that item may differ.
 6. Do not blink more than a few small lights per item, and never make a large area blink.

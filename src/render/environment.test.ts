@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
 import { getStyleKit } from '../models/kit';
-import { motionUniforms } from '../models/motion';
+import { advanceMotion, glslFloat, motionUniforms } from '../models/motion';
 import { acesFilmic, createEnvironment, envPreset, MOON } from './environment';
 import { CAMERA, type Stage } from './stage';
 
@@ -178,6 +178,22 @@ describe('createEnvironment', () => {
     expect(moon.renderOrder).toBeLessThan(0); // first of the see-through things: everything nearer draws over it
   });
 
+  it('the moon face is dimmer on pretty (bloom would whiten it) and no star shows through it', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const moon = moonOf(stage);
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'smooth');
+    const smooth = moon.material.uniforms.faceGain.value;
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'pretty');
+    expect(moon.material.uniforms.faceGain.value).toBeLessThan(smooth);
+    expect(smooth).toBeLessThanOrEqual(1);
+    const stars = stage.scene.children.find((c) => c instanceof THREE.Points) as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    const shader = { vertexShader: THREE.ShaderLib.points.vertexShader, fragmentShader: THREE.ShaderLib.points.fragmentShader };
+    stars.material.onBeforeCompile(shader as never, null as never);
+    expect(shader.vertexShader).toContain(`vec3( ${MOON.dir.map(glslFloat).join(', ')} )`); // stars in line with the moon fade out
+    getStyleKit().setGlowStrength(0);
+  });
+
   it('shows the moon at night, faintly at dusk, and hides it by day and in rain (no draw call then)', () => {
     const stage = fakeStage();
     const env = createEnvironment(stage, getStyleKit());
@@ -243,10 +259,13 @@ describe('createEnvironment', () => {
     expect(motionUniforms.uWind.value).toBe(1);
     expect(motionUniforms.uNight.value).toBe(0);
     env.apply({ weather: 'rain', time: 'night', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBe(1); // the wind eases in with the frames, it does not jump
+    for (let i = 0; i < 120; i++) advanceMotion(16);
     expect(motionUniforms.uWind.value).toBeGreaterThan(1.5);
     expect(motionUniforms.uNight.value).toBe(1);
     env.apply({ weather: 'sunny', time: 'dusk', ground: 'grass' }, 'smooth');
-    expect(motionUniforms.uWind.value).toBe(1);
+    for (let i = 0; i < 120; i++) advanceMotion(16);
+    expect(motionUniforms.uWind.value).toBeCloseTo(1, 1);
     expect(motionUniforms.uNight.value).toBe(0.6);
     env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
     getStyleKit().setGlowStrength(0);
