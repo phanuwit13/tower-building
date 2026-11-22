@@ -18,6 +18,7 @@ export function rayToTile(
   origin: { x: number; y: number; z: number },
   dir: { x: number; y: number; z: number },
   clamp = false,
+  out?: { tx: number; tz: number },
 ): { tx: number; tz: number } | null {
   if (dir.y >= -1e-6) return null;
   const t = -origin.y / dir.y;
@@ -31,6 +32,7 @@ export function rayToTile(
   } else if (tx < 0 || tz < 0 || tx >= GRID_SIZE || tz >= GRID_SIZE) {
     return null;
   }
+  if (out) { out.tx = tx; out.tz = tz; return out; }
   return { tx, tz };
 }
 
@@ -67,6 +69,8 @@ export interface InputOptions {
   ghostBox?: () => THREE.Box3 | null;
   /** True while an overlay (settings, dialog, end screen) owns the keyboard. */
   isBlocked?: () => boolean;
+  /** Mouse hover: the tile under the cursor, or null when the preview should hide. Fires only on change. */
+  onHover?: (tile: { tx: number; tz: number } | null) => void;
 }
 
 export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}): () => void {
@@ -101,6 +105,40 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     return box !== null && rayHitsBox(ray.ray, box);
   };
 
+  // Mouse hover: report the tile under a free-moving mouse; hide on press, leave, blocked overlays.
+  const hoverOut = { tx: 0, tz: 0 };
+  let hoverTx = -1;
+  let hoverTz = -1;
+  const setHover = (tx: number, tz: number): void => {
+    if (tx === hoverTx && tz === hoverTz) return;
+    hoverTx = tx;
+    hoverTz = tz;
+    opts.onHover?.(tx < 0 ? null : { tx, tz });
+  };
+  let lastX = 0;
+  let lastY = 0;
+  let overCanvas = false; // a free mouse last reported a position over the canvas
+  const hideHover = (): void => setHover(-1, -1);
+  const hoverAt = (x: number, y: number): void => {
+    if (opts.isBlocked?.()) { hideHover(); return; }
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((x - r.left) / r.width) * 2 - 1, -(((y - r.top) / r.height) * 2 - 1));
+    ray.setFromCamera(ndc, camera);
+    const tile = rayToTile(ray.ray.origin, ray.ray.direction, false, hoverOut);
+    if (tile) setHover(tile.tx, tile.tz); else hideHover();
+  };
+  const updateHover = (e: PointerEvent): void => {
+    if (e.pointerType !== 'mouse' || e.buttons !== 0 || e.target !== canvas) { overCanvas = false; hideHover(); return; }
+    overCanvas = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    hoverAt(lastX, lastY);
+  };
+  /** The camera moved without a pointer event (wheel, keys, inertia): the tile under the cursor changed. */
+  const onCameraChange = (): void => {
+    if (overCanvas && pointers.size === 0 && !dragging) hoverAt(lastX, lastY);
+  };
+
   const pointers = new Set<number>();
   let press: { id: number; x: number; y: number; t: number; camPos: THREE.Vector3; target: THREE.Vector3 } | null = null;
   let dragging = false;
@@ -114,6 +152,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onDown = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointers.add(e.pointerId);
     if (pointers.size > 1) {
@@ -135,12 +174,18 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onMove = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && !dragging && pointers.size === 0) updateHover(e);
     if (!dragging || !press || e.pointerId !== press.id || multi) return;
     const tile = pick(e, true);
     if (tile) c.dragGhostTo(tile.tx, tile.tz);
   };
 
   const onUp = (e: PointerEvent) => {
+    handleUp(e);
+    if (e.pointerType === 'mouse' && pointers.size === 0 && !dragging) updateHover(e);
+  };
+
+  const handleUp = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
     const p = press;
     if (!p || e.pointerId !== p.id) {
@@ -167,6 +212,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     }
   };
 
+  const onLeave = () => { overCanvas = false; hideHover(); };
+
   const onCancel = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
     press = null;
@@ -183,6 +230,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onBlur = () => {
+    overCanvas = false;
+    hideHover();
     pointers.clear();
     press = null;
     multi = false;
@@ -213,6 +262,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   const cap = { capture: true } as const;
   canvas.addEventListener('pointerdown', onDown, cap);
   canvas.addEventListener('pointermove', onMove);
+  canvas.addEventListener('pointerleave', onLeave);
+  controls.addEventListener('change', onCameraChange);
   canvas.addEventListener('lostpointercapture', onLost);
   // Release/cancel are listened for on window: they bubble from the canvas, and still arrive when
   // the pointer is released elsewhere or capture failed.
@@ -223,6 +274,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   return () => {
     canvas.removeEventListener('pointerdown', onDown, cap);
     canvas.removeEventListener('pointermove', onMove);
+    canvas.removeEventListener('pointerleave', onLeave);
+    controls.removeEventListener('change', onCameraChange);
     canvas.removeEventListener('lostpointercapture', onLost);
     window.removeEventListener('pointerup', onUp, cap);
     window.removeEventListener('pointercancel', onCancel, cap);

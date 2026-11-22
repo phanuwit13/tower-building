@@ -1,4 +1,5 @@
 import { buildOccupancy, canPlace, clampPosition, nearestFreeSpot, rotatedFootprint } from '../game/grid';
+import { placementAtTile } from './hover';
 import { newGame, placeCurrent, restartGame, withSettings } from '../game/game';
 import {
   clearGame, loadGame, loadQuality, saveGame, saveQuality, type KeyValueStore,
@@ -10,6 +11,8 @@ export interface GhostState { x: number; z: number; rotation: Rotation; valid: b
 export interface AppState {
   screen: 'theme-select' | 'playing' | 'finished';
   game: GameState | null; ghost: GhostState | null;
+  /** Rotation the next tap/hover uses while there is no locked ghost; follows the ghost when it rotates. */
+  rotation: Rotation;
   quality: QualityTier; saveFailed: boolean; // saveFailed is sticky once true
 }
 export interface ControllerDeps {
@@ -35,6 +38,7 @@ export function createController(deps: ControllerDeps): Controller {
     screen: screenOf(initialGame),
     game: initialGame,
     ghost: null,
+    rotation: 0,
     quality: loadQuality(store) ?? deps.detectQuality(),
     saveFailed: false,
   };
@@ -46,9 +50,11 @@ export function createController(deps: ControllerDeps): Controller {
   }
 
   /** Persist the game, then emit. saveFailed latches once a save fails. */
-  function commitGame(game: GameState, ghost: GhostState | null, screen = screenOf(game)): void {
+  function commitGame(
+    game: GameState, ghost: GhostState | null, screen = screenOf(game), rotation: Rotation = ghost ? ghost.rotation : 0,
+  ): void {
     const ok = saveGame(store, game);
-    emit({ ...state, game, ghost, screen, saveFailed: state.saveFailed || !ok });
+    emit({ ...state, game, ghost, screen, rotation, saveFailed: state.saveFailed || !ok });
   }
 
   const sameGhost = (a: GhostState | null, b: GhostState): boolean =>
@@ -57,7 +63,7 @@ export function createController(deps: ControllerDeps): Controller {
   /** Move/replace the ghost; nothing is emitted (rendered, re-laid out) when it did not change. */
   function setGhost(next: GhostState): void {
     if (sameGhost(state.ghost, next)) return;
-    emit({ ...state, ghost: next });
+    emit({ ...state, ghost: next, rotation: next.rotation });
   }
 
   function playing(): { game: GameState; catalog: Catalog } | null {
@@ -78,9 +84,7 @@ export function createController(deps: ControllerDeps): Controller {
   function tapLike(tx: number, tz: number): void {
     const p = playing();
     if (!p) return;
-    const r = state.ghost?.rotation ?? 0;
-    const { w, d } = rotatedFootprint(p.catalog.items[p.game.current].footprint, r);
-    setGhost(ghostAt(p.game, p.catalog, r, tx - Math.floor((w - 1) / 2), tz - Math.floor((d - 1) / 2)));
+    setGhost(placementAtTile(p.game, p.catalog, state.ghost?.rotation ?? state.rotation, tx, tz));
   }
 
   return {
@@ -111,7 +115,7 @@ export function createController(deps: ControllerDeps): Controller {
       for (const r of [0, 1] as const) {
         const spot = nearestFreeSpot(occ, fp, r, GRID_SIZE / 2, GRID_SIZE / 2);
         if (spot) {
-          emit({ ...state, ghost: ghostAt(p.game, p.catalog, r, spot.x, spot.z) });
+          emit({ ...state, ghost: ghostAt(p.game, p.catalog, r, spot.x, spot.z), rotation: r });
           return;
         }
       }
@@ -121,7 +125,11 @@ export function createController(deps: ControllerDeps): Controller {
     rotateGhost() {
       const p = playing();
       const g = state.ghost;
-      if (!p || !g) return;
+      if (!p) return;
+      if (!g) {
+        emit({ ...state, rotation: ((state.rotation + 1) % 4) as Rotation });
+        return;
+      }
       const fp = p.catalog.items[p.game.current].footprint;
       const old = rotatedFootprint(fp, g.rotation);
       const cx = g.x + Math.floor((old.w - 1) / 2);
@@ -141,7 +149,7 @@ export function createController(deps: ControllerDeps): Controller {
     },
     setSettings(patch) {
       if (!state.game) return;
-      commitGame(withSettings(state.game, patch), state.ghost, state.screen);
+      commitGame(withSettings(state.game, patch), state.ghost, state.screen, state.rotation);
     },
     setQuality(q) {
       const ok = saveQuality(store, q);
@@ -155,7 +163,7 @@ export function createController(deps: ControllerDeps): Controller {
     },
     clearAll() {
       clearGame(store);
-      emit({ ...state, game: null, ghost: null, screen: 'theme-select' });
+      emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select' });
     },
   };
 }

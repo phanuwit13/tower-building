@@ -85,10 +85,33 @@ describe('controller flow', () => {
     c.rotateGhost();
     expect(c.getState().ghost).toMatchObject({ x: GRID_SIZE - 3, z: GRID_SIZE - 2, rotation: 1 });
   });
-  it('rotateGhost without ghost is a no-op', () => {
+  it('rotateGhost without ghost sets the preferred rotation (no ghost appears)', () => {
     const c = make(seeded());
+    expect(c.getState().rotation).toBe(0);
     c.rotateGhost();
     expect(c.getState().ghost).toBeNull();
+    expect(c.getState().rotation).toBe(1);
+    c.rotateGhost(); c.rotateGhost(); c.rotateGhost();
+    expect(c.getState().rotation).toBe(0);
+  });
+  it('tapTile with no ghost uses the preferred rotation', () => {
+    const c = make(seeded({ current: 'classroom' }));
+    c.rotateGhost();
+    c.tapTile(5, 5);
+    expect(c.getState().ghost).toMatchObject({ x: 4, z: 5, rotation: 1 });
+  });
+  it('rotating a locked ghost keeps the preferred rotation in step; place resets it', () => {
+    const c = make(seeded({ current: 'classroom' }));
+    c.tapTile(5, 5);
+    c.rotateGhost();
+    expect(c.getState().rotation).toBe(1);
+    c.place();
+    expect(c.getState().rotation).toBe(0);
+  });
+  it('rotateGhost outside playing is a no-op', () => {
+    const c = make(memStore());
+    c.rotateGhost();
+    expect(c.getState().rotation).toBe(0);
   });
   it('moveGhost with no ghost appears near the centre; then shifts and clamps', () => {
     const c = make(seeded());
