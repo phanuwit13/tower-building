@@ -2,9 +2,38 @@ import * as THREE from 'three';
 import type { ThemeDef } from '../themes/types';
 import { CATEGORIES, type ItemModel } from './contract';
 import type { StyleKit } from './kit';
+import { PALETTE } from './palette';
 
 const FOOTPRINTS = ['1x1', '1x2', '2x1', '2x2', '2x3', '3x2'];
 const TOL = 0.001;
+const COLOR_TOL = 1e-3;
+
+/** Palette colours in linear space, the space the kit writes vertex colours in. */
+const PALETTE_LINEAR = Object.values(PALETTE).map((hex) => {
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b] as const;
+});
+
+function offPaletteColor(g: THREE.BufferGeometry): boolean {
+  const c = g.attributes.color;
+  const seen = new Set<string>();
+  for (let i = 0; i < c.count; i++) {
+    const r = c.getX(i), gg = c.getY(i), b = c.getZ(i);
+    const key = `${r},${gg},${b}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!PALETTE_LINEAR.some(([pr, pg, pb]) => Math.abs(pr - r) < COLOR_TOL && Math.abs(pg - gg) < COLOR_TOL && Math.abs(pb - b) < COLOR_TOL)) return true;
+  }
+  return false;
+}
+
+function positionsOf(obj: THREE.Object3D): number[][] {
+  const out: number[][] = [];
+  obj.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) out.push(Array.from((o as THREE.Mesh).geometry.attributes.position?.array ?? []));
+  });
+  return out;
+}
 
 export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
   const errs: string[] = [];
@@ -22,6 +51,10 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
     errs.push(`${tag}: build() threw: ${e instanceof Error ? e.message : String(e)}`);
     return errs;
   }
+  if (obj.position.lengthSq() > 0 || obj.rotation.x !== 0 || obj.rotation.y !== 0 || obj.rotation.z !== 0
+    || obj.scale.x !== 1 || obj.scale.y !== 1 || obj.scale.z !== 1) {
+    errs.push(`${tag}: transform the parts, not the returned group (root position, rotation and scale must be identity)`);
+  }
   const meshes: THREE.Mesh[] = [];
   obj.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
   if (meshes.length === 0) errs.push(`${tag}: model has no meshes (empty group)`);
@@ -32,16 +65,29 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
       errs.push(`${tag}: mesh does not use a kit material`);
     }
     const g = mesh.geometry;
+    const names = Object.keys(g.attributes).sort().join(',');
+    if (names !== 'color,normal,position') {
+      errs.push(`${tag}: geometry must have exactly position, normal and color attributes (has ${names || 'none'}); build parts with the kit`);
+    } else if (offPaletteColor(g)) {
+      errs.push(`${tag}: vertex colour is not a palette colour`);
+    }
     triangles += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
   }
   obj.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(obj);
-  if (!box.isEmpty()) {
+  const finite = [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].every(Number.isFinite);
+  if (!finite) errs.push(`${tag}: non-finite geometry (NaN or Infinity in a bounding box)`);
+  if (finite && !box.isEmpty()) {
     if (box.min.x < -w / 2 - TOL || box.max.x > w / 2 + TOL || box.min.z < -d / 2 - TOL || box.max.z > d / 2 + TOL) {
       errs.push(`${tag}: bounding box exceeds footprint ${w}x${d}`);
     }
     if (box.min.y < -TOL || box.max.y > 5 + TOL) errs.push(`${tag}: height outside [0, 5]`);
     if (Math.abs(box.min.y) > TOL) errs.push(`${tag}: origin must be on the ground (lowest point y=${box.min.y.toFixed(3)}, expected 0)`);
+  }
+  try {
+    if (JSON.stringify(positionsOf(obj)) !== JSON.stringify(positionsOf(m.build(kit)))) errs.push(`${tag}: build() must be deterministic (two builds differ)`);
+  } catch {
+    errs.push(`${tag}: build() must be deterministic (second build threw)`);
   }
   const budget = 800 + 400 * w * d;
   if (triangles > budget) errs.push(`${tag}: ${triangles} triangles exceeds budget ${budget}`);

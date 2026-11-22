@@ -89,6 +89,40 @@ describe('validateItemModel', () => {
   });
 });
 
+describe('validateItemModel hardening', () => {
+  it('rejects a transformed root (rotation, offset, scale)', () => {
+    const rot = model({ build: (k) => { const g = k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream')]); g.rotation.y = 0.5; return g; } });
+    expect(validateItemModel(rot, kit).join('|')).toContain('transform the parts, not the returned group');
+    const off = model({ build: (k) => { const g = k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream')]); g.position.x = 0.1; return g; } });
+    expect(validateItemModel(off, kit).join('|')).toContain('transform the parts, not the returned group');
+    const sc = model({ build: (k) => { const g = k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream')]); g.scale.setScalar(0.9); return g; } });
+    expect(validateItemModel(sc, kit).join('|')).toContain('transform the parts, not the returned group');
+  });
+  it('rejects NaN geometry', () => {
+    const m = model({ build: (k) => k.finish([k.box([NaN, 0.5, 0.5], [0, 0.25, 0], 'cream')]) });
+    expect(validateItemModel(m, kit).join('|')).toContain('non-finite geometry');
+  });
+  it('rejects a raw mesh without a color attribute', () => {
+    const m = model({ build: () => new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5).translate(0, 0.25, 0), kit.materials.body) });
+    expect(validateItemModel(m, kit).join('|')).toContain('color');
+  });
+  it('rejects a vertex colour that is not in the palette', () => {
+    const m = model({
+      build: (k) => {
+        const part = k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream');
+        const c = part.geometry.attributes.color as THREE.BufferAttribute;
+        for (let i = 0; i < c.count; i++) c.setXYZ(i, 0.123, 0.456, 0.789);
+        return k.finish([part]);
+      },
+    });
+    expect(validateItemModel(m, kit).join('|')).toContain('palette');
+  });
+  it('rejects a build() that is not deterministic', () => {
+    const m = model({ build: (k) => k.finish([k.box([0.4, 0.4, 0.4], [Math.random() * 0.2, 0.2, 0], 'cream')]) });
+    expect(validateItemModel(m, kit).join('|')).toContain('build() must be deterministic');
+  });
+});
+
 describe('validateTheme', () => {
   const theme = (items: ItemModel[]): ThemeDef => ({ id: 'school', name: 't', emoji: 'x', defaultGround: 'grass', items });
   it('flags duplicate ids and names and too few items', () => {
