@@ -6,6 +6,8 @@ import { ICO_LOW } from '../../../models/parts';
 // An oval pond (longer along z) ringed by low boulders; reeds at the back (-x, -z) so they never hide the water.
 const POND = { rx: 0.68, rz: 0.76 }; // water radii
 const WATER_H = 0.05;
+// The water is `navy`, not `skyBlue`: night light is blue, so a pale blue surface keeps its blue channel
+// while the green ground goes dark, and glows at night. Navy stays clearly water by day.
 const ROCK_RING = { rx: 0.77, rz: 0.85 };
 /** Boulders around the edge, in order round the oval: [size, colour]. */
 const ROCKS: Array<[number, PaletteColor]> = [
@@ -36,7 +38,7 @@ export const item: ItemModel = {
   footprint: { w: 2, d: 2 },
   build: (kit) => {
     const parts: Part[] = [
-      kit.cylinder(1, 1, WATER_H, [0, WATER_H / 2, 0], 'skyBlue', { segments: 16, scale: [POND.rx, 1, POND.rz] }),
+      kit.cylinder(1, 1, WATER_H, [0, WATER_H / 2, 0], 'navy', { segments: 16, scale: [POND.rx, 1, POND.rz] }),
     ];
     ROCKS.forEach(([s, color], k) => {
       const a = (k / ROCKS.length) * Math.PI * 2;
@@ -49,7 +51,7 @@ export const item: ItemModel = {
       parts.push(
         kit.cylinder(r, r, PAD.h, [x, padTop - PAD.h / 2, z], color, { segments: 8 }),
         // the lily-pad notch: a flat water-coloured triangle laid on the pad, from the middle to the edge
-        kit.wedge([r * 2 * Math.tan(PAD.notch / 2), r * 1.02, 0.006], [x + (r / 2) * Math.cos(notch), padTop + 0.004, z - (r / 2) * Math.sin(notch)], 'skyBlue',
+        kit.wedge([r * 2 * Math.tan(PAD.notch / 2), r * 1.02, 0.006], [x + (r / 2) * Math.cos(notch), padTop + 0.004, z - (r / 2) * Math.sin(notch)], 'navy',
           { rotate: [-Math.PI / 2, 0, Math.PI / 2 + notch] }),
       );
     }
