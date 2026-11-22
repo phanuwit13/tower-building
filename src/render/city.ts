@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { rotatedFootprint } from '../game/grid';
 import type { Placement } from '../game/types';
-import type { AppState } from '../app/controller';
+import type { AppState, GhostState } from '../app/controller';
 import type { StyleKit } from '../models/kit';
 import type { ThemeDef } from '../themes/types';
 import { chunkOf, createBatch, placementMatrix, placementTransform, planBatch, type BatchItem } from './batch';
@@ -19,6 +19,7 @@ export const GHOST_VALID = 0x7ff5b5;
 export const GHOST_INVALID = 0xff2a4d;
 const MARK_VALID = 0x1f9a4c;
 const MARK_INVALID = 0xc4162f;
+const HOVER_OPACITY = { valid: { body: 0.3, fill: 0.2 }, invalid: { body: 0.4, fill: 0.4 } } as const;
 const OPACITY = { valid: { body: 0.6, fill: 0.45 }, invalid: { body: 0.75, fill: 0.7 } } as const;
 
 function markTexture(glyph: string, color: number): THREE.CanvasTexture {
@@ -48,6 +49,11 @@ export interface CityView {
   sync(s: AppState): void;
   /** World box (footprint x item height) of the visible ghost, for hit-testing; null when none is shown. */
   ghostBox(): THREE.Box3 | null;
+  /**
+   * The faint mouse-hover preview of `itemId` at `p` (no marker, no shadow); null hides it.
+   * Independent of the locked ghost; hidden too while a capture asked to hide the ghost.
+   */
+  setHover(h: { themeId: string; itemId: string; p: GhostState } | null): void;
   /** Hide/show the ghost, its outline and its marker (e.g. for a screenshot). Persists across sync. */
   setGhostVisible(v: boolean): void;
   /** How long the last change to the placed items took to apply (ms); undefined before the first. */
@@ -122,12 +128,32 @@ export function createCityView(
   root.add(sprite);
   sprite.visible = false;
 
+  // Hover preview: its own faint materials, model and group; same tint rule as the ghost.
+  const hoverMat = new THREE.MeshLambertMaterial({ color: GHOST_VALID, transparent: true, opacity: HOVER_OPACITY.valid.body, depthWrite: false });
+  const hoverFillMat = new THREE.MeshBasicMaterial({ color: GHOST_VALID, transparent: true, opacity: HOVER_OPACITY.valid.fill, depthWrite: false });
+  const hoverLineMat = new THREE.LineBasicMaterial({ color: GHOST_VALID, transparent: true, opacity: 0.5 });
+  const hover = new THREE.Group();
+  hover.name = 'hover';
+  hover.visible = false;
+  const hoverFill = new THREE.Mesh(footFill.geometry, hoverFillMat);
+  hoverFill.position.y = 0.03;
+  hoverFill.renderOrder = 1;
+  const hoverLine = new THREE.LineLoop(footLine.geometry, hoverLineMat);
+  hoverLine.position.y = 0.04;
+  hoverLine.renderOrder = 2;
+  hover.add(hoverFill, hoverLine);
+  root.add(hover);
+  let hoverModel: THREE.Object3D | null = null;
+  let hoverKey = '';
+  let hoverWanted = false;
+
   let wanted = false; // the game state wants a ghost on screen
   let suppressed = false; // ...but a capture asked to hide it
   const box = new THREE.Box3();
   const applyVisibility = (): void => {
     ghost.visible = wanted && !suppressed;
     sprite.visible = wanted && !suppressed;
+    hover.visible = hoverWanted && !suppressed;
   };
 
   let ghostModel: THREE.Object3D | null = null;
@@ -235,8 +261,51 @@ export function createCityView(
     applyVisibility();
   }
 
+  const setHover: CityView['setHover'] = (h) => {
+    const item = h ? getTheme(h.themeId)?.items.find((i) => i.id === h.itemId) : undefined;
+    if (!h || !item) {
+      if (hoverWanted) { hoverWanted = false; applyVisibility(); }
+      return;
+    }
+    const key = `${h.themeId}:${h.itemId}`;
+    if (key !== hoverKey) {
+      if (hoverModel) hover.remove(hoverModel);
+      hoverModel = null;
+      hoverKey = key;
+      const proto = prototype(h.themeId, h.itemId);
+      if (proto) {
+        const m = proto.clone();
+        m.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) {
+            const mesh = o as THREE.Mesh;
+            mesh.material = hoverMat;
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+          }
+        });
+        hover.add(m);
+        hoverModel = m;
+      }
+    }
+    const color = h.p.valid ? GHOST_VALID : GHOST_INVALID;
+    hoverMat.color.setHex(color);
+    hoverFillMat.color.setHex(color);
+    hoverLineMat.color.setHex(color);
+    const op = h.p.valid ? HOVER_OPACITY.valid : HOVER_OPACITY.invalid;
+    hoverMat.opacity = op.body;
+    hoverFillMat.opacity = op.fill;
+    const { w, d } = rotatedFootprint(item.footprint, h.p.rotation);
+    hover.position.set(h.p.x + w / 2, 0, h.p.z + d / 2);
+    if (hoverModel) hoverModel.rotation.y = -h.p.rotation * (Math.PI / 2);
+    hoverFill.scale.set(w, 1, d);
+    hoverLine.scale.set(w, 1, d);
+    hoverWanted = true;
+    applyVisibility();
+  };
+
   return {
     sync,
+    setHover,
     ghostBox: () => (wanted ? box.clone() : null),
     setGhostVisible(v) {
       suppressed = !v;

@@ -220,3 +220,4 @@ PRs are kept reviewable (*call*), each with a Cloudflare preview link:
 ## Owner changes after approval
 
 - 2026-11-23 — map 20 × 20 (was 10 × 10; ~160 items per round; rounds can span more than one class period, the city is saved); every theme has at least 50 items (was 40).
+- 2026-11-23 — hover preview on mouse devices (a faint item follows the cursor; click to lock it, วาง/Enter to place); right-drag / two-finger drag pans the camera.

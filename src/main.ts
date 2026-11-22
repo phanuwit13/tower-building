@@ -13,6 +13,7 @@ import { getCatalog, getTheme, THEMES } from './themes/registry';
 import type { ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
+import { placementAtTile } from './app/hover';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
 import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
@@ -78,10 +79,23 @@ function boot(app: HTMLElement): void {
   const environment = createEnvironment(stage, kit);
   const cityView = createCityView(stage, kit, getTheme);
   let dialogOpen = false;
+  // Mouse hover preview: the faint item under the cursor (never changes controller state).
+  let hoverTile: { tx: number; tz: number } | null = null;
+  const blocked = (): boolean => dialogOpen || settings.isOpen() || endScreen.isVisible();
+  const refreshHover = (): void => {
+    const s = controller.getState();
+    const catalog = s.game ? getCatalog(s.game.themeId) : undefined;
+    if (!hoverTile || !s.game || !catalog || s.screen !== 'playing' || blocked()) { cityView.setHover(null); return; }
+    const p = placementAtTile(s.game, catalog, s.ghost?.rotation ?? s.rotation, hoverTile.tx, hoverTile.tz);
+    const g = s.ghost;
+    if (g && g.x === p.x && g.z === p.z && g.rotation === p.rotation) { cityView.setHover(null); return; }
+    cityView.setHover({ themeId: s.game.themeId, itemId: s.game.current, p });
+  };
   attachInput(stage, controller, {
+    onHover: (tile) => { hoverTile = tile; refreshHover(); },
     ghostBox: () => cityView.ghostBox(),
     // settings, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
-    isBlocked: () => dialogOpen || settings.isOpen() || endScreen.isVisible(),
+    isBlocked: blocked,
   });
   const thumbnailer = createThumbnailer(kit);
   const fpsMonitor = new FpsMonitor();
@@ -112,11 +126,13 @@ function boot(app: HTMLElement): void {
   const askAndRun = async (message: string, confirmLabel: string, action: () => void): Promise<void> => {
     settings.close(); // both listen for Escape on document: never stack them
     dialogOpen = true;
+    refreshHover();
     let ok = false;
     try {
       ok = await confirmDialog(app, { message, confirmLabel });
     } finally {
       dialogOpen = false;
+      refreshHover();
     }
     if (ok) action();
   };
@@ -149,6 +165,7 @@ function boot(app: HTMLElement): void {
   const openSettings = () => {
     const s = controller.getState();
     settings.open({ settings: s.game?.settings ?? BACKDROP, quality: s.quality });
+    refreshHover();
   };
   const settings = createSettingsPanel(app, {
     onWeather: (weather) => { controller.setSettings({ weather }); openSettings(); },
@@ -184,6 +201,7 @@ function boot(app: HTMLElement): void {
   const render = (s: AppState): void => {
     applyScene(s);
     cityView.sync(s);
+    refreshHover();
 
     if (s.screen === 'theme-select') themeSelect.show(); else themeSelect.hide();
 
@@ -195,7 +213,7 @@ function boot(app: HTMLElement): void {
       next: playing ? card(game.next, game.themeId) : null,
       placed: game?.placements.length ?? 0,
       canPlace: s.ghost?.valid === true,
-      canRotate: s.ghost !== null,
+      canRotate: playing,
       hint: playing && s.ghost === null ? T.hintTap : null,
       finished: s.screen === 'finished',
     });
