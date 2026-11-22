@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 
 // A playground roundabout: a round deck on a low hub, a central post with a little cone cap, and
@@ -17,6 +18,9 @@ const HANDLE = { rad: 0.34, r: 0.12, tube: 0.024, stretch: 1.7 }; // arch, stret
 /** Seat (and handle) colours, at angles 0, 90, 180 and 270 degrees from +x towards +z. */
 const SEATS: PaletteColor[] = ['red', 'leaf', 'purple', 'pink'];
 
+// Everything above the stone footing turns together about the post (slow: one turn in ~16 s).
+const SPIN: MotionOpts = { kind: 'spin', pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0.4 };
+
 /** ม้าหมุน: a colourful playground merry-go-round with four seats, grab handles and a cone-topped post. */
 export const item: ItemModel = {
   id: 'merry-go-round',
@@ -26,16 +30,16 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [
       kit.cylinder(HUB.r, HUB.r + 0.04, HUB.h, [0, HUB.h / 2, 0], 'stone', { segments: 12 }),
-      kit.cylinder(DECK.r, DECK.r, DECK.h, [0, HUB.h + DECK.h / 2, 0], 'blue', { segments: 20 }),
-      kit.cylinder(PAINT.r, PAINT.r, PAINT.h, [0, HUB.h + DECK.h + PAINT.h / 2, 0], 'sunYellow', { segments: 20 }),
-      kit.cylinder(COLLAR.r, COLLAR.r, COLLAR.h, [0, DECK_TOP + COLLAR.h / 2, 0], 'red', { segments: 10 }),
-      kit.cylinder(POST.r, POST.r, POST.top - DECK_TOP, [0, (DECK_TOP + POST.top) / 2, 0], 'red', { segments: 8 }),
-      kit.cylinder(CAP.r, CAP.r, CAP.rim, [0, POST.top + CAP.rim / 2, 0], 'sunYellow', { segments: 12 }),
-      kit.cone(CAP.r, CAP.h, [0, POST.top + CAP.rim + CAP.h / 2, 0], 'red', { segments: 12 }),
-      kit.sphere(0.05, [0, POST.top + CAP.rim + CAP.h + 0.03, 0], 'sunYellow', { detail: 0 }),
+      kit.cylinder(DECK.r, DECK.r, DECK.h, [0, HUB.h + DECK.h / 2, 0], 'blue', { segments: 20, motion: SPIN }),
+      kit.cylinder(PAINT.r, PAINT.r, PAINT.h, [0, HUB.h + DECK.h + PAINT.h / 2, 0], 'sunYellow', { segments: 20, motion: SPIN }),
+      kit.cylinder(COLLAR.r, COLLAR.r, COLLAR.h, [0, DECK_TOP + COLLAR.h / 2, 0], 'red', { segments: 10, motion: SPIN }),
+      kit.cylinder(POST.r, POST.r, POST.top - DECK_TOP, [0, (DECK_TOP + POST.top) / 2, 0], 'red', { segments: 8, motion: SPIN }),
+      kit.cylinder(CAP.r, CAP.r, CAP.rim, [0, POST.top + CAP.rim / 2, 0], 'sunYellow', { segments: 12, motion: SPIN }),
+      kit.cone(CAP.r, CAP.h, [0, POST.top + CAP.rim + CAP.h / 2, 0], 'red', { segments: 12, motion: SPIN }),
+      kit.sphere(0.05, [0, POST.top + CAP.rim + CAP.h + 0.03, 0], 'sunYellow', { detail: 0, motion: SPIN }),
     ];
     for (const a of [Math.PI / 4, -Math.PI / 4]) {
-      parts.push(kit.box([2 * PAINT.r - 0.04, STRIPE.h, STRIPE.w], [0, DECK_TOP + STRIPE.h / 2, 0], 'white', { rotate: [0, a, 0] }));
+      parts.push(kit.box([2 * PAINT.r - 0.04, STRIPE.h, STRIPE.w], [0, DECK_TOP + STRIPE.h / 2, 0], 'white', { rotate: [0, a, 0], motion: SPIN }));
     }
     SEATS.forEach((color, i) => {
       const a = (i * Math.PI) / 2;
@@ -44,12 +48,12 @@ export const item: ItemModel = {
       const turn: [number, number, number] = [0, -a, 0]; // local +x points out along this seat's radius
       const at = (rad: number, y: number): [number, number, number] => [c * rad, y, s * rad];
       parts.push(
-        kit.cylinder(0.035, 0.05, SEAT.y - DECK_TOP, at(SEAT.rad, (DECK_TOP + SEAT.y) / 2), 'charcoal', { segments: 6 }),
-        kit.box([SEAT.d, SEAT.t, SEAT.w], at(SEAT.rad, SEAT.y), color, { rotate: turn }),
-        kit.box([0.05, SEAT.back, SEAT.w], at(SEAT.rad + SEAT.d / 2 - 0.02, SEAT.y + SEAT.back / 2), color, { rotate: turn }),
+        kit.cylinder(0.035, 0.05, SEAT.y - DECK_TOP, at(SEAT.rad, (DECK_TOP + SEAT.y) / 2), 'charcoal', { segments: 6, motion: SPIN }),
+        kit.box([SEAT.d, SEAT.t, SEAT.w], at(SEAT.rad, SEAT.y), color, { rotate: turn, motion: SPIN }),
+        kit.box([0.05, SEAT.back, SEAT.w], at(SEAT.rad + SEAT.d / 2 - 0.02, SEAT.y + SEAT.back / 2), color, { rotate: turn, motion: SPIN }),
         // grab handle: an arch across the radius, its feet on the deck
         kit.torus(HANDLE.r, HANDLE.tube, at(HANDLE.rad, DECK_TOP), color, {
-          arc: Math.PI, scale: [1, HANDLE.stretch, 1], rotate: [0, -(a + Math.PI / 2), 0], tubularSegments: 7,
+          arc: Math.PI, scale: [1, HANDLE.stretch, 1], rotate: [0, -(a + Math.PI / 2), 0], tubularSegments: 7, motion: SPIN,
         }),
       );
     });

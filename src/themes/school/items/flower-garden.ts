@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 import { ICO_LOW } from '../../../models/parts';
 
@@ -11,6 +12,8 @@ const TIERS: Array<[number, number]> = [[0.68, 0.15], [0.48, 0.27], [0.28, 0.39]
 /** Flower rings, outside in: [count, colour, start angle]; each sits just inside its tier's edge. */
 const RINGS: Array<[number, PaletteColor, number]> = [[12, 'pink', 0], [9, 'sunYellow', 0.3], [6, 'purple', 0.1]];
 const FLOWER = { r: 0.07, h: 0.04, inset: 0.075 };
+// Flowers and the middle bush sway together about the soil; the stones and green tiers stay.
+const SWAY: MotionOpts = { kind: 'sway', pivot: [0, SOIL.h, 0], amount: 0.1 };
 const MIDDLE = { r: 0.15, flower: 0.095 }; // a round bush on the top tier with one big flower
 
 /**
@@ -20,9 +23,9 @@ const MIDDLE = { r: 0.15, flower: 0.095 }; // a round bush on the top tier with 
 function flower(kit: StyleKit, at: Vec3, r: number, color: PaletteColor, turn: number): Part[] {
   const [x, top, z] = at;
   return [
-    kit.cone(r, FLOWER.h, [x, top - FLOWER.h / 2, z], color, { segments: 4, rotate: [Math.PI, turn, 0] }),
-    kit.cone(r, FLOWER.h, [x, top - FLOWER.h / 2, z], color, { segments: 4, rotate: [Math.PI, turn + Math.PI / 4, 0] }),
-    kit.cone(r * 0.42, 0.03, [x, top + 0.005, z], color === 'sunYellow' ? 'orange' : 'sunYellow', { segments: 4, rotate: [Math.PI, turn + Math.PI / 8, 0] }),
+    kit.cone(r, FLOWER.h, [x, top - FLOWER.h / 2, z], color, { segments: 4, rotate: [Math.PI, turn, 0], motion: SWAY }),
+    kit.cone(r, FLOWER.h, [x, top - FLOWER.h / 2, z], color, { segments: 4, rotate: [Math.PI, turn + Math.PI / 4, 0], motion: SWAY }),
+    kit.cone(r * 0.42, 0.03, [x, top + 0.005, z], color === 'sunYellow' ? 'orange' : 'sunYellow', { segments: 4, rotate: [Math.PI, turn + Math.PI / 8, 0], motion: SWAY }),
   ];
 }
 
@@ -53,7 +56,7 @@ export const item: ItemModel = {
     });
     const top = TIERS[2][1];
     parts.push(
-      kit.sphere(MIDDLE.r, [0, top + MIDDLE.r * 0.45, 0], 'leaf', { detail: 0, scale: [1, 0.75, 1] }),
+      kit.sphere(MIDDLE.r, [0, top + MIDDLE.r * 0.45, 0], 'leaf', { detail: 0, scale: [1, 0.75, 1], motion: SWAY }),
       ...flower(kit, [0, top + MIDDLE.r * 0.45 + MIDDLE.r * 0.75 * ICO_LOW + 0.02, 0], MIDDLE.flower, 'pink', 0),
     );
     return kit.finish(parts);

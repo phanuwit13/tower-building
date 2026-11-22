@@ -25,7 +25,7 @@ export const item: ItemModel = {
   build: (kit) => {
     const sideW = (DECK.w - POOL.w) / 2; // deck strip along each long side
     const endD = (DECK.d - POOL.d) / 2; // deck strip across each end
-    const parts: Part[] = [kit.box([POOL.w, WATER_Y, POOL.d], [0, WATER_Y / 2, 0], 'skyBlue')];
+    const parts: Part[] = [kit.box([POOL.w, WATER_Y, POOL.d], [0, WATER_Y / 2, 0], 'skyBlue', { motion: { kind: 'water', water: 'pool' } })];
     for (const s of [1, -1]) {
       parts.push(
         kit.box([sideW, DECK.h, DECK.d], [s * (POOL.w + sideW) / 2, DECK.h / 2, 0], 'stone'),

@@ -5,7 +5,7 @@ import { school } from '../themes/school';
 import { GRID_SIZE, type Placement, type Rotation } from '../game/types';
 import { CHUNK_TILES, CHUNKS_PER_SIDE, chunkOf, createBatch, mergeItems, placementMatrix, planBatch, type BatchItem } from './batch';
 import { placementTransform } from './city';
-import { CULL_MARGIN, MOTION_CODE } from '../models/motion';
+import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE } from '../models/motion';
 import type { ItemModel } from '../models/contract';
 
 const kit = getStyleKit();
@@ -190,7 +190,8 @@ describe('mergeItems with animated items', () => {
     expect(m.glow).not.toBeNull();
     const kinds = new Set(rows(m.body!).map((r) => r.kind));
     expect([...kinds].sort()).toEqual([0, MOTION_CODE.sway]);
-    expect(new Set(rows(m.glow!).map((r) => r.kind))).toEqual(new Set([0, MOTION_CODE.swing]));
+    // anim.x also packs the light pattern (street-lamp breathes): the motion kind is the remainder
+    expect(new Set(rows(m.glow!).map((r) => r.kind % LIGHT_STRIDE))).toEqual(new Set([0, MOTION_CODE.swing]));
   });
 
   it('moves the pivot like a position and turns the axis like a direction (normalised) with the placement', () => {

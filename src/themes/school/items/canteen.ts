@@ -126,7 +126,7 @@ export const item: ItemModel = {
       parts.push(
         kit.cylinder(0.015, 0.015, rodTop - rodBottom, [LAMP.x, (rodTop + rodBottom) / 2, z], 'charcoal', { segments: 4 }),
         kit.cylinder(0.04, 0.1, 0.07, [LAMP.x, LAMP.y + 0.045, z], 'navy', { segments: 8 }),
-        kit.sphere(0.05, [LAMP.x, LAMP.y, z], 'lampWarm', { detail: 0, glow: true }),
+        kit.sphere(0.05, [LAMP.x, LAMP.y, z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
       );
     }
     return kit.finish(parts);

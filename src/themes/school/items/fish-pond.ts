@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 import { ICO_LOW } from '../../../models/parts';
 
@@ -30,6 +31,8 @@ const REEDS: Array<[number, number, number, number]> = [[-0.44, -0.44, 0.5, 0.05
 /** Reed leaves: [x, z, height, lean about x, lean about z]. */
 const REED_LEAVES: Array<[number, number, number, number, number]> = [[-0.4, -0.5, 0.3, 0.3, 0.25], [-0.47, -0.38, 0.26, -0.25, 0.3], [-0.3, -0.58, 0.24, 0.35, -0.2]];
 
+const WATER: MotionOpts = { kind: 'water', water: 'pond' }; // the surface and the lily-pad notches (water-coloured) shimmer together
+
 /** บ่อบัว: a small stone-rimmed pond with lily pads and a few white and pink water lilies. */
 export const item: ItemModel = {
   id: 'fish-pond',
@@ -38,7 +41,7 @@ export const item: ItemModel = {
   footprint: { w: 2, d: 2 },
   build: (kit) => {
     const parts: Part[] = [
-      kit.cylinder(1, 1, WATER_H, [0, WATER_H / 2, 0], 'navy', { segments: 16, scale: [POND.rx, 1, POND.rz] }),
+      kit.cylinder(1, 1, WATER_H, [0, WATER_H / 2, 0], 'navy', { segments: 16, scale: [POND.rx, 1, POND.rz], motion: WATER }),
     ];
     ROCKS.forEach(([s, color], k) => {
       const a = (k / ROCKS.length) * Math.PI * 2;
@@ -52,7 +55,7 @@ export const item: ItemModel = {
         kit.cylinder(r, r, PAD.h, [x, padTop - PAD.h / 2, z], color, { segments: 8 }),
         // the lily-pad notch: a flat water-coloured triangle laid on the pad, from the middle to the edge
         kit.wedge([r * 2 * Math.tan(PAD.notch / 2), r * 1.02, 0.006], [x + (r / 2) * Math.cos(notch), padTop + 0.004, z - (r / 2) * Math.sin(notch)], 'navy',
-          { rotate: [-Math.PI / 2, 0, Math.PI / 2 + notch] }),
+          { rotate: [-Math.PI / 2, 0, Math.PI / 2 + notch], motion: WATER }),
       );
     }
     for (const [i, color] of LILIES) {

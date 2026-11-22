@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 
 // Raised bed, long side along z. Cabbages in the back row (-x), carrots in the front row (+x).
 const BED = { w: 0.84, d: 1.84, h: 0.17, plank: 0.06 }; // outer size of the wooden frame
@@ -9,6 +10,9 @@ const RIDGE = { w: 0.22, h: 0.035 }; // a soil ridge under each row
 const CABBAGE = { x: -0.17, z: [-0.62, -0.21, 0.21, 0.62], r: 0.11 };
 const CARROT = { x: 0.18, z: [-0.68, -0.34, 0, 0.34, 0.68], r: 0.062, h: 0.2, show: 0.07 }; // `show` = how far it sticks up out of the soil
 const TOP_LEAF = { r: 0.032, h: 0.18, spread: 0.42 }; // carrot tops: three thin cones fanning out
+
+// Cabbages and carrot tops sway together about the soil line; the frame, soil and carrot roots stay.
+const SWAY: MotionOpts = { kind: 'sway', pivot: [0, SOIL_TOP + RIDGE.h, 0], amount: 0.12 };
 
 /** แปลงผัก: a raised vegetable bed in a wooden frame, a row of cabbages and a row of carrots. */
 export const item: ItemModel = {
@@ -35,8 +39,8 @@ export const item: ItemModel = {
     const ground = SOIL_TOP + RIDGE.h;
     for (const z of CABBAGE.z) {
       parts.push(
-        kit.sphere(1, [CABBAGE.x, ground + 0.03, z], 'leaf', { detail: 0, scale: [CABBAGE.r * 1.45, 0.06, CABBAGE.r * 1.45] }), // open outer leaves
-        kit.sphere(CABBAGE.r, [CABBAGE.x, ground + CABBAGE.r * 0.85, z], 'lime'), // the round head
+        kit.sphere(1, [CABBAGE.x, ground + 0.03, z], 'leaf', { detail: 0, scale: [CABBAGE.r * 1.45, 0.06, CABBAGE.r * 1.45], motion: SWAY }), // open outer leaves
+        kit.sphere(CABBAGE.r, [CABBAGE.x, ground + CABBAGE.r * 0.85, z], 'lime', { motion: SWAY }), // the round head
       );
     }
     for (const z of CARROT.z) {
@@ -45,7 +49,7 @@ export const item: ItemModel = {
       for (const a of [-1, 0, 1]) {
         // fan the tops across the row (z) so all three show from the front
         parts.push(kit.cone(TOP_LEAF.r, TOP_LEAF.h, [CARROT.x, top + TOP_LEAF.h / 2 - 0.01, z + a * 0.03], a === 0 ? 'leaf' : 'leafDark',
-          { segments: 4, rotate: [a * TOP_LEAF.spread, 0, 0] }));
+          { segments: 4, rotate: [a * TOP_LEAF.spread, 0, 0], motion: SWAY }));
       }
     }
     return kit.finish(parts);

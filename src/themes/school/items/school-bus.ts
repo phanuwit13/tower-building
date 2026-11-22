@@ -85,7 +85,8 @@ export const item: ItemModel = {
     for (const s of [-1, 1]) {
       parts.push(
         kit.cylinder(LIGHT.r, LIGHT.r, 0.04, [BX + s * LIGHT.dx, LIGHT.y, HOOD.z1 + 0.01], 'lampWarm', { rotate: [Math.PI / 2, 0, 0], segments: 8, glow: true }),
-        ...wallPanel(kit, { at: [BX + s * 0.38, 0.44, BODY.z0], facing: 'z-', w: 0.1, h: 0.1, depth: 0.02, color: 'red', glow: true }),
+        // red tail light (a wall panel facing -z: 0.1 x 0.1 x 0.02, back on the body); it blinks slowly at night
+        kit.box([0.1, 0.1, 0.02], [BX + s * 0.38, 0.44, BODY.z0 - 0.01], 'red', { glow: true, light: 'blink' }),
         kit.box([MIRROR.out + 0.02, 0.03, 0.03], [BX + s * (BW / 2 + MIRROR.out / 2), MIRROR.y + 0.06, MIRROR.z], 'charcoal'), // stalk
         kit.box([0.03, 0.12, 0.06], [BX + s * (BW / 2 + MIRROR.out), MIRROR.y, MIRROR.z], 'charcoal'),
         kit.box([MARKER.s, MARKER.s, MARKER.s], [BX + s * MARKER.dx, markerY, BODY.z1 - 0.05], 'orange'),

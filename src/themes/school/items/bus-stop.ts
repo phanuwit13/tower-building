@@ -69,7 +69,7 @@ export const item: ItemModel = {
 
     // bus-stop sign: a round blue sign with a white face (lit at night) and a little bus on it, facing the road
     const disc = (r: number, d: number, front: number, color: PaletteColor, glow = false): Part =>
-      kit.cylinder(r, r, d, [SIGN.x + front - d / 2, SIGN.y, SIGN.z], color, { rotate: [0, 0, Math.PI / 2], segments: 16, glow });
+      kit.cylinder(r, r, d, [SIGN.x + front - d / 2, SIGN.y, SIGN.z], color, { rotate: [0, 0, Math.PI / 2], segments: 16, glow, ...(glow ? { light: 'blink' as const } : {}) });
     const icon = (w: number, h: number, dy: number, dz: number, front: number, color: PaletteColor): Part =>
       kit.box([0.02, h, w], [SIGN.x + front - 0.01, SIGN.y + dy, SIGN.z + dz], color);
     parts.push(
