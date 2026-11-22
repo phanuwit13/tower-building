@@ -216,3 +216,7 @@ PRs are kept reviewable (*call*), each with a Cloudflare preview link:
 - Polygon budget number, rain/meteor particle counts.
 - Exact screen layout and visual design of menus, following §2 Look and feel.
 - Test tooling beyond Vitest (e.g. a browser smoke test for save → refresh → restore).
+
+## Owner changes after approval
+
+- 2026-11-23 — map 20 × 20 (was 10 × 10; ~160 items per round; rounds can span more than one class period, the city is saved); every theme has at least 50 items (was 40).
