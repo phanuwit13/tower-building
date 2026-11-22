@@ -15,8 +15,10 @@ import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
-import { attachFpsOverlay } from './render/debug';
+import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
+import { loadBatch, parseBatchParam } from './render/batchGallery';
+import { school } from './themes/school';
 import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
@@ -61,9 +63,12 @@ function detectQuality(): QualityTier {
 }
 
 function boot(app: HTMLElement): void {
-  const controller = createController({
-    store: browserStore(() => window.localStorage), getTheme, getCatalog, seed: randomSeed, detectQuality,
-  });
+  const realStore = browserStore(() => window.localStorage);
+  // `?demo=full`: a full School map for measuring, played in memory; the player's save is left alone.
+  const demo = parseDemoParam(location.search);
+  const schoolCatalog = getCatalog(school.id);
+  const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
+  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality });
   let tier = controller.getState().quality;
   let appliedKey = '';
 
@@ -80,7 +85,7 @@ function boot(app: HTMLElement): void {
   });
   const thumbnailer = createThumbnailer(kit);
   const fpsMonitor = new FpsMonitor();
-  attachFpsOverlay(stage, () => tier);
+  attachFpsOverlay(stage, () => tier, () => cityView.lastBuildMs());
 
   // Scene: re-applied when settings or tier change (rain counts are per tier).
   const applyScene = (s: AppState): void => {
@@ -227,7 +232,7 @@ function boot(app: HTMLElement): void {
  * nothing is loaded or saved; the settings panel only switches the lighting, ground and tier.
  * An unknown theme id starts the normal game.
  */
-function bootGallery(app: HTMLElement, theme: ThemeDef): void {
+function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
   let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: theme.defaultGround };
   const kit = getStyleKit();
@@ -235,7 +240,7 @@ function bootGallery(app: HTMLElement, theme: ThemeDef): void {
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
-  attachGallery(stage, kit, theme);
+  attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
 
   const apply = (): void => {
     environment.apply(scene, quality);
@@ -258,7 +263,20 @@ function bootGallery(app: HTMLElement, theme: ThemeDef): void {
     },
   });
   app.appendChild(el('div', { class: 'gallery-tools' }, [button(T.settings, openSettings)]));
+  if (devNote) document.body.append(el('p', { class: 'gallery-dev-note', text: devNote }));
   apply();
+}
+
+/** DEV only, `?gallery=batch-<n>`: the School theme reduced to one sculptor batch (module loaded lazily). */
+function bootBatchGallery(app: HTMLElement, n: number): void {
+  loadBatch(n)
+    .then((items) => bootGallery(app, { ...school, name: `โรงเรียน · batch ${n}`, items },
+      items.length === 0 ? `batch ${n} is empty: add items to src/themes/school/batches/b${n}.ts` : undefined))
+    .catch((e: unknown) => {
+      // Covers a failed load and an error thrown while booting the gallery (e.g. an item's build throwing).
+      console.error(`batch ${n} failed`, e);
+      app.append(el('p', { class: 'gallery-dev-note', text: `batch ${n} failed: ${e instanceof Error ? e.message : String(e)}` }));
+    });
 }
 
 const app = document.getElementById('app');
@@ -266,7 +284,9 @@ if (app) {
   try {
     const galleryTheme = new URLSearchParams(location.search).get('gallery');
     const gallery = galleryTheme === null ? undefined : getTheme(galleryTheme);
+    const batch = import.meta.env.DEV ? parseBatchParam(galleryTheme) : null;
     if (!hasWebGL2()) showFatal(app);
+    else if (batch !== null) bootBatchGallery(app, batch);
     else if (gallery) bootGallery(app, gallery);
     else boot(app);
   } catch (e) {

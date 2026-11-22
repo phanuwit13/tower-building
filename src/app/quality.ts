@@ -12,6 +12,7 @@ export function detectTier(info: DeviceInfo): QualityTier {
   const ua = info.userAgent;
   if (/Android|iPhone|iPad|Mobile|CrOS/.test(ua)) return 'smooth';
   if (/Macintosh/.test(ua) && (info.maxTouchPoints ?? 0) > 1) return 'smooth'; // iPadOS posing as a Mac
+  if (info.deviceMemory === undefined && (info.maxTouchPoints ?? 0) > 0) return 'smooth'; // unknown touch device: start safe
   if (info.deviceMemory !== undefined && info.deviceMemory <= 4) return 'smooth';
   if (info.hardwareConcurrency !== undefined && info.hardwareConcurrency <= 4) return 'smooth';
   return 'pretty';

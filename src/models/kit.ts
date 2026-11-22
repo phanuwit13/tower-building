@@ -4,9 +4,20 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
-type Vec3 = [number, number, number];
-interface PartOpts {
+export type Vec3 = [number, number, number];
+/**
+ * Options every primitive takes. A part is built around its own centre (the bounding-box centre;
+ * the ring centre of a torus, the base centre of a dome), then scaled, then rotated, then moved
+ * so that centre lands on `at`.
+ */
+export interface PartOpts {
+  /** Euler XYZ angles in radians. */
   rotate?: Vec3;
+  /**
+   * Stretch along x, y, z before `rotate`: a sphere becomes an ellipsoid, a cylinder an oval
+   * drum. Non-zero; a negative component mirrors the part (its faces still point outwards).
+   */
+  scale?: Vec3;
   /**
    * Lights up at dusk and night. `true` emits the part's own colour; a palette colour makes the
    * surface use `color` by day and emit that colour at night (glass-blue windows, warm glow).
@@ -23,6 +34,22 @@ export interface StyleKit {
   cone(r: number, h: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
   sphere(r: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { detail?: number }): Part;
   /**
+   * Ring (hoop, tyre, wheel, handle, life ring): `radius` from `at` to the middle of the tube,
+   * `tube` the tube's radius. It stands in the x-y plane (axis along z, like a wheel rolling
+   * along x); `rotate: [Math.PI / 2, 0, 0]` lays it flat. `arc` < 2π keeps only the part from +x
+   * round over the top: `arc: Math.PI` is an arch whose open ends stand flat on y = at[1].
+   * Defaults: 6 radial x 12 tubular segments (144 triangles), fewer tubular for a shorter arc.
+   */
+  torus(radius: number, tube: number, at: Vec3, color: PaletteColor,
+    opts?: PartOpts & { radialSegments?: number; tubularSegments?: number; arc?: number }): Part;
+  /**
+   * Closed half sphere, flat base down: `at` is the centre of its base, so it sits on y = at[1]
+   * (rounded roofs, observatories, igloos, habitats). `segments` around (default 12), with
+   * segments / 4 rings from base to top (min 2): 72 triangles by default. A `scale` keeps the base
+   * on at[1].
+   */
+  dome(radius: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
+  /**
    * Triangular prism (gable roof, ramp, slide, tent): base `size[0]` wide along x, `size[1]` tall,
    * `size[2]` long along z; `at` is its bounding-box centre. `apex` moves the ridge across the
    * base, from -0.5 (straight up from the -x edge: a ramp) to 0.5; default 0 (centred). 8 triangles.
@@ -38,6 +65,7 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   for (const name of Object.keys(g.attributes)) {
     if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
   }
+  if (opts?.scale) scaleGeometry(g, opts.scale);
   if (opts?.rotate) {
     g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...opts.rotate)));
   }
@@ -53,6 +81,62 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   const glow = opts?.glow;
   if (glow) fill('glowColor', glow === true ? color : glow);
   return { geometry: g, glow: !!glow };
+}
+
+/** Scale a non-indexed geometry; a mirroring scale also reverses each triangle so it still faces out. */
+function scaleGeometry(g: THREE.BufferGeometry, [x, y, z]: Vec3): void {
+  if (![x, y, z].every((v) => Number.isFinite(v) && v !== 0)) {
+    throw new Error(`style kit: scale must be three non-zero numbers (got ${x}, ${y}, ${z})`);
+  }
+  g.scale(x, y, z); // normals go through the normal matrix and are renormalised
+  if (x * y * z > 0) return;
+  for (const attr of Object.values(g.attributes)) {
+    const a = attr.array;
+    const n = attr.itemSize;
+    for (let t = 0; t < attr.count; t += 3) {
+      for (let k = 0; k < n; k++) {
+        const i = (t + 1) * n + k;
+        const j = (t + 2) * n + k;
+        const tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+      }
+    }
+  }
+}
+
+/** Half sphere of radius r on y = 0 with a flat base: `n` segments around, rings from the top. */
+function domeGeometry(r: number, n: number): THREE.BufferGeometry {
+  const rings = Math.max(2, Math.round(n / 4));
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  // unit point on ring k (0 = top, rings = base edge) at segment j; the base edge is exactly y = 0
+  const pt = (k: number, j: number): Vec3 => {
+    const theta = (k / rings) * (Math.PI / 2);
+    const phi = (j / n) * Math.PI * 2;
+    const s = k === rings ? 1 : Math.sin(theta);
+    const c = k === rings ? 0 : Math.cos(theta);
+    return [s * Math.cos(phi), c, -s * Math.sin(phi)];
+  };
+  const tri = (...vs: Array<[Vec3, Vec3]>) => { // [unit point, normal] pairs, counter-clockwise from outside
+    for (const [p, nv] of vs) { pos.push(p[0] * r, p[1] * r, p[2] * r); nrm.push(...nv); }
+  };
+  const down: Vec3 = [0, -1, 0];
+  const centre: Vec3 = [0, 0, 0];
+  for (let j = 0; j < n; j++) {
+    const top: Vec3 = [0, 1, 0];
+    tri([top, top], [pt(1, j), pt(1, j)], [pt(1, j + 1), pt(1, j + 1)]);
+    for (let k = 1; k < rings; k++) {
+      const a = pt(k, j), b = pt(k, j + 1), c = pt(k + 1, j), d = pt(k + 1, j + 1);
+      tri([a, a], [c, c], [d, d]);
+      tri([a, a], [d, d], [b, b]);
+    }
+    tri([centre, down], [pt(rings, j + 1), down], [pt(rings, j), down]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return g;
 }
 
 function wedgeGeometry([w, h, d]: Vec3, apex: number): THREE.BufferGeometry {
@@ -113,6 +197,14 @@ function createKit(): StyleKit {
     },
     wedge(size, at, color, opts) {
       return prepare(wedgeGeometry(size, opts?.apex ?? 0), at, color, opts);
+    },
+    torus(radius, tube, at, color, opts) {
+      const arc = opts?.arc ?? Math.PI * 2;
+      const tubular = opts?.tubularSegments ?? Math.max(3, Math.round((12 * arc) / (Math.PI * 2)));
+      return prepare(new THREE.TorusGeometry(radius, tube, opts?.radialSegments ?? 6, tubular, arc), at, color, opts);
+    },
+    dome(radius, at, color, opts) {
+      return prepare(domeGeometry(radius, opts?.segments ?? 12), at, color, opts);
     },
     finish(parts) {
       const group = new THREE.Group();

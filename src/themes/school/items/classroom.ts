@@ -1,39 +1,29 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit } from '../../../models/kit';
+import type { Part, Vec3 } from '../../../models/kit';
+import type { PaletteColor } from '../../../models/palette';
+import { door, gableRoof, glassWindow, wallPanel, type Facing } from '../../../models/parts';
 
-// Main block, long side along z. The entrance tower with the clock is on the +x side.
+// Main block, long side along z. The entrance tower with the clock is on the +x side (the front).
 const W = 1.5; // wall width (x)
 const L = 2.7; // wall length (z)
-const PLINTH = 0.08;
+const PLINTH = { h: 0.08, lip: 0.08 }; // stone base; `lip` = how far it sticks out past the walls
 const STOREY = 0.62;
-const WALL_TOP = PLINTH + 2 * STOREY;
+const WALL_TOP = PLINTH.h + 2 * STOREY;
+const BAND = { h: 0.06, lip: 0.03 }; // white band between the floors
+const CORNICE = { h: 0.07, lip: 0.04 }; // white band at the top of the walls
 const PITCH = 0.62; // roof slope, radians (~35°)
 const RISE = (W / 2) * Math.tan(PITCH);
-const RIDGE = WALL_TOP + RISE;
-const EAVE = W / 2 + 0.16; // roof reaches this far out from the ridge
-const SLAB = 0.08; // roof thickness
-const ROOF_L = L + 0.24;
-const TOWER = { x0: 0.5, x1: 0.94, d: 0.72, top: 1.98 };
-const WIN = { w: 0.3, h: 0.32 };
-const ROWS = [PLINTH + STOREY / 2 + 0.02, PLINTH + STOREY * 1.5 + 0.02];
-
-/** A glass-blue window that glows warm at night in a coloured frame on a wall facing +x (side 1) or -x (side -1) at x = ±face. */
-function sideWindow(kit: StyleKit, side: 1 | -1, face: number, y: number, z: number): Part[] {
-  return [
-    kit.box([0.02, WIN.h + 0.08, WIN.w + 0.08], [side * (face + 0.01), y, z], 'teal'),
-    kit.box([0.03, WIN.h, WIN.w], [side * (face + 0.015), y, z], 'skyBlue', { glow: 'windowWarm' }),
-    kit.box([0.04, WIN.h, 0.035], [side * (face + 0.02), y, z], 'teal'),
-  ];
-}
-
-/** Same, on a wall facing +z (side 1) or -z (side -1) at z = ±face. */
-function endWindow(kit: StyleKit, side: 1 | -1, face: number, y: number, x: number): Part[] {
-  return [
-    kit.box([WIN.w + 0.08, WIN.h + 0.08, 0.02], [x, y, side * (face + 0.01)], 'teal'),
-    kit.box([WIN.w, WIN.h, 0.03], [x, y, side * (face + 0.015)], 'skyBlue', { glow: 'windowWarm' }),
-    kit.box([0.035, WIN.h, 0.04], [x, y, side * (face + 0.02)], 'teal'),
-  ];
-}
+const EAVE = 0.16; // roof overhang past the long walls
+const ROOF_END = 0.12; // roof overhang past the end walls
+const WIN = { w: 0.3, h: 0.32, lift: 0.02 }; // window centres sit `lift` above the middle of their storey
+const ROWS = [PLINTH.h + STOREY / 2 + WIN.lift, PLINTH.h + STOREY * 1.5 + WIN.lift];
+const SIDE_Z = [-1.05, -0.6, 0.6, 1.05]; // windows on both long walls; the back (-x) one also has one at z = 0
+const END_X = [-0.36, 0.36]; // windows on each end wall
+const TOWER = { x0: 0.5, x1: 0.94, d: 0.72, top: 1.98, lip: 0.02 }; // x1 = its front wall
+const TOWER_ROOF = { h: 0.34, eave: 0.06, overhang: 0.04 }; // solid wedge, ridge along x: `eave` past the sides (z), `overhang` past front and back
+const DOOR = { w: 0.3, h: 0.44 };
+const STEP = { w: 0.44, h: 0.04, d: 0.05 };
+const CLOCK = { y: 1.68, rim: 0.17, face: 0.14 };
 
 /** อาคารเรียน: a two-storey Thai school building with a clock tower; its windows light up at night. */
 export const item: ItemModel = {
@@ -42,44 +32,40 @@ export const item: ItemModel = {
   category: 'building',
   footprint: { w: 2, d: 3 },
   build: (kit) => {
-    const slabLen = EAVE / Math.cos(PITCH);
-    const slab = (s: 1 | -1): Part => kit.box(
-      [slabLen, SLAB, ROOF_L],
-      [s * (EAVE / 2 + (SLAB / 2) * Math.sin(PITCH)), RIDGE - (EAVE / 2) * Math.tan(PITCH) + (SLAB / 2) * Math.cos(PITCH), 0],
-      'red',
-      { rotate: [0, 0, -s * PITCH] },
-    );
     const parts: Part[] = [
-      kit.box([W + 0.16, PLINTH, L + 0.16], [0, PLINTH / 2, 0], 'stone'),
-      kit.box([W, 2 * STOREY, L], [0, PLINTH + STOREY, 0], 'cream'),
-      kit.box([W + 0.06, 0.06, L + 0.06], [0, PLINTH + STOREY, 0], 'white'),
-      kit.box([W + 0.08, 0.07, L + 0.08], [0, WALL_TOP, 0], 'white'),
-      kit.wedge([W, RISE, L], [0, WALL_TOP + RISE / 2, 0], 'cream'),
-      slab(1),
-      slab(-1),
-      kit.cylinder(0.065, 0.065, ROOF_L + 0.02, [0, RIDGE + 0.05, 0], 'redDark', { rotate: [Math.PI / 2, 0, 0], segments: 8 }), // ridge cap
+      kit.box([W + 2 * PLINTH.lip, PLINTH.h, L + 2 * PLINTH.lip], [0, PLINTH.h / 2, 0], 'stone'),
+      kit.box([W, 2 * STOREY, L], [0, PLINTH.h + STOREY, 0], 'cream'),
+      kit.box([W + 2 * BAND.lip, BAND.h, L + 2 * BAND.lip], [0, PLINTH.h + STOREY, 0], 'white'),
+      kit.box([W + 2 * CORNICE.lip, CORNICE.h, L + 2 * CORNICE.lip], [0, WALL_TOP, 0], 'white'),
+      kit.wedge([W, RISE, L], [0, WALL_TOP + RISE / 2, 0], 'cream'), // gable ends under the roof
+      ...gableRoof(kit, { at: [0, WALL_TOP, 0], length: L + 2 * ROOF_END, width: W, rise: RISE, eave: EAVE, color: 'red', ridge: 'redDark' }),
     ];
-    // windows on both floors: five along the -x side, four on the +x side (the tower takes the middle), two per end
+    // windows on both floors: five along the back (-x), four on the front (the tower takes the middle), two per end
+    const win = (at: Vec3, facing: Facing) => glassWindow(kit, { at, facing, w: WIN.w, h: WIN.h });
     for (const y of ROWS) {
-      for (const z of [-1.05, -0.6, 0.6, 1.05]) parts.push(...sideWindow(kit, 1, W / 2, y, z), ...sideWindow(kit, -1, W / 2, y, z));
-      parts.push(...sideWindow(kit, -1, W / 2, y, 0));
-      for (const x of [-0.36, 0.36]) parts.push(...endWindow(kit, 1, L / 2, y, x), ...endWindow(kit, -1, L / 2, y, x));
+      for (const z of SIDE_Z) parts.push(...win([W / 2, y, z], 'x+'), ...win([-W / 2, y, z], 'x-'));
+      parts.push(...win([-W / 2, y, 0], 'x-'));
+      for (const x of END_X) parts.push(...win([x, y, L / 2], 'z+'), ...win([x, y, -L / 2], 'z-'));
     }
-    // entrance tower: door, a window above it, a clock near the top and its own little roof
+    // entrance tower: door and step, a window above, a clock near the top and its own little roof
     const tw = TOWER.x1 - TOWER.x0;
     const tx = (TOWER.x0 + TOWER.x1) / 2;
+    /** A clock disc facing +x, centred `out` in front of the tower's front wall. */
+    const disc = (r: number, depth: number, out: number, color: PaletteColor): Part =>
+      kit.cylinder(r, r, depth, [TOWER.x1 + out, CLOCK.y, 0], color, { rotate: [0, 0, Math.PI / 2], segments: 16 });
     parts.push(
       kit.box([tw, TOWER.top, TOWER.d], [tx, TOWER.top / 2, 0], 'cream'),
-      kit.box([tw + 0.04, 0.06, TOWER.d + 0.04], [tx, PLINTH + STOREY, 0], 'white'),
-      kit.box([tw + 0.04, 0.07, TOWER.d + 0.04], [tx, TOWER.top, 0], 'white'),
-      kit.wedge([TOWER.d + 0.12, 0.34, tw + 0.08], [tx, TOWER.top + 0.035 + 0.17, 0], 'red', { rotate: [0, Math.PI / 2, 0] }),
-      kit.box([0.03, 0.44, 0.3], [TOWER.x1 + 0.015, PLINTH + 0.22, 0], 'woodDark'),
-      kit.box([0.05, 0.04, 0.44], [TOWER.x1 + 0.025, 0.02, 0], 'stone'),
-      ...sideWindow(kit, 1, TOWER.x1, ROWS[1], 0),
-      kit.cylinder(0.17, 0.17, 0.03, [TOWER.x1 + 0.015, 1.68, 0], 'sunYellow', { rotate: [0, 0, Math.PI / 2], segments: 16 }),
-      kit.cylinder(0.14, 0.14, 0.02, [TOWER.x1 + 0.035, 1.68, 0], 'white', { rotate: [0, 0, Math.PI / 2], segments: 16 }),
-      kit.box([0.015, 0.1, 0.025], [TOWER.x1 + 0.05, 1.72, 0], 'navy'),
-      kit.box([0.015, 0.025, 0.08], [TOWER.x1 + 0.05, 1.68, 0.035], 'navy'),
+      kit.box([tw + 2 * TOWER.lip, BAND.h, TOWER.d + 2 * TOWER.lip], [tx, PLINTH.h + STOREY, 0], 'white'),
+      kit.box([tw + 2 * TOWER.lip, CORNICE.h, TOWER.d + 2 * TOWER.lip], [tx, TOWER.top, 0], 'white'),
+      kit.wedge([TOWER.d + 2 * TOWER_ROOF.eave, TOWER_ROOF.h, tw + 2 * TOWER_ROOF.overhang],
+        [tx, TOWER.top + CORNICE.h / 2 + TOWER_ROOF.h / 2, 0], 'red', { rotate: [0, Math.PI / 2, 0] }),
+      ...door(kit, { at: [TOWER.x1, PLINTH.h + DOOR.h / 2, 0], facing: 'x+', ...DOOR, color: 'woodDark' }),
+      ...wallPanel(kit, { at: [TOWER.x1, STEP.h / 2, 0], facing: 'x+', w: STEP.w, h: STEP.h, depth: STEP.d, color: 'stone' }),
+      ...win([TOWER.x1, ROWS[1], 0], 'x+'),
+      disc(CLOCK.rim, 0.03, 0.015, 'sunYellow'),
+      disc(CLOCK.face, 0.02, 0.035, 'white'),
+      kit.box([0.015, 0.1, 0.025], [TOWER.x1 + 0.05, CLOCK.y + 0.04, 0], 'navy'), // hour hand, pointing up
+      kit.box([0.015, 0.025, 0.08], [TOWER.x1 + 0.05, CLOCK.y, 0.035], 'navy'), // minute hand, pointing sideways
     );
     return kit.finish(parts);
   },

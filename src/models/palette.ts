@@ -17,17 +17,20 @@ export const PALETTE = {
   cream: '#f4e3c1',
   stone: '#bcc2cb',
   stoneDark: '#7f8898',
+  chrome: '#94a8c2', // polished metal: taps, spouts, rails (bluer and lighter than stoneDark)
   charcoal: '#3e4456',
   // earth
   sand: '#e8c78e',
   wood: '#c4874f',
   woodDark: '#8a5935',
   bark: '#5a3a22', // shaded bark, chocolate, soil
+  terracotta: '#c0603a', // clay pots, bricks, roof tiles
   // warm
   red: '#e5534b',
   redDark: '#b03a3c',
   orange: '#f4923a',
   sunYellow: '#ffc83d',
+  brass: '#c9962c', // dark yellow metal: bells, trumpets, lamp fittings, a deep gold
   pink: '#f59ac2',
   purple: '#9b78d8',
   // greens (leaf is darker and bluer than the grass ground so plants stand out on it)

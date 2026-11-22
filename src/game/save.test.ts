@@ -4,7 +4,7 @@ import {
   clearGame, loadGame, loadQuality, QUALITY_KEY, SAVE_KEY, SAVE_VERSION, saveGame, saveQuality,
   type KeyValueStore,
 } from './save';
-import type { Catalog, GameState, SceneSettings } from './types';
+import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
 
 const settings: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass' };
 const catalog: Catalog = {
@@ -108,8 +108,8 @@ describe('loadGame returns null', () => {
     expect(loadWith((s) => { s.settings = null; })).toBeNull();
   });
   it('on out-of-bounds placement', () => {
-    expect(loadWith((s) => { s.placements[0].x = 10; })).toBeNull();
-    expect(loadWith((s) => { s.placements[0].z = 9; s.placements[0].itemId = 'd'; })).toBeNull();
+    expect(loadWith((s) => { s.placements[0].x = GRID_SIZE; })).toBeNull();
+    expect(loadWith((s) => { s.placements[0].z = GRID_SIZE - 1; s.placements[0].itemId = 'd'; })).toBeNull();
     expect(loadWith((s) => { s.placements[0].x = -1; })).toBeNull();
   });
   it('on overlapping placements', () => {
@@ -166,12 +166,28 @@ describe('clearGame and quality', () => {
   });
 });
 
+describe('loadGame with a map-size change', () => {
+  it('a game saved on the old 10 x 10 map (items in its corner) still loads, unchanged', () => {
+    const placements = [
+      { uid: 1, itemId: 'd', x: 8, z: 7, rotation: 0 as const }, // flush with the old far edge
+      { uid: 2, itemId: 'a', x: 7, z: 9, rotation: 0 as const },
+    ];
+    const state: GameState = {
+      themeId: 't', settings, placements, bag: ['b'], rng: 5,
+      current: 'c', next: 'a', status: 'playing', nextUid: 3,
+    };
+    const store = memStore();
+    saveGame(store, state);
+    expect(loadGame(store, getCatalog)).toEqual(state);
+  });
+});
+
 describe('loadGame status re-check', () => {
   it('marks a saved playing round finished when the current item fits nowhere', () => {
     const placements = [];
     let uid = 1;
-    for (let z = 0; z < 10; z++) for (let x = 0; x < 10; x++) {
-      if (z >= 8 && x < 2) continue;
+    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
+      if (z >= GRID_SIZE - 2 && x < 2) continue;
       placements.push({ uid: uid++, itemId: 'a', x, z, rotation: 0 as const });
     }
     const state: GameState = {

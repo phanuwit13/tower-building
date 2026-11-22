@@ -4,6 +4,7 @@ import { getStyleKit } from './kit';
 import { validateItemModel, validateTheme } from './validate';
 import type { ItemModel } from './contract';
 import type { ThemeDef } from '../themes/types';
+import { school } from '../themes/school';
 
 const kit = getStyleKit();
 
@@ -167,5 +168,30 @@ describe('validateItemModel glow attributes', () => {
       },
     });
     expect(validateItemModel(m, kit).join('|')).toContain('exactly');
+  });
+});
+
+describe('validateItemModel footprint coverage', () => {
+  const sized = (w: number, d: number, sx: number, sz: number) => model({
+    footprint: { w, d },
+    build: (k) => k.finish([k.box([sx, 0.5, sz], [0, 0.25, 0], 'cream')]),
+  });
+  it('rejects an under-scaled 2x3 item (spans 1.0 x 1.5), naming both axes', () => {
+    const errs = validateItemModel(sized(2, 3, 1, 1.5), kit).filter((e) => e.includes('spans'));
+    expect(errs).toHaveLength(2);
+    expect(errs[0]).toContain('"sample"');
+    expect(errs[0]).toContain('1.00 of its 2 tiles along x (needs at least 1.40)');
+    expect(errs[1]).toContain('1.50 of its 3 tiles along z (needs at least 2.40)');
+  });
+  it('checks only axes of 2 or more tiles, and accepts exactly n - 0.6', () => {
+    expect(validateItemModel(sized(1, 1, 0.2, 0.2), kit)).toEqual([]);
+    expect(validateItemModel(sized(1, 2, 0.2, 1.4), kit)).toEqual([]);
+    expect(validateItemModel(sized(2, 1, 1.4, 0.2), kit)).toEqual([]);
+    expect(validateItemModel(sized(1, 2, 0.9, 1.3), kit).join('|')).toContain('along z');
+    expect(validateItemModel(sized(2, 1, 1.3, 0.9), kit).join('|')).toContain('along x');
+  });
+  it('all 50 School items pass every rule', () => {
+    expect(school.items).toHaveLength(50);
+    for (const it of school.items) expect(validateItemModel(it, kit)).toEqual([]);
   });
 });

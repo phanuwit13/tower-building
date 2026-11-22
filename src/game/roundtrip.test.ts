@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { newGame, placeCurrent } from './game';
 import { nearestFreeSpot, buildOccupancy } from './grid';
 import { loadGame, saveGame, type KeyValueStore } from './save';
-import type { Catalog, GameState, SceneSettings } from './types';
+import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
 
 const settings: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass' };
 const catalog: Catalog = {
@@ -43,10 +43,10 @@ for (const seed of [1, 2, 3, 42, 99]) {
       const fp = catalog.items[s.current].footprint;
       const occ = buildOccupancy(s.placements, catalog);
       let r: 0 | 1 = 0;
-      let spot = nearestFreeSpot(occ, fp, 0, 5, 5);
+      let spot = nearestFreeSpot(occ, fp, 0, GRID_SIZE / 2, GRID_SIZE / 2);
       if (!spot) {
         r = 1;
-        spot = nearestFreeSpot(occ, fp, 1, 5, 5);
+        spot = nearestFreeSpot(occ, fp, 1, GRID_SIZE / 2, GRID_SIZE / 2);
       }
       expect(spot).not.toBeNull();
       const n = placeCurrent(s, catalog, spot!.x, spot!.z, r);

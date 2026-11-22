@@ -21,3 +21,13 @@ export function browserStore(getStorage: () => KeyValueStore): KeyValueStore {
     };
   }
 }
+
+/** A store that lives only in memory, starting from a copy of `seed` (the `?demo=full` round). */
+export function memoryStore(seed: Readonly<Record<string, string>>): KeyValueStore {
+  const map = new Map(Object.entries(seed));
+  return {
+    getItem: (k) => map.get(k) ?? null,
+    setItem: (k, v) => void map.set(k, v),
+    removeItem: (k) => void map.delete(k),
+  };
+}

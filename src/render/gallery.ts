@@ -7,12 +7,17 @@ import { button, el } from '../ui/dom';
 import { sizeLabel } from '../ui/strings';
 import { placementTransform } from './city';
 import type { Stage } from './stage';
+import { createThumbnailer } from './thumbnails';
 
 /** An item shown in the gallery at rotation 0; (x, z) is its min-corner tile, as in a placement. */
 export interface GallerySlot { item: ItemModel; x: number; z: number }
 
-const GAP = 1; // empty tiles between items in a row
-const ROW_GAP = 1; // empty tiles between rows: the labels sit here
+const GAP = 2; // empty tiles between items in a row: a label is ~130 px wide, so neighbours need two tiles at the page zoom
+const ROW_GAP = 3; // empty tiles between rows: the labels (thumbnail + text) sit here
+/** Review pages are 10 x 10 tiles on purpose (labels stay readable; not tied to the map size); the page is framed by its own bounds. */
+const GALLERY_PAGE = 10;
+/** Labels are fixed-size on screen, so a page with more items than this has colliding labels (seen at 15 small items). */
+const MAX_PER_PAGE = 5;
 const BIG = 4; // footprint area from which an item goes in the back rows
 
 /**
@@ -20,7 +25,7 @@ const BIG = 4; // footprint area from which an item goes in the back rows
  * small ones the front rows (so nothing tall hides a small item from the default camera); each
  * row is centred, items in a row share a front edge, and a page holds as many rows as fit.
  */
-export function galleryPages(items: readonly ItemModel[], size = GRID_SIZE): GallerySlot[][] {
+export function galleryPages(items: readonly ItemModel[], size = GALLERY_PAGE): GallerySlot[][] {
   const rows: ItemModel[][] = [];
   for (const band of [items.filter((i) => i.footprint.w * i.footprint.d >= BIG), items.filter((i) => i.footprint.w * i.footprint.d < BIG)]) {
     let row: ItemModel[] = [];
@@ -47,7 +52,7 @@ export function galleryPages(items: readonly ItemModel[], size = GRID_SIZE): Gal
   };
   for (const row of rows) {
     const depth = Math.max(...row.map((i) => i.footprint.d));
-    if (page.length > 0 && z + depth > size) {
+    if (page.length > 0 && (z + depth > size || page.length + row.length > MAX_PER_PAGE)) {
       finish();
       page = [];
       z = 0;
@@ -64,12 +69,49 @@ export function galleryPages(items: readonly ItemModel[], size = GRID_SIZE): Gal
   return pages;
 }
 
+/** Pure: the triangle budget of a footprint; the same formula validateItemModel enforces. */
+export function triangleBudget(fp: { w: number; d: number }): number {
+  return 800 + 400 * fp.w * fp.d;
+}
+
+/** Pure: triangles in every mesh under an object, as validateItemModel counts them. */
+export function countTriangles(obj: THREE.Object3D): number {
+  let n = 0;
+  obj.traverse((o) => {
+    if (!(o as THREE.Mesh).isMesh) return;
+    const g = (o as THREE.Mesh).geometry;
+    n += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+  });
+  return n;
+}
+
+/** Pure: the "used / budget" label text, e.g. `612 / 2,400` (fixed locale so it reads the same everywhere). */
+export function budgetLabel(used: number, fp: { w: number; d: number }): string {
+  return `${used.toLocaleString('en-US')} / ${triangleBudget(fp).toLocaleString('en-US')}`;
+}
+
+/** Pure: the item with this id, for `&item=<id>`; undefined when there is none. */
+export function selectItem(items: readonly ItemModel[], id: string | null): ItemModel | undefined {
+  return id === null ? undefined : items.find((i) => i.id === id);
+}
+
 /**
  * `?gallery=<themeId>`: every item of a theme laid out on the map with a Thai label under it, the
  * camera framing them, page by page. A review tool for the owner and for sculpting new items.
  */
-export function attachGallery(stage: Stage, kit: StyleKit, theme: ThemeDef): { pageCount: number; showPage(i: number): void } {
-  const pages = galleryPages(theme.items);
+export function attachGallery(
+  stage: Stage, kit: StyleKit, theme: ThemeDef, opts: { itemId?: string | null } = {},
+): { pageCount: number; showPage(i: number): void } {
+  // Gallery-only camera: panning and close-ups (game mode keeps the stage's own limits).
+  stage.controls.enablePan = true;
+  stage.controls.minDistance = 2;
+  const only = selectItem(theme.items, opts.itemId ?? null);
+  const unknownItem = opts.itemId != null && !only;
+  if (unknownItem) console.warn(`gallery: unknown item id "${opts.itemId}", showing every item`);
+  const pages = only
+    ? [[{ item: only, x: Math.floor((GRID_SIZE - only.footprint.w) / 2), z: Math.floor((GRID_SIZE - only.footprint.d) / 2) }]]
+    : galleryPages(theme.items);
+  const thumbs = createThumbnailer(kit);
   // The stage's starting camera direction: items are reviewed the way kids first see them.
   const viewDir = stage.camera.position.clone().sub(stage.controls.target).normalize();
   const root = new THREE.Group();
@@ -89,10 +131,12 @@ export function attachGallery(stage: Stage, kit: StyleKit, theme: ThemeDef): { p
     pager,
   ]);
   document.body.append(labelLayer, head);
+  if (unknownItem) head.append(el('small', { class: 'gallery-note', text: `unknown item id: ${opts.itemId}` }));
 
   interface Shown { object: THREE.Object3D; bounds: THREE.Box3; label: HTMLElement }
   let shown: Shown[] = [];
   let current = 0;
+  let pageBox = new THREE.Box3();
 
   function showPage(i: number): void {
     if (pages.length === 0) return;
@@ -112,10 +156,17 @@ export function attachGallery(stage: Stage, kit: StyleKit, theme: ThemeDef): { p
       box.union(bounds);
       const { w, d } = slot.item.footprint;
       // the footprint and a strip in front of it, where the label goes
-      box.expandByPoint(new THREE.Vector3(slot.x, 0, slot.z)).expandByPoint(new THREE.Vector3(slot.x + w + 0.5, 0, slot.z + d + 0.5));
+      box.expandByPoint(new THREE.Vector3(slot.x, 0, slot.z)).expandByPoint(new THREE.Vector3(slot.x + w + 0.5, 0, slot.z + d + 2.5));
+      const thumb = el('img', { class: 'gallery-thumb' });
+      thumb.alt = '';
+      const url = thumbs.get(slot.item);
+      if (url) thumb.src = url;
+      else thumb.hidden = true;
       const label = el('div', { class: 'gallery-label' }, [
+        thumb,
         el('strong', { text: slot.item.name }),
         el('span', { text: `${sizeLabel(slot.item.footprint)} · ${slot.item.id}` }),
+        el('span', { class: 'gallery-tris', text: `${budgetLabel(countTriangles(object), slot.item.footprint)} tris` }),
       ]);
       labelLayer.appendChild(label);
       return { object, bounds, label };
@@ -123,6 +174,8 @@ export function attachGallery(stage: Stage, kit: StyleKit, theme: ThemeDef): { p
     pageText.textContent = `หน้า ${current + 1}/${pages.length}`;
     prev.disabled = current === 0;
     next.disabled = current === pages.length - 1;
+    pageBox = box;
+    stage.invalidateShadows(); // new models on the map
     frame(box);
   }
 
@@ -162,6 +215,14 @@ export function attachGallery(stage: Stage, kit: StyleKit, theme: ThemeDef): { p
       s.label.style.transform = `translate(${left.toFixed(1)}px, ${(rect.top + bottom + 4).toFixed(1)}px) translateX(-50%)`;
     }
   });
+
+  // Re-frame the page when the window changes size (the stage updates the camera aspect first).
+  let lastSize = '';
+  new ResizeObserver(() => {
+    const size = `${stage.canvas.clientWidth}x${stage.canvas.clientHeight}`;
+    if (lastSize !== '' && size !== lastSize && shown.length > 0) frame(pageBox);
+    lastSize = size;
+  }).observe(stage.canvas);
 
   showPage(0);
   return { pageCount: pages.length, showPage };

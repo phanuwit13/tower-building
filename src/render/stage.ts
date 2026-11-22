@@ -16,6 +16,13 @@ export interface Stage {
   setQuality(q: QualityTier): void;
   onFrame(cb: (dtMs: number, nowMs: number) => void): void;
   renderNow(): void;
+  /**
+   * Re-render the sun's shadow map on the next frame. Shadows are drawn only on change, so call
+   * this whenever a shadow caster or the sun changes: placements, time of day, weather, tier.
+   */
+  invalidateShadows(): void;
+  /** Draw calls and triangles of the last animation frame, every pass included (shadow map, AO, bloom). */
+  frameStats(): { calls: number; triangles: number };
 }
 
 interface TierSettings {
@@ -32,8 +39,8 @@ interface TierSettings {
  * sampling radius on a bigger map instead.
  */
 const TIERS: Record<QualityTier, TierSettings> = {
-  pretty: { maxPixelRatio: 1.5, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 3, postProcessing: true },
-  smooth: { maxPixelRatio: 1, shadowType: THREE.PCFShadowMap, shadowSize: 1024, shadowRadius: 1, postProcessing: false },
+  pretty: { maxPixelRatio: 1.5, shadowType: THREE.PCFShadowMap, shadowSize: 4096, shadowRadius: 3, postProcessing: true },
+  smooth: { maxPixelRatio: 1, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 1, postProcessing: false },
 };
 
 /** Size a light's shadow map for a tier; a resized map is dropped so three rebuilds it. */
@@ -47,6 +54,19 @@ export function setShadowTier(shadow: THREE.LightShadow, q: QualityTier): void {
 }
 
 const MAP_CENTER = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+
+/**
+ * Camera limits, all in multiples of the map size so they follow GRID_SIZE. The default view looks
+ * from the +x/+z corner (direction 6:13:6) far enough back that the whole map fits a 16:10 screen;
+ * zooming in reaches a distance where one 1 x 1 tile is about 150 px on a 768 px tall tablet.
+ */
+export const CAMERA = {
+  fov: 40,
+  direction: new THREE.Vector3(6, 13, 6).normalize(),
+  distance: GRID_SIZE * 2.05,
+  minDistance: 6,
+  maxDistance: GRID_SIZE * 2.8,
+} as const;
 /**
  * Lights are authored dimmer and the exposure raised to match, so lit daytime surfaces stay under
  * the bloom threshold (0.85, measured before exposure) and only glowing parts bloom.
@@ -76,18 +96,23 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = EXPOSURE;
   renderer.shadowMap.enabled = true;
+  // Placed items never move, so the shadow map is redrawn only when something invalidates it
+  // (the scene and AO passes would otherwise redraw it two or three times every frame).
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true; // the first frame
+  renderer.info.autoReset = false; // the loop resets it once per frame, so a frame's passes add up
   const canvas = renderer.domElement;
   container.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
-  camera.position.set(16, 13, 16);
+  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 300);
+  camera.position.copy(MAP_CENTER).addScaledVector(CAMERA.direction, CAMERA.distance);
 
   const controls = new OrbitControls(camera, canvas);
   controls.target.copy(MAP_CENTER);
   controls.enablePan = false;
-  controls.minDistance = 8;
-  controls.maxDistance = 26;
+  controls.minDistance = CAMERA.minDistance;
+  controls.maxDistance = CAMERA.maxDistance;
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = 1.25;
   controls.enableDamping = true;
@@ -97,6 +122,9 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   let width = 1;
   let height = 1;
   let composer: EffectComposer | null = null;
+
+  const invalidateShadows = () => { renderer.shadowMap.needsUpdate = true; };
+  canvas.addEventListener('webglcontextrestored', invalidateShadows); // the restored map is empty
 
   const pixelRatio = (t: TierSettings) => Math.min(window.devicePixelRatio || 1, t.maxPixelRatio);
 
@@ -134,6 +162,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false); // CSS owns the canvas's display size
     composer?.setSize(w, h);
+    invalidateShadows();
   };
 
   const renderComposed = (c: EffectComposer) => {
@@ -150,6 +179,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   };
 
   const frameCallbacks: Array<(dtMs: number, nowMs: number) => void> = [];
+  const stats = { calls: 0, triangles: 0 };
 
   const stage: Stage = {
     renderer, scene, camera, controls, canvas,
@@ -171,11 +201,14 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
         composer.setPixelRatio(renderer.getPixelRatio());
         composer.setSize(width, height);
       }
+      invalidateShadows(); // a new map size starts empty
     },
     onFrame(cb) {
       frameCallbacks.push(cb);
     },
     renderNow: render,
+    invalidateShadows,
+    frameStats: () => ({ ...stats }),
   };
 
   new ResizeObserver(resize).observe(container);
@@ -188,7 +221,10 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     last = now;
     for (const cb of frameCallbacks) cb(dt, now);
     controls.update();
+    renderer.info.reset();
     render();
+    stats.calls = renderer.info.render.calls;
+    stats.triangles = renderer.info.render.triangles;
   });
 
   return stage;

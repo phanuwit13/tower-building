@@ -3,7 +3,7 @@ import { newGame, placeCurrent, restartGame, withSettings } from '../game/game';
 import {
   clearGame, loadGame, loadQuality, saveGame, saveQuality, type KeyValueStore,
 } from '../game/save';
-import type { Catalog, GameState, QualityTier, Rotation, SceneSettings } from '../game/types';
+import { GRID_SIZE, type Catalog, type GameState, type QualityTier, type Rotation, type SceneSettings } from '../game/types';
 import type { ThemeDef, ThemeId } from '../themes/types';
 
 export interface GhostState { x: number; z: number; rotation: Rotation; valid: boolean }
@@ -109,14 +109,14 @@ export function createController(deps: ControllerDeps): Controller {
       }
       const occ = buildOccupancy(p.game.placements, p.catalog);
       for (const r of [0, 1] as const) {
-        const spot = nearestFreeSpot(occ, fp, r, 5, 5);
+        const spot = nearestFreeSpot(occ, fp, r, GRID_SIZE / 2, GRID_SIZE / 2);
         if (spot) {
           emit({ ...state, ghost: ghostAt(p.game, p.catalog, r, spot.x, spot.z) });
           return;
         }
       }
       const { w, d } = fp;
-      emit({ ...state, ghost: ghostAt(p.game, p.catalog, 0, Math.round(5 - w / 2), Math.round(5 - d / 2)) });
+      emit({ ...state, ghost: ghostAt(p.game, p.catalog, 0, Math.round(GRID_SIZE / 2 - w / 2), Math.round(GRID_SIZE / 2 - d / 2)) });
     },
     rotateGhost() {
       const p = playing();

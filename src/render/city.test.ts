@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { GRID_SIZE } from '../game/types';
 import { placementTransform } from './city';
 import { isTap, rayToTile } from './input';
 
@@ -21,8 +22,8 @@ test('tap needs <= 6 px and <= 400 ms', () => {
 
 test('ray to tile hits y=0, rejects off-map and upward rays', () => {
   expect(rayToTile({ x: 3.5, y: 5, z: 7.2 }, { x: 0, y: -1, z: 0 })).toEqual({ tx: 3, tz: 7 });
-  expect(rayToTile({ x: 12, y: 5, z: 2 }, { x: 0, y: -1, z: 0 })).toBeNull();
-  expect(rayToTile({ x: 12, y: 5, z: -2 }, { x: 0, y: -1, z: 0 }, true)).toEqual({ tx: 9, tz: 0 });
+  expect(rayToTile({ x: GRID_SIZE + 2, y: 5, z: 2 }, { x: 0, y: -1, z: 0 })).toBeNull();
+  expect(rayToTile({ x: GRID_SIZE + 2, y: 5, z: -2 }, { x: 0, y: -1, z: 0 }, true)).toEqual({ tx: GRID_SIZE - 1, tz: 0 });
   expect(rayToTile({ x: 1, y: 5, z: 1 }, { x: 0, y: 1, z: 0 })).toBeNull();
   expect(rayToTile({ x: 0, y: 4, z: 0 }, { x: 1, y: -1, z: 1 })).toEqual({ tx: 4, tz: 4 });
 });

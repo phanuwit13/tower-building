@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, placeCurrent, restartGame, withSettings } from './game';
-import type { Catalog, GameState, SceneSettings } from './types';
+import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
 
 const settings: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass' };
 const catalog: Catalog = {
@@ -43,18 +43,18 @@ describe('placeCurrent', () => {
     expect(placeCurrent(n, catalog, 0, 0, 0)).toBeNull();
   });
   it('finishes when the new current fits nowhere', () => {
-    // Fill the whole grid except a single 2x2 hole at x 0-1, z 8-9: no 2x3/3x2 gap remains.
+    // Fill the whole grid except a single 2x2 hole at x 0-1, z N-2..N-1: no 2x3/3x2 gap remains.
     const placements = [];
     let uid = 1;
-    for (let z = 0; z < 10; z++) for (let x = 0; x < 10; x++) {
-      if (z >= 8 && x < 2) continue; // 2x2 hole only
+    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
+      if (z >= GRID_SIZE - 2 && x < 2) continue; // 2x2 hole only
       placements.push({ uid: uid++, itemId: 'a', x, z, rotation: 0 as const });
     }
     const state: GameState = {
       themeId: 't', settings, placements, bag: ['b'], rng: 5,
       current: 'a', next: 'd', status: 'playing', nextUid: uid,
     };
-    const n = placeCurrent(state, catalog, 0, 8, 0)!;
+    const n = placeCurrent(state, catalog, 0, GRID_SIZE - 2, 0)!;
     expect(n).not.toBeNull();
     expect(n.current).toBe('d');
     expect(n.status).toBe('finished');

@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { TIME_IDS, WEATHER_IDS } from '../game/types';
-import { acesFilmic, envPreset } from './environment';
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
+import { getStyleKit } from '../models/kit';
+import { acesFilmic, createEnvironment, envPreset } from './environment';
+import { CAMERA, type Stage } from './stage';
 
 const ALL = TIME_IDS.flatMap((time) => WEATHER_IDS.map((weather) => ({ time, weather })));
 
@@ -53,6 +56,11 @@ describe('envPreset', () => {
     }
   });
 
+  it('never fogs out the far corner of the map, even zoomed out as far as allowed', () => {
+    const farCorner = CAMERA.maxDistance + (GRID_SIZE * Math.SQRT2) / 2;
+    for (const { time, weather } of ALL) expect(envPreset(time, weather).fogFar, `${time} ${weather}`).toBeGreaterThan(farCorner);
+  });
+
   it('keeps every preset usable: fog ends after it starts, lights on, sun above the horizon', () => {
     for (const { time, weather } of ALL) {
       const p = envPreset(time, weather);
@@ -92,5 +100,20 @@ describe('acesFilmic', () => {
       expect(r).toBeGreaterThan(prev);
       prev = r;
     }
+  });
+});
+
+describe('createEnvironment', () => {
+  it('asks for a shadow update on every apply: time and weather move the sun, the tier resizes its map', () => {
+    const invalidateShadows = vi.fn();
+    const stage = { scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows } as unknown as Stage;
+    const env = createEnvironment(stage, getStyleKit());
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'pretty');
+    env.apply({ weather: 'sunny', time: 'dusk', ground: 'grass' }, 'pretty');
+    env.apply({ weather: 'rain', time: 'dusk', ground: 'grass' }, 'smooth');
+    expect(invalidateShadows).toHaveBeenCalledTimes(3);
+    const sun = stage.scene.children.find((c): c is THREE.DirectionalLight => c instanceof THREE.DirectionalLight)!;
+    expect(sun.shadow.mapSize.x).toBe(2048); // smooth
+    getStyleKit().setGlowStrength(0);
   });
 });
