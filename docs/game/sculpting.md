@@ -75,7 +75,7 @@ Items can move and glow in patterns. It is all done on the graphics card from op
 **`opts.light`** on glow parts only (a glow part is one with `glow` set; `light` on a part without it throws):
 
 - `'steady'` (the default).
-- `'breathe'`: the brightness rises and falls slowly (about 3 s, between 65 % and 100 %). For lamps. A near-white globe breathes mildly: that is the tone mapping, not a bug.
+- `'breathe'`: the brightness rises and falls slowly (about 3 s, between 22 % and 100 %). For lamps. The dip is deep on purpose: tone mapping flattens a near-white globe, so a shallower dip would look static on the smooth tier.
 - `'blink'`: on and off, 1.4 s a cycle (on for 55 %, dim when off). For signs and beacons. Blinking is never faster than 3 Hz, so a blink can never flash.
 - `'window'`: steady, but every pane is a slightly different brightness (plus or minus 15 %), so a building's windows are not a flat wall of light. `glassWindow` already does this on every pane; you only write it yourself for your own glass.
 - Lights only animate while the lights are on (dusk and night). In the day they look the same as a plain glow.
