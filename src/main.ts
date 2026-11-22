@@ -11,6 +11,7 @@ import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
+import { attachFpsOverlay } from './render/debug';
 import { createStage } from './render/stage';
 
 const app = document.getElementById('app');
@@ -22,7 +23,11 @@ if (app) {
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
 
+  let currentTier: QualityTier = quality;
+  attachFpsOverlay(stage, () => currentTier);
+
   const show = (s: SceneSettings, q: QualityTier) => {
+    currentTier = q;
     stage.setQuality(q);
     environment.apply(s, q);
     ground.setGround(s.ground, s.weather === 'rain');

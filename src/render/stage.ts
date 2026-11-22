@@ -32,7 +32,7 @@ interface TierSettings {
  * sampling radius on a bigger map instead.
  */
 const TIERS: Record<QualityTier, TierSettings> = {
-  pretty: { maxPixelRatio: 2, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 3, postProcessing: true },
+  pretty: { maxPixelRatio: 1.5, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 3, postProcessing: true },
   smooth: { maxPixelRatio: 1, shadowType: THREE.PCFShadowMap, shadowSize: 1024, shadowRadius: 1, postProcessing: false },
 };
 
