@@ -115,12 +115,28 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     hoverTz = tz;
     opts.onHover?.(tx < 0 ? null : { tx, tz });
   };
+  let lastX = 0;
+  let lastY = 0;
+  let overCanvas = false; // a free mouse last reported a position over the canvas
   const hideHover = (): void => setHover(-1, -1);
-  const updateHover = (e: PointerEvent): void => {
-    if (e.pointerType !== 'mouse' || e.buttons !== 0 || opts.isBlocked?.()) { hideHover(); return; }
-    aim(e);
+  const hoverAt = (x: number, y: number): void => {
+    if (opts.isBlocked?.()) { hideHover(); return; }
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((x - r.left) / r.width) * 2 - 1, -(((y - r.top) / r.height) * 2 - 1));
+    ray.setFromCamera(ndc, camera);
     const tile = rayToTile(ray.ray.origin, ray.ray.direction, false, hoverOut);
     if (tile) setHover(tile.tx, tile.tz); else hideHover();
+  };
+  const updateHover = (e: PointerEvent): void => {
+    if (e.pointerType !== 'mouse' || e.buttons !== 0 || e.target !== canvas) { overCanvas = false; hideHover(); return; }
+    overCanvas = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    hoverAt(lastX, lastY);
+  };
+  /** The camera moved without a pointer event (wheel, keys, inertia): the tile under the cursor changed. */
+  const onCameraChange = (): void => {
+    if (overCanvas && pointers.size === 0 && !dragging) hoverAt(lastX, lastY);
   };
 
   const pointers = new Set<number>();
@@ -136,7 +152,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onDown = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') hideHover();
+    if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointers.add(e.pointerId);
     if (pointers.size > 1) {
@@ -196,7 +212,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     }
   };
 
-  const onLeave = () => hideHover();
+  const onLeave = () => { overCanvas = false; hideHover(); };
 
   const onCancel = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
@@ -214,6 +230,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onBlur = () => {
+    overCanvas = false;
     hideHover();
     pointers.clear();
     press = null;
@@ -246,6 +263,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   canvas.addEventListener('pointerdown', onDown, cap);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerleave', onLeave);
+  controls.addEventListener('change', onCameraChange);
   canvas.addEventListener('lostpointercapture', onLost);
   // Release/cancel are listened for on window: they bubble from the canvas, and still arrive when
   // the pointer is released elsewhere or capture failed.
@@ -257,6 +275,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     canvas.removeEventListener('pointerdown', onDown, cap);
     canvas.removeEventListener('pointermove', onMove);
     canvas.removeEventListener('pointerleave', onLeave);
+    controls.removeEventListener('change', onCameraChange);
     canvas.removeEventListener('lostpointercapture', onLost);
     window.removeEventListener('pointerup', onUp, cap);
     window.removeEventListener('pointercancel', onCancel, cap);

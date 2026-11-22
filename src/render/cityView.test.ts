@@ -153,3 +153,63 @@ describe('city view batching', () => {
     expect(meshes().length).toBeGreaterThan(0);
   });
 });
+
+describe('setHover', () => {
+  const hoverAt = (valid: boolean, x = 3) => ({
+    themeId: 'school', itemId: catalog.order[0], p: { x, z: 4, rotation: 0 as const, valid },
+  });
+  const meshes = (o: THREE.Object3D): THREE.Mesh[] => {
+    const out: THREE.Mesh[] = [];
+    o.traverse((c) => { if (c instanceof THREE.Mesh) out.push(c); });
+    return out;
+  };
+
+  it('shows at the given spot and hides on null', () => {
+    const { view, root } = setup();
+    const hover = root.getObjectByName('hover')!;
+    expect(hover.visible).toBe(false);
+    const h = hoverAt(true);
+    view.setHover(h);
+    expect(hover.visible).toBe(true);
+    expect(hover.position.x).toBeGreaterThan(h.p.x);
+    expect(hover.position.z).toBeGreaterThan(h.p.z);
+    view.setHover(null);
+    expect(hover.visible).toBe(false);
+  });
+
+  it('is hidden while a capture suppresses the ghost, and returns after', () => {
+    const { view, root } = setup();
+    const hover = root.getObjectByName('hover')!;
+    view.setHover(hoverAt(true));
+    view.setGhostVisible(false);
+    expect(hover.visible).toBe(false);
+    view.setHover(hoverAt(true, 5));
+    expect(hover.visible).toBe(false);
+    view.setGhostVisible(true);
+    expect(hover.visible).toBe(true);
+  });
+
+  it('casts and receives no shadows, and reuses its materials across calls', () => {
+    const { view, root } = setup();
+    const hover = root.getObjectByName('hover')!;
+    view.setHover(hoverAt(true));
+    const first = meshes(hover).map((m) => m.material);
+    for (const m of meshes(hover)) {
+      expect(m.castShadow).toBe(false);
+      expect(m.receiveShadow).toBe(false);
+    }
+    view.setHover(hoverAt(false, 8));
+    view.setHover(hoverAt(true, 2));
+    const again = meshes(hover).map((m) => m.material);
+    expect(again).toEqual(first);
+    expect(first.length).toBeGreaterThan(0);
+  });
+
+  it('is fainter than the ghost, and never touches the locked ghost', () => {
+    const { view, root } = setup();
+    view.setHover(hoverAt(false));
+    const mat = (meshes(root.getObjectByName('hover')!)[0].material as THREE.Material);
+    expect(mat.opacity).toBeLessThan(0.75);
+    expect(root.getObjectByName('ghost')!.visible).toBe(false);
+  });
+});
