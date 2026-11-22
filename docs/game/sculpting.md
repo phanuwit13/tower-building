@@ -139,15 +139,18 @@ Use only these names. They describe the colour, not its use: a `red` can be a ro
 | cream | #f4e3c1 | building walls, gable ends |
 | stone | #bcc2cb | plinths, steps, paving, concrete bases |
 | stoneDark | #7f8898 | ropes and chains, metal fittings, shaded stone |
+| chrome | #94a8c2 | polished metal: taps, spouts, rails, bike parts |
 | charcoal | #3e4456 | iron frames, tyres, dark metal |
 | sand | #e8c78e | sandpits, beach, light timber |
 | wood | #c4874f | timber, benches, trunks, fences |
 | woodDark | #8a5935 | doors, wooden trim, shaded wood |
 | bark | #5a3a22 | shaded bark, chocolate, soil |
+| terracotta | #c0603a | clay pots, bricks, roof tiles |
 | red | #e5534b | roofs, slides, flag stripes, fruit |
 | redDark | #b03a3c | ridge caps, red trim |
 | orange | #f4923a | toys, seats, fruit, traffic cones |
 | sunYellow | #ffc83d | gold tops, clock rims, knobs, flowers, toys |
+| brass | #c9962c | bells, horns, lamp fittings: a deeper, duller gold than sunYellow |
 | pink | #f59ac2 | flowers, toys, sweets |
 | purple | #9b78d8 | flowers, toys, accents |
 | leaf | #4aa84e | leaves, hedges, plants |
