@@ -12,7 +12,7 @@
     p.className = 'no-webgl';
     p.setAttribute('role', 'alert');
     p.style.cssText = 'position:fixed;inset:0;margin:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#e8f6ff;color:#2b2d42;font:20px sans-serif;box-sizing:border-box;z-index:100';
-    p.textContent = 'เครื่องนี้เปิดเกม 3 มิติไม่ได้ ลองเปิดด้วย Chrome หรือ Safari รุ่นใหม่';
+    p.textContent = 'เครื่องนี้เปิดเกม 3 มิติไม่ได้ ลองกดโหลดหน้าใหม่ หรือเปิดด้วย Chrome หรือ Safari รุ่นใหม่';
     document.body.appendChild(p);
   }
   function arm() { setTimeout(check, GRACE_MS); }

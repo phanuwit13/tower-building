@@ -29,7 +29,7 @@ export const T = {
   noticeQualityDrop: 'เปลี่ยนเป็นโหมดลื่น เพื่อให้เล่นได้ไม่กระตุก',
   noticeSaveFailed: 'เครื่องนี้บันทึกเมืองไม่ได้ ถ้าปิดหน้าเว็บ เมืองจะหายไป',
   noticeShotSaved: 'บันทึกรูปแล้ว',
-  noWebGL: 'เครื่องนี้เปิดเกม 3 มิติไม่ได้ ลองเปิดด้วย Chrome หรือ Safari รุ่นใหม่',
+  noWebGL: 'เครื่องนี้เปิดเกม 3 มิติไม่ได้ ลองกดโหลดหน้าใหม่ หรือเปิดด้วย Chrome หรือ Safari รุ่นใหม่',
 } as const;
 
 export const placedLabel = (n: number): string => `วางแล้ว ${n} ชิ้น`;

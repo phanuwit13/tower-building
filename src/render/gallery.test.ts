@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { GRID_SIZE } from '../game/types';
 import type { ItemModel } from '../models/contract';
-import { school } from '../themes/school';
 import { galleryPages, type GallerySlot } from './gallery';
 
 const fake = (id: string, w: number, d: number): ItemModel => ({
   id, name: id, category: 'decoration', footprint: { w, d }, build: () => new THREE.Group(),
 });
+
+/** A fixed list that fits one page, independent of how many items the School theme has. */
+const small = [fake('big', 2, 3), fake('mid', 2, 2), fake('long', 1, 2), fake('s1', 1, 1), fake('s2', 1, 1)];
 
 function overlaps(a: GallerySlot, b: GallerySlot): boolean {
   const fa = a.item.footprint, fb = b.item.footprint;
@@ -26,18 +28,18 @@ function checkPage(page: GallerySlot[]): void {
 }
 
 describe('galleryPages', () => {
-  it('fits the school items on one page, big footprints behind small ones', () => {
-    const pages = galleryPages(school.items);
+  it('fits a small list on one page, big footprints behind small ones', () => {
+    const pages = galleryPages(small);
     expect(pages).toHaveLength(1);
     const [page] = pages;
-    expect(page.map((s) => s.item.id).sort()).toEqual(school.items.map((i) => i.id).sort());
+    expect(page.map((s) => s.item.id).sort()).toEqual(small.map((i) => i.id).sort());
     checkPage(page);
     const z = (id: string) => page.find((s) => s.item.id === id)!.z;
-    expect(z('classroom')).toBeLessThan(z('tree'));
-    expect(z('swing-set')).toBeLessThan(z('bench'));
+    expect(z('big')).toBeLessThan(z('s1'));
+    expect(z('mid')).toBeLessThan(z('long'));
   });
   it('keeps an empty tile between neighbours so labels have room', () => {
-    const [page] = galleryPages(school.items);
+    const [page] = galleryPages(small);
     for (const a of page) {
       for (const b of page) {
         if (a === b) continue;
