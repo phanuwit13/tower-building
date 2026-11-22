@@ -29,7 +29,7 @@ The game camera is steep, about 57° above the ground, looking from +x+z. In pra
 
 ## 3. The kit (`kit` in `build(kit)`)
 
-Every primitive is `kit.<name>(..., at, color, opts?)` and returns a `Part`. Every primitive also takes `opts.rotate`, `opts.scale` and `opts.glow`.
+Every primitive is `kit.<name>(..., at, color, opts?)` and returns a `Part`. Every primitive also takes `opts.rotate`, `opts.scale`, `opts.glow`, and the animation options `opts.motion` and `opts.light` (see "Animation" below).
 
 | primitive | signature | notes |
 |---|---|---|
@@ -51,6 +51,52 @@ Kit tips learned on the School items:
 - **Euler order is XYZ** for `rotate`: the z turn is applied first, then y, then x. For an x-then-z tilt, `[a, 0, c]` means "turn about z by c, then about x by a".
 - **Striped canopies**: two six-sided cones in two colours, turned 30° apart (half a segment), so their faces alternate in twelve stripes; the same trick works with two domes.
 - **Resting a detail-0 sphere** on the ground or a surface: use `ICO_LOW` (§4).
+
+### Animation: motion and lights
+
+Items can move and glow in patterns. It is all done on the graphics card from options on a part, so it costs no extra draw calls, no triangles and nothing per frame in your code. Still parts stay exactly as they are. Shadows are drawn once and stay put (a swaying crown does not move its shadow). With "reduce motion" switched on in the player's device, everything holds its rest pose, so build the rest pose to look right on its own.
+
+**`opts.motion: { kind, pivot?, axis?, amount?, speed?, phase?, water? }`** on any primitive:
+
+| kind | what moves | pivot (default) | axis (default) | amount | speed |
+|---|---|---|---|---|---|
+| `sway` | bends downwind, more the higher the vertex is above the pivot (nothing below it moves) | the lowest point of the part under `at`. **Set it by hand** (see below) | up | lean per unit of height, default 0.05 (a crown 1 unit above the pivot leans 5 cm). Small plants need 0.1 to 0.2 | 1.7 rad/s (about 3.7 s a sway) |
+| `wave` | a ripple runs along cloth away from the pole and grows towards the free edge | `at` | `+x`, along the cloth, away from the pole; it must not be up or down | sideways ripple per unit of cloth, 0.18 | 6 rad/s |
+| `spin` | turns round the axis, a whole turn after turn | `at` | up | unused | rad/s (negative turns the other way), 0.5 = one turn in 12.6 s. Use about 0.4 |
+| `swing` | rocks back and forth about the axis, like a swing or a seesaw | `at` | `x` (the bar it hangs from) | the biggest angle in radians, 0.3 (about 17 degrees) | 2 rad/s |
+| `water` | a flat water surface that stays put; the shimmer is drawn on it | not used | not used | not used | not used |
+
+- **Every animated part of one item gets the same explicit `pivot` (and the same `phase`)**, so a tree's leaf balls sway together and do not tear apart. Each placed copy of an item also gets its own phase, so a row of trees never moves in lockstep. Put the pivot where the moving piece joins the part that stays: the top of the trunk, the soil line, the pole, the bar, the axle.
+- Pivots and axes are in item space, like `at`; placing and turning the item moves them with it.
+- **Split cloth into strips.** `wave` ripples along the cloth, so a flag made of one box only flaps its free edge. Cut it into 3 or 4 vertical strips (the flagpole uses 4 per stripe), all with the same `pivot` and `axis`.
+- **Water**: `motion: { kind: 'water', water: 'pond' }` (default) or `'pool'` on a body part (not a glow part) makes its top face a water surface: slow highlight bands by day, moonlight glints on a pond at night, a soft cyan glow on a pool at night. Mark every part that is the same water, such as the navy notches of the lily pads, so it all shimmers together.
+- **Combine freely** with `rotate` and `scale` (a swaying cone, a spinning torus). A part can both move and glow.
+
+**`opts.light`** on glow parts only (a glow part is one with `glow` set; `light` on a part without it throws):
+
+- `'steady'` (the default).
+- `'breathe'`: the brightness rises and falls slowly (about 3 s, between 65 % and 100 %). For lamps. A near-white globe breathes mildly: that is the tone mapping, not a bug.
+- `'blink'`: on and off, 1.4 s a cycle (on for 55 %, dim when off). For signs and beacons. Blinking is never faster than 3 Hz, so a blink can never flash.
+- `'window'`: steady, but every pane is a slightly different brightness (plus or minus 15 %), so a building's windows are not a flat wall of light. `glassWindow` already does this on every pane; you only write it yourself for your own glass.
+- Lights only animate while the lights are on (dusk and night). In the day they look the same as a plain glow.
+
+**Safety rules (kids' game, calm look):**
+
+1. Keep it gentle: sways of a few centimetres, a rock of a few degrees, spins of about 15 s a turn. If you can see it from across the room it is too much.
+2. Bases stay: trunks, pots, frames, decks, soil and anything that stands on the ground do not move. Only the free end moves.
+3. Rigid motion must not clip. Check the extremes: a swing seat must clear the ground, a seesaw's low end rests on its bumper, so keep that rock small (the seesaw uses 0.07 rad).
+4. A spinning or swinging part must stay inside the footprint and clear of walls and the ground in every pose, not only at rest.
+5. Do not change positions or colours to add motion: motion options leave the geometry snapshot as it is. Only a deliberate shape change (like cutting a flag into strips) needs the snapshot regenerated, and then only that item may differ.
+6. Do not blink more than a few small lights per item, and never make a large area blink.
+
+Examples (all in `src/themes/school/items/`): `tree.ts` (sway with one shared pivot), `flagpole.ts` (wave on strips), `merry-go-round.ts` (spin about the post), `swing-set.ts` (a swing per pair of ropes and seat), `seesaw.ts` (a small rock about the axle), `fish-pond.ts` and `swimming-pool.ts` (water), `street-lamp.ts` and `canteen.ts` (breathe), `bus-stop.ts` and `school-bus.ts` (blink).
+
+```ts
+const SWAY: MotionOpts = { kind: 'sway', pivot: [0, 0.65, 0], amount: 0.06 }; // the top of the trunk
+kit.sphere(0.41, [0.03, 1.07, 0.04], 'leaf', { motion: SWAY });
+kit.sphere(0.16, [0, 1.46, 0], 'lampWarm', { glow: true, light: 'breathe' });
+kit.box([w, h, 0.02], at, 'red', { motion: { kind: 'wave', pivot: poleTop, axis: [1, 0, 0] } });
+```
 
 ## 4. Shared building parts (`src/models/parts.ts`)
 
@@ -204,6 +250,7 @@ Not checked, but expected:
 1. `npx vitest run src/themes src/models`. Every item of every theme is validated, and errors name the item and the rule. Also run `npx tsc --noEmit`.
 2. `npm run dev` and open `http://localhost:5173/?gallery=<theme>` (for example `?gallery=school`). Look at your item next to the approved ones, page with ◀ ▶, and orbit to see every side.
    - Switch to night with ตั้งค่า → ช่วงเวลา → กลางคืน: windows and lamps should glow, and nothing else should.
+   - Animated items move in the gallery too: watch for parts that tear apart, clip into the ground or leave the footprint, and check the rest pose still looks right (the thumbnails and "reduce motion" show it).
    - `&item=<id>` (for example `?gallery=school&item=classroom`) shows one item close up. Every label shows a thumbnail and the triangles used against the budget.
 3. Compare with the style references: the same chunkiness, palette and scale. The front (+x) should read in the 3/4 view.
 4. The geometry snapshot (`src/themes/school/geometry.snapshot.json`) fingerprints every item's built geometry (per mesh: triangles, bounding box, sums of positions and colours), so a change to a shared helper can't silently change an approved item. A new item, or a change you meant to make, fails `src/themes/school/geometry.test.ts` until you regenerate the snapshot:
