@@ -87,7 +87,7 @@ export const item: ItemModel = {
       [SLICE.r, 0.03, 'leaf'], [SLICE.r - SLICE.rind / 2, 0.03 + SLICE.band, 'white'], [SLICE.r - SLICE.rind, 0.03 + SLICE.band + SLICE.flesh, 'red'],
     ];
     for (const dz of [-0.17, 0, 0.17]) {
-      for (const [r, h, color] of layers) parts.push(kit.cylinder(r, r, h, [FRUIT_X, sliceY + h / 2, wz + dz], color, { segments: 10 }));
+      for (const [r, h, color] of layers) parts.push(kit.cylinder(r, r, h, [FRUIT_X, sliceY + h / 2, wz + dz], color, { segments: 8 }));
       const top = sliceY + 0.03 + SLICE.band + SLICE.flesh;
       for (const sx of [-0.022, 0.022]) parts.push(kit.box([SLICE.seed, 0.004, SLICE.seed * 0.6], [FRUIT_X + sx, top + 0.002, wz + dz + sx * 0.4], 'charcoal'));
     }
