@@ -39,26 +39,40 @@ export function createSettingsPanel(
   const time = group(T.time.title, TIME_IDS, T.time, h.onTime);
   const ground = group(T.ground.title, GROUND_IDS, T.ground, h.onGround);
   const quality = group(T.quality.title, QUALITY_TIERS, T.quality, h.onQuality);
+  const closeBtn = button(T.close, () => close(), 'btn-close');
   const panel = el('div', { class: 'settings-sheet', attrs: { role: 'dialog', 'aria-label': T.settings } }, [
     el('div', { class: 'settings-head' }, [
       el('h2', { text: T.settings }),
-      button(T.close, () => close(), 'btn-close'),
+      closeBtn,
     ]),
     weather.box, time.box, ground.box, quality.box,
     el('div', { class: 'settings-danger' }, [button(T.restart, h.onRestart), button(T.clear, h.onClear)]),
   ]);
   const wrap = el('div', { class: 'settings screen' }, [panel]);
   wrap.hidden = true;
-  wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   root.appendChild(wrap);
-  function close(): void { wrap.hidden = true; }
+  let opener: HTMLElement | null = null;
+  const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close(); };
+  function close(): void {
+    if (wrap.hidden) return;
+    wrap.hidden = true;
+    document.removeEventListener('keydown', onKey);
+    const o = opener;
+    opener = null;
+    if (o && o.isConnected) o.focus();
+  }
   return {
     open(cur) {
       weather.mark(cur.settings.weather);
       time.mark(cur.settings.time);
       ground.mark(cur.settings.ground);
       quality.mark(cur.quality);
+      if (wrap.hidden) {
+        opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        document.addEventListener('keydown', onKey);
+      }
       wrap.hidden = false;
+      closeBtn.focus();
     },
     close,
   };
