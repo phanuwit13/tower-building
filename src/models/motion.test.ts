@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  advanceMotion, CULL_MARGIN, freezeMotion, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
+  advanceMotion, BLINK_OFF_LEVEL, BLINK_PERIOD, CULL_MARGIN, freezeMotion, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
   MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, resolveMotion, setNight,
   setReducedMotion, setWind, watchReducedMotion,
 } from './motion';
@@ -192,5 +192,56 @@ describe('motion shader', () => {
 
   it('chunk meshes get a culling margin for sway', () => {
     expect(CULL_MARGIN).toBe(0.3);
+  });
+});
+
+describe('light patterns', () => {
+  const sample = (kind: 'breathe' | 'blink' | 'window', phase = 0.7, seconds = 30, hz = 200) =>
+    Array.from({ length: seconds * hz }, (_, i) => lightPattern(kind, i / hz, phase));
+
+  it('steady and reduced motion hold exactly 1.0', () => {
+    expect(lightPattern('steady', 12.3, 1)).toBe(1);
+    for (const k of ['breathe', 'blink', 'window'] as const) expect(lightPattern(k, 12.3, 1, 0)).toBe(1);
+  });
+  it('breathe stays within 0.65..1.0 and reaches both ends', () => {
+    const v = sample('breathe');
+    expect(Math.min(...v)).toBeGreaterThanOrEqual(0.65 - 1e-9);
+    expect(Math.max(...v)).toBeLessThanOrEqual(1 + 1e-9);
+    expect(Math.min(...v)).toBeLessThan(0.66);
+    expect(Math.max(...v)).toBeGreaterThan(0.99);
+  });
+  it('blink is on or dim, and each phase offset shifts it', () => {
+    const v = sample('blink');
+    expect(new Set(v)).toEqual(new Set([1, BLINK_OFF_LEVEL]));
+    expect(lightPattern('blink', 0, 0)).not.toBe(lightPattern('blink', 0, Math.PI * 1.2));
+  });
+  it('window varies each pane by at most 15 % and is constant over time', () => {
+    for (const phase of [0, 1, 2.5, 4, 6, 9.1]) {
+      const v = sample('window', phase, 2);
+      expect(new Set(v).size).toBe(1);
+      expect(Math.abs(v[0] - 1)).toBeLessThanOrEqual(0.15 + 1e-9);
+    }
+    const spread = [0.1, 1.3, 2.9, 4.4, 5.9].map((p) => lightPattern('window', 0, p));
+    expect(Math.max(...spread) - Math.min(...spread)).toBeGreaterThan(0.1);
+  });
+  it('no pattern changes faster than 3 Hz (direction reversals or on/off flips per second)', () => {
+    for (const kind of ['breathe', 'blink', 'window'] as const) {
+      const v = sample(kind, 0.3, 60);
+      let turns = 0;
+      let dir = 0;
+      for (let i = 1; i < v.length; i++) {
+        const d = Math.sign(v[i] - v[i - 1]);
+        if (d !== 0 && d !== dir) { if (dir !== 0) turns++; dir = d; }
+      }
+      expect(turns / 60).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+    }
+    expect(1 / BLINK_PERIOD).toBeLessThanOrEqual(1);
+    expect(2 / BLINK_PERIOD).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+  });
+  it('packs beside the motion code and the shader decodes and uses it', () => {
+    expect(packLight(MOTION_CODE.swing, 'blink')).toBe(MOTION_CODE.swing + LIGHT_STRIDE * LIGHT_CODE.blink);
+    expect(() => packLight(0, 'flash' as never)).toThrow(/unknown light/);
+    expect(MOTION_VERTEX_SETUP).toContain('vLight');
+    expect(MOTION_FRAGMENT_PARS).toContain('varying float vLight');
   });
 });

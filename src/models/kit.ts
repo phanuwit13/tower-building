@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { CULL_MARGIN, MOTION_CODE, patchMotionShader, resolveMotion, type MotionOpts } from './motion';
+import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE, packLight, patchMotionShader, resolveMotion, type LightKind, type MotionOpts } from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
@@ -24,6 +24,12 @@ export interface PartOpts {
    * surface use `color` by day and emit that colour at night (glass-blue windows, warm glow).
    */
   glow?: boolean | PaletteColor;
+  /**
+   * Glow parts only: how the light behaves when it is on (dusk and night). `steady` (default),
+   * `breathe` (0.65..1.0 over ~3 s), `blink` (on/off under 1 Hz) or `window` (steady, each pane
+   * ±15 % in brightness). Reduced motion holds every pattern at 1.0. See motion.ts.
+   */
+  light?: LightKind;
   /**
    * Animate the part on the GPU (no extra draw calls): `sway` leans it downwind from `pivot` (its
    * base by default), `wave` ripples cloth out along `axis` from the pole at `pivot`, `spin` turns
@@ -94,15 +100,29 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   const glow = opts?.glow;
   if (glow) fill('glowColor', glow === true ? color : glow);
   const m = opts?.motion ? resolveMotion(opts.motion, at, lowestY(g)) : null;
+  if (opts?.light && !glow) throw new Error('style kit: light only applies to glow parts (set glow too)');
+  let anim: readonly number[] | null = m?.anim ?? null;
+  if (opts?.light && opts.light !== 'steady') {
+    // the pattern code rides in anim.x; a window pane's brightness comes from a hash of its own position
+    const base = m?.anim ?? [0, 0, 0, 0];
+    const pane = opts.light === 'window' ? 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719) : 0;
+    anim = [packLight(base[0], opts.light), base[1], base[2], base[3] + pane];
+  }
   const repeat = (name: string, v: readonly number[] | null, size: number) => {
     const arr = new Float32Array(n * size);
     if (v) for (let i = 0; i < n; i++) arr.set(v, i * size);
     g.setAttribute(name, new THREE.BufferAttribute(arr, size));
   };
-  repeat('anim', m?.anim ?? null, 4);
+  repeat('anim', anim, 4);
   repeat('pivot', m?.pivot ?? null, 3);
   repeat('axis', m?.axis ?? null, 3);
   return { geometry: g, glow: !!glow };
+}
+
+/** Deterministic 0..1 hash of two numbers (item-local, so a rebuilt item looks the same). */
+function hash2(a: number, b: number): number {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return x - Math.floor(x);
 }
 
 function lowestY(g: THREE.BufferGeometry): number {
@@ -116,7 +136,7 @@ function lowestY(g: THREE.BufferGeometry): number {
 function moves(g: THREE.BufferGeometry): boolean {
   const anim = g.attributes.anim;
   for (let i = 0; i < anim.count; i++) {
-    const k = Math.round(anim.getX(i));
+    const k = Math.round(anim.getX(i)) % LIGHT_STRIDE;
     if (k >= MOTION_CODE.sway && k <= MOTION_CODE.swing) return true;
   }
   return false;
@@ -205,7 +225,7 @@ function createKit(): StyleKit {
       .replace(/void main\(\) ?\{/, 'void main() {\n  vGlowColor = glowColor;');
     s.fragmentShader = 'uniform float glowStrength;\nvarying vec3 vGlowColor;\n' + s.fragmentShader.replace(
       'vec3 totalEmissiveRadiance = emissive;',
-      'vec3 totalEmissiveRadiance = vGlowColor * glowStrength * 1.5;');
+      'vec3 totalEmissiveRadiance = vGlowColor * glowStrength * vLight * 1.5;');
   };
 
   const merge = (parts: Part[], material: THREE.Material): THREE.Mesh | null => {

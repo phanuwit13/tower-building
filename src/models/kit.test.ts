@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { getStyleKit, type PartOpts } from './kit';
-import { CULL_MARGIN, MOTION_CODE, motionUniforms } from './motion';
+import { CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_CODE, motionUniforms } from './motion';
 import { PALETTE } from './palette';
 
 const kit = getStyleKit();
@@ -355,5 +355,32 @@ describe('style kit materials', () => {
   it('the two materials never share a compiled program', () => {
     const { body, glow } = kit.materials;
     expect(body.customProgramCacheKey()).not.toBe(glow.customProgramCacheKey());
+  });
+});
+
+describe('style kit light patterns', () => {
+  it('default and steady lights leave anim untouched; patterns pack beside the motion code', () => {
+    const a = (p: ReturnType<typeof kit.box>) => Array.from({ length: 4 }, (_, i) => p.geometry.attributes.anim.getComponent(0, i));
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true }))).toEqual([0, 0, 0, 0]);
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'steady' }))).toEqual([0, 0, 0, 0]);
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'breathe' }))[0]).toBe(LIGHT_STRIDE * LIGHT_CODE.breathe);
+    const both = a(kit.box([1, 1, 1], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } }));
+    expect(both[0]).toBe(MOTION_CODE.swing + LIGHT_STRIDE * LIGHT_CODE.blink);
+    expect(both[1]).toBeGreaterThan(0);
+  });
+  it('window panes get their own phase, repeatable per position', () => {
+    const phase = (x: number) => kit.box([1, 1, 1], [x, 1, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' }).geometry.attributes.anim.getW(0);
+    expect(phase(0)).toBe(phase(0));
+    expect(phase(0)).not.toBe(phase(1.5));
+  });
+  it('a light on a non-glow part is an error, and a glow-moving part still counts as moving', () => {
+    expect(() => kit.box([1, 1, 1], [0, 0, 0], 'wood', { light: 'blink' })).toThrow(/glow/);
+    const g = kit.finish([kit.box([1, 1, 1], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } })]);
+    expect((g.children[0] as THREE.Mesh).geometry.boundingSphere!.radius).toBeGreaterThan(0.86 + CULL_MARGIN - 0.2);
+  });
+  it('the glow shader multiplies the strength by the light pattern', () => {
+    const s = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    kit.materials.glow.onBeforeCompile(s as never, null as never);
+    expect(s.fragmentShader).toContain('glowStrength * vLight');
   });
 });

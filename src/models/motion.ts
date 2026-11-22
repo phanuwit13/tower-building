@@ -38,6 +38,44 @@ export interface MotionOpts {
 /** `anim.x` codes. 0 is still; water is split by look. */
 export const MOTION_CODE = { none: 0, sway: 1, wave: 2, spin: 3, swing: 4, pond: 5, pool: 6 } as const;
 
+/**
+ * Glow-part light patterns, packed into `anim.x` beside the motion code: `anim.x = motion code +
+ * LIGHT_STRIDE * light code` (so the attribute set is unchanged and a glowing swing seat can both
+ * move and breathe). The vertex shader decodes it, evaluates the pattern and passes the result to
+ * the fragment shader as `vLight`, a multiplier of the glow strength.
+ */
+export type LightKind = 'steady' | 'breathe' | 'blink' | 'window';
+export const LIGHT_CODE = { steady: 0, breathe: 1, blink: 2, window: 3 } as const;
+export const LIGHT_STRIDE = 8;
+/** Breathe: 0.65..1.0 over 3 s. Blink: 1.4 s a cycle (on 55 %, dim 0.1 when off). Window: steady ±15 %. */
+export const BREATHE_PERIOD = 3;
+export const BLINK_PERIOD = 1.4;
+export const BLINK_ON = 0.55;
+export const BLINK_OFF_LEVEL = 0.1;
+export const WINDOW_VARIATION = 0.15;
+/** Hard upper bound on any pattern's on/off-or-peak rate, in Hz (a safety limit, not a speed). */
+export const LIGHT_MAX_HZ = 3;
+
+/**
+ * Glow multiplier of a light pattern: the same maths as the vertex shader (MOTION_VERTEX_SETUP).
+ * `phase` is the part's phase (its own plus the item's); `motion` is `uMotion` (0 holds 1.0).
+ */
+export function lightPattern(kind: LightKind, time: number, phase: number, motion = 1): number {
+  if (!(motion > 0) || kind === 'steady') return 1;
+  const tau = Math.PI * 2;
+  const frac = (x: number) => x - Math.floor(x);
+  if (kind === 'breathe') return 0.825 + 0.175 * Math.sin((tau * time) / BREATHE_PERIOD + phase);
+  if (kind === 'blink') return frac(time / BLINK_PERIOD + phase / tau) < BLINK_ON ? 1 : BLINK_OFF_LEVEL;
+  return 1 + WINDOW_VARIATION * (2 * frac(phase / tau) - 1);
+}
+
+/** The packed `anim.x` of a motion code and a light kind. */
+export function packLight(motionCode: number, light: LightKind): number {
+  const code = LIGHT_CODE[light];
+  if (code === undefined) throw new Error(`style kit: unknown light "${String(light)}" (steady, breathe, blink or window)`);
+  return motionCode + LIGHT_STRIDE * code;
+}
+
 /** Gentle by default. */
 export const MOTION_DEFAULTS: Record<MotionKind, { amount: number; speed: number }> = {
   sway: { amount: 0.05, speed: 1.7 }, // a 1-unit crown leans ±5 cm, about 3.7 s a sway
@@ -155,6 +193,7 @@ uniform float uWind;
 uniform float uMotion;
 uniform float uNight;
 varying vec4 vAnim;
+varying float vLight;
 mat3 motionRotation( vec3 a, float angle ) {
   float s = sin( angle );
   float c = cos( angle );
@@ -175,9 +214,18 @@ float motionHash( vec2 p ) {
  * chunks, the item for gallery models; the item's phase comes from its pivot in the world.
  */
 export const MOTION_VERTEX_SETUP = /* glsl */ `
-int motionKind = int( anim.x + 0.5 );
+int motionPacked = int( anim.x + 0.5 );
+int lightCode = motionPacked / ${LIGHT_STRIDE};
+int motionKind = motionPacked - ${LIGHT_STRIDE} * lightCode;
 float motionPhase = anim.w + 6.2831853 * motionHash( ( modelMatrix * vec4( pivot, 1.0 ) ).xz );
-vAnim = vec4( anim.xyz, motionPhase );
+vAnim = vec4( float( motionKind ), anim.yz, motionPhase );
+// glow light pattern (mirrors lightPattern in this file); steady and reduced motion hold 1.0
+vLight = 1.0;
+if ( uMotion > 0.0 ) {
+  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = 0.825 + 0.175 * sin( 6.2831853 * uTime / ${BREATHE_PERIOD.toFixed(1)} + motionPhase );
+  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${BLINK_PERIOD.toFixed(2)} + motionPhase / 6.2831853 ) < ${BLINK_ON.toFixed(2)} ? 1.0 : ${BLINK_OFF_LEVEL.toFixed(2)};
+  else if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${WINDOW_VARIATION.toFixed(2)} * ( 2.0 * fract( motionPhase / 6.2831853 ) - 1.0 );
+}
 bool motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};
 mat3 motionRot = mat3( 1.0 );
 vec3 motionShift = vec3( 0.0 );
@@ -226,6 +274,7 @@ uniform float uWind;
 uniform float uMotion;
 uniform float uNight;
 varying vec4 vAnim;
+varying float vLight;
 `;
 
 export interface PatchableShader { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }
