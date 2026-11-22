@@ -19,6 +19,7 @@ export function draw(
   order: readonly string[],
   rng: number,
 ): { id: string; bag: string[]; rng: number } {
+  if (order.length === 0) throw new Error('draw: catalog order is empty');
   let pool = bag;
   let state = rng;
   if (pool.length === 0) {

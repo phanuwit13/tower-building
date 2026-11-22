@@ -165,3 +165,21 @@ describe('clearGame and quality', () => {
     expect(loadQuality(throwingGet)).toBeNull();
   });
 });
+
+describe('loadGame status re-check', () => {
+  it('marks a saved playing round finished when the current item fits nowhere', () => {
+    const placements = [];
+    let uid = 1;
+    for (let z = 0; z < 10; z++) for (let x = 0; x < 10; x++) {
+      if (z >= 8 && x < 2) continue;
+      placements.push({ uid: uid++, itemId: 'a', x, z, rotation: 0 as const });
+    }
+    const state: GameState = {
+      themeId: 't', settings, placements, bag: ['b'], rng: 5,
+      current: 'd', next: 'a', status: 'playing', nextUid: uid,
+    };
+    const store = memStore();
+    saveGame(store, state);
+    expect(loadGame(store, getCatalog)).toEqual({ ...state, status: 'finished' });
+  });
+});

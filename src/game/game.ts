@@ -48,5 +48,9 @@ export function restartGame(state: GameState, catalog: Catalog, seed: number): G
 }
 
 export function withSettings(state: GameState, patch: Partial<SceneSettings>): GameState {
-  return { ...state, settings: { ...state.settings, ...patch } };
+  const settings = { ...state.settings };
+  if (patch.weather !== undefined) settings.weather = patch.weather;
+  if (patch.time !== undefined) settings.time = patch.time;
+  if (patch.ground !== undefined) settings.ground = patch.ground;
+  return { ...state, settings };
 }

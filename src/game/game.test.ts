@@ -34,6 +34,7 @@ describe('placeCurrent', () => {
     expect(n.placements).toEqual([{ uid: 1, itemId: s.current, x: 0, z: 0, rotation: 0 }]);
     expect(n.current).toBe(s.next);
     expect(n.nextUid).toBe(2);
+    expect(n.status).toBe('playing');
     expect(s.placements).toEqual([]);
   });
   it('returns null on occupied tile', () => {
@@ -42,7 +43,7 @@ describe('placeCurrent', () => {
     expect(placeCurrent(n, catalog, 0, 0, 0)).toBeNull();
   });
   it('finishes when the new current fits nowhere', () => {
-    // Fill rows 0-6 fully, plus leave a scattering of holes in rows 7-9 with no 2x3/3x2 gap.
+    // Fill the whole grid except a single 2x2 hole at x 0-1, z 8-9: no 2x3/3x2 gap remains.
     const placements = [];
     let uid = 1;
     for (let z = 0; z < 10; z++) for (let x = 0; x < 10; x++) {
@@ -78,6 +79,11 @@ describe('placeCurrent', () => {
 });
 
 describe('restartGame / withSettings', () => {
+  it('withSettings ignores undefined values', () => {
+    const s = withSettings(newGame(catalog, settings, 1), { time: undefined, weather: 'rain' });
+    expect(s.settings).toEqual({ weather: 'rain', time: 'day', ground: 'grass' });
+    expect('time' in s.settings && s.settings.time === undefined).toBe(false);
+  });
   it('restart keeps theme and settings, empties placements', () => {
     const s0 = withSettings(newGame(catalog, settings, 1), { time: 'night' });
     const s = placeCurrent(s0, catalog, 0, 0, 0)!;

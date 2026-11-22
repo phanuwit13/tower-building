@@ -1,8 +1,6 @@
-import { GRID_SIZE } from './types';
-import type {
-  Catalog, GameState, GroundId, Placement, QualityTier, Rotation, SceneSettings, TimeId, WeatherId,
-} from './types';
-import { rotatedFootprint } from './grid';
+import { GRID_SIZE, GROUND_IDS, QUALITY_TIERS, STATUSES, TIME_IDS, WEATHER_IDS } from './types';
+import type { Catalog, GameState, Placement, QualityTier, Rotation, SceneSettings } from './types';
+import { fitsAnywhere, rotatedFootprint } from './grid';
 
 export const SAVE_KEY = 'city-builder/save';
 export const QUALITY_KEY = 'city-builder/quality';
@@ -13,25 +11,6 @@ export interface KeyValueStore {
   setItem(k: string, v: string): void;
   removeItem(k: string): void;
 }
-
-// Single source of allowed values. The `Exhaustive` checks fail to compile if a union gains a member
-// that is missing here.
-export const WEATHER_IDS = ['sunny', 'rain'] as const satisfies readonly WeatherId[];
-export const TIME_IDS = ['dawn', 'day', 'dusk', 'night'] as const satisfies readonly TimeId[];
-export const GROUND_IDS = [
-  'grass', 'dirt', 'concrete', 'sand', 'snow', 'wood', 'moon',
-] as const satisfies readonly GroundId[];
-export const QUALITY_TIERS = ['pretty', 'smooth'] as const satisfies readonly QualityTier[];
-export const STATUSES = ['playing', 'finished'] as const satisfies readonly GameState['status'][];
-type Exhaustive<U, A extends readonly U[]> = Exclude<U, A[number]> extends never ? true : never;
-const _exhaustive: [
-  Exhaustive<WeatherId, typeof WEATHER_IDS>,
-  Exhaustive<TimeId, typeof TIME_IDS>,
-  Exhaustive<GroundId, typeof GROUND_IDS>,
-  Exhaustive<QualityTier, typeof QUALITY_TIERS>,
-  Exhaustive<GameState['status'], typeof STATUSES>,
-] = [true, true, true, true, true];
-void _exhaustive;
 
 const ROTATIONS: readonly number[] = [0, 1, 2, 3] satisfies readonly Rotation[];
 
@@ -153,7 +132,7 @@ function validateState(
     rng: s.rng,
     current: s.current,
     next: s.next,
-    status: s.status,
+    status: s.status === 'finished' || !fitsAnywhere(occ, catalog.items[s.current].footprint) ? 'finished' : 'playing',
     nextUid: s.nextUid,
   };
 }

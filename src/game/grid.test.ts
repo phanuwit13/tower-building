@@ -50,6 +50,13 @@ describe('buildOccupancy', () => {
 });
 
 describe('canPlace', () => {
+  it('rejects NaN and non-integer coordinates', () => {
+    const fp = { w: 1, d: 1 };
+    expect(canPlace(empty(), fp, 0, NaN, 0)).toBe(false);
+    expect(canPlace(empty(), fp, 0, 0, NaN)).toBe(false);
+    expect(canPlace(empty(), fp, 0, 1.5, 0)).toBe(false);
+    expect(canPlace(empty(), fp, 0, 0, 1.5)).toBe(false);
+  });
   it('respects map bounds and occupancy', () => {
     expect(canPlace(empty(), { w: 2, d: 3 }, 0, 9, 0)).toBe(false);
     expect(canPlace(empty(), { w: 2, d: 3 }, 0, 8, 7)).toBe(true);

@@ -21,6 +21,7 @@ export function buildOccupancy(placements: readonly Placement[], catalog: Catalo
 }
 
 export function canPlace(occ: Uint8Array, fp: Footprint, r: Rotation, x: number, z: number): boolean {
+  if (!Number.isInteger(x) || !Number.isInteger(z)) return false;
   const { w, d } = rotatedFootprint(fp, r);
   if (x < 0 || z < 0 || x + w > GRID_SIZE || z + d > GRID_SIZE) return false;
   for (let zz = z; zz < z + d; zz++) {

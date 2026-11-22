@@ -35,3 +35,7 @@ test('draw never mutates its input bag', () => {
   draw(empty, order, 1);
   expect(empty).toEqual([]);
 });
+
+test('draw throws on an empty order', () => {
+  expect(() => draw([], [], 1)).toThrow();
+});
