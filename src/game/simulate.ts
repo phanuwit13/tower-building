@@ -1,10 +1,9 @@
-import { GRID_SIZE, type Catalog, type ItemSpec, type GameState, type Rotation } from './types';
+import { GRID_SIZE, type Catalog, type FootprintMix, type ItemSpec, type GameState, type Rotation } from './types';
 import { buildOccupancy, canPlace, fillStats, rotatedFootprint } from './grid';
 import { newGame, placeCurrent } from './game';
 import { nextRandom } from './rng';
 
 export type Placer = (s: GameState, c: Catalog) => { x: number; z: number; rotation: Rotation } | null;
-export type FootprintMix = Record<'1x1' | '1x2' | '2x2' | '2x3', number>;
 
 const FOOTPRINTS: Record<keyof FootprintMix, { w: number; d: number }> = {
   '1x1': { w: 1, d: 1 },
