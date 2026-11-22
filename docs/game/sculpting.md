@@ -19,6 +19,14 @@ Read this before you sculpt an item. Every item in every theme is built in code 
 - **`rotate` is Euler XYZ in radians** (`[0, Math.PI / 2, 0]` is a quarter turn about y).
 - **`scale` is applied first, then `rotate`, then the move to `at`.** So `scale: [1, 0.5, 1]` squashes the part's own y before it is turned.
 
+### The default camera
+
+The game camera is steep, about 57° above the ground, looking from +x+z. In practice:
+
+- **Roofs fill the view.** From above, a roof hides most of what is under it, and a deep eave hides the wall below it. Vertical façades show only about 40–55% of their height.
+- **Put the signature details where the camera sees them**: on roofs, and on fronts facing +x and +z. Tilt signs, emblems and decals towards the camera instead of leaving them flat on a wall, or put them on the roof.
+- Keep what matters (a door, a sign, a face) out from under a deep roof, or open the roof up.
+
 ## 3. The kit (`kit` in `build(kit)`)
 
 Every primitive is `kit.<name>(..., at, color, opts?)` and returns a `Part`. Every primitive also takes `opts.rotate`, `opts.scale` and `opts.glow`.
@@ -37,10 +45,18 @@ Every primitive is `kit.<name>(..., at, color, opts?)` and returns a `Part`. Eve
 - `opts.glow`: `true` lights the part up in its own colour at dusk and night (lamps: `lampWarm`). A palette colour, as in `glow: 'windowWarm'`, keeps `color` by day and emits that colour at night. Any palette colour may glow. Glowing parts go in the second mesh automatically.
 - `kit.finish(parts)` merges everything into at most 2 meshes (body + glow). Return its group as it is.
 
+Kit tips learned on the School items:
+
+- **Torus `tubularSegments` in multiples of 4** (8, 12, 16) give clean wheels: a vertex sits at the bottom, so the tyre rests on y = 0 exactly.
+- **Euler order is XYZ** for `rotate`: the z turn is applied first, then y, then x. For an x-then-z tilt, `[a, 0, c]` means "turn about z by c, then about x by a".
+- **Striped canopies**: two six-sided cones in two colours, turned 30° apart (half a segment), so their faces alternate in twelve stripes; the same trick works with two domes.
+- **Resting a detail-0 sphere** on the ground or a surface: use `ICO_LOW` (§4).
+
 ## 4. Shared building parts (`src/models/parts.ts`)
 
 ```ts
 import { door, gableRoof, glassWindow, wallPanel, type Facing } from '../../../models/parts';
+// and the rod, wheel, roof and direction helpers below: aim, along, barrelRoof, heading, ICO_LOW, rod, wheel
 ```
 
 They return `Part[]`, so spread them in: `parts.push(...glassWindow(kit, {...}))`. `facing` is the direction the wall faces: `'x+' | 'x-' | 'z+' | 'z-'`. For wall parts, `at` is the centre of the part **on the wall's outer surface**, for example `[W / 2, y, z]` on a +x wall of width `W`. The helper builds outwards from there in layers 0.01 apart, so faces never z-fight.
@@ -57,6 +73,15 @@ They return `Part[]`, so spread them in: `parts.push(...glassWindow(kit, {...}))
   - `along: 'x'` turns the ridge to run along x.
   - The helper does not close the triangular gable ends. Add a wedge in the wall colour for them: `kit.wedge([width, rise, wallLength], [x, wallTop + rise / 2, z], 'cream')` (with `rotate: [0, Math.PI / 2, 0]` when `along: 'x'`).
   - The slabs reach out by `eave + thickness · sin(pitch)` past the walls. Keep that inside the footprint.
+
+Rods, wheels, barrel roofs and the direction maths behind them. Use these instead of writing the same trigonometry in an item file.
+
+- **`rod(kit, a, b, radius, color, { segments = 6, glow? })`**: a cylinder from point `a` to point `b` (struts, bars, net strands, slanted frame members, a rope). Example: `parts.push(rod(kit, [0.2, 0.1, 0], [0.2, 0.9, 0.3], 0.02, 'stoneDark', { segments: 4 }))`. A tilted rod's ends are flat across its axis, so check where they land against a wall or the ground.
+- **`aim(dir, turn = 'x')`**: the Euler XYZ `rotate` that turns a part's own +y onto the direction `dir` (any length). Example: `kit.cylinder(r, r, h, at, color, { rotate: aim([nx, ny, nz]) })`. The two `turn`s differ only in the twist about `dir`: `'x'` is what `rod` uses; `'y'` (tilt away from +y, then swing round y) suits things placed around a vertical axis, such as patches on a globe or pins on a pole, because the part's local z stays level.
+- **`heading(yaw, pitch)`** and **`along(p, d, s)`**: `heading` is the unit direction for a yaw about y (0 = +x, turning towards −z) and a pitch (positive up); a part rotated `[0, yaw, pitch]` has its +x along it. `along` is the point `s` from `p` along `d`. Together they lay out fronds, leaves and branches: `along(start, heading(yaw, pitch), length / 2)`.
+- **`barrelRoof(kit, { at, length, width, rise, color, segments = 8, along = 'x', thickness = 0.07, overlap = 0.03, spring = 0.2, endWall? })`**: a curved (half-ellipse) roof of flat slabs. `at` is the centre of the ellipse (middle of the roof along the barrel, centred across it); the crown is `rise` above `at[1]`; `width` is the full width across the barrel; `length` the roof's length along it. `spring` is the angle where the arch starts, so the roof meets the wall tops at a slant and `at[1]` sits `rise · sin(spring)` above the wall tops. `endWall: { color, length, center? }` adds a fan of wedges that shuts both ends under the arch; give it a `length` 0.01 shorter than the wall so it does not z-fight. Example: `barrelRoof(kit, { at: [0, 1.0, 0], length: 1.5, width: 2.4, rise: 0.9, color: 'teal', spring: 0.22, endWall: { color: 'cream', length: 1.4 } })`.
+- **`wheel(kit, { at, radius, tube, axis, color, hubColor?, hubRadius?, hubLength?, spokes = 2, spokeColor = 'white', spokeWidth?, spokeThick?, spokeStep?, tubularSegments = 12, radialSegments = 4 })`**: an upright spoked wheel: a torus tyre, an optional 6-sided hub, and `spokes` full-diameter bars (2 gives four spokes), the first at 45°. `axis: 'z'` stands in the x–y plane (rolls along x), `axis: 'x'` in the z–y plane (rolls along z). Set the tyre's centre `at[1]` to `radius + tube` so it just touches the ground, and use a multiple of 4 for `tubularSegments`, so a vertex sits at the very bottom (y = 0 exactly). Example: `wheel(kit, { at: [0, 0.16, 0.3], radius: 0.12, tube: 0.04, axis: 'z', color: 'charcoal', hubColor: 'stone' })`. A wheel made of cylinders on their side (bus, tuk-tuk) is not this helper: keep those as plain cylinders.
+- **`ICO_LOW`** (0.851): how far a `detail: 0` sphere's lowest point sits below its centre, as a share of its radius. To rest a squashed ball on the ground: `y = r * squash * ICO_LOW`.
 
 ## 5. Scale chart
 
@@ -96,6 +121,9 @@ Measured costs, with defaults unless stated:
 | door / door with knob | 12 / 32 |
 | wallPanel | 12 |
 | gableRoof / with ridge cap | 24 / 56 |
+| rod (6 / 4 segments) | 24 / 16 |
+| wheel (4 × 12 tyre, 2 spokes, no hub) | 96 + 24 |
+| barrelRoof (8 segments) / with endWall | 96 / 160 |
 
 `scale` does not change a part's triangle count: a squashed sphere costs the same as a round one, so use it freely, but remember a scaled-up part still has the same coarse faces.
 
