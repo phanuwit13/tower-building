@@ -22,6 +22,15 @@ The game is a static Vite site. `npm run build` writes `dist/`, and Cloudflare P
 - Pages lowercases the branch name, turns every non-alphanumeric character into `-` and may truncate long names, so the alias you work out by hand can be wrong. The link the Cloudflare Pages GitHub app comments on the pull request is the authoritative one.
 - Preview links are public. Do not put anything private on a branch you preview.
 
+## Checking speed on a school device
+
+Add these to a preview or production link:
+
+- `?fps=1` shows a small box in the bottom left: frames per second, the quality tier (สวย or ลื่น), the draw calls of the last frame, and how long the last change to the placed items took to rebuild (`city … ms`: the whole city when the page opens, one map chunk after each placement).
+- `?demo=full&fps=1` starts on a full School map (about 145 items, every item type), with the last item still to place. This is the heaviest case: check that ลื่น stays at 30 fps or more while you orbit the camera, then place the last item with วาง and watch `city … ms`. Add `&seed=2` (any whole number) for a different city. The demo plays in memory only: the player's saved city is not touched, and reloading starts the demo again.
+
+Targets: at least 30 fps on ลื่น on a 4 GB Chromebook, about 60 fps on สวย on a normal laptop. A full map draws in about 11 calls on ลื่น and about 40 on สวย (a few more on the frame after a change, when the shadows are redrawn).
+
 ## Production
 
 - Merging to `main` deploys production at **https://tower-building.pages.dev**.

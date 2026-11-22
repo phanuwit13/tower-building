@@ -158,9 +158,9 @@ Use only these names. They describe the colour, not its use: a `red` can be a ro
 | lime | #a8d93c | lawns, young leaves, fruit, aliens |
 | mint | #94dcc1 | pale accents, pastel walls and toys |
 | teal | #2aa6a2 | window frames (the default), playground metal |
-| skyBlue | #7dc4f0 | window glass (via `glassWindow`), water |
+| skyBlue | #7dc4f0 | window glass (via `glassWindow`), glass flasks, a tiled swimming pool; not ponds (use navy) |
 | blue | #3f7fdb | playground frames, signs, roofs |
-| navy | #2f4a86 | lamp posts, clock hands, dark trim, flag stripe |
+| navy | #2f4a86 | lamp posts, clock hands, dark trim, flag stripe, pond water (stays dark at night: the night light is blue, so pale blue water would glare) |
 | glassBlue | #c2e8f7 | pale glass, ice |
 | lampWarm | #ffeaa6 | bulbs and lamp globes, with `glow: true` |
 | windowWarm | #ffd873 | night glow of windows: `glow: 'windowWarm'` on a `skyBlue` part |
@@ -206,6 +206,13 @@ Not checked, but expected:
    - Switch to night with ตั้งค่า → ช่วงเวลา → กลางคืน: windows and lamps should glow, and nothing else should.
    - `&item=<id>` (for example `?gallery=school&item=classroom`) shows one item close up. Every label shows a thumbnail and the triangles used against the budget.
 3. Compare with the style references: the same chunkiness, palette and scale. The front (+x) should read in the 3/4 view.
+4. The geometry snapshot (`src/themes/school/geometry.snapshot.json`) fingerprints every item's built geometry (per mesh: triangles, bounding box, sums of positions and colours), so a change to a shared helper can't silently change an approved item. A new item, or a change you meant to make, fails `src/themes/school/geometry.test.ts` until you regenerate the snapshot:
+
+   ```bash
+   UPDATE_GEOMETRY=1 npx vitest run src/themes/school/geometry.test.ts
+   ```
+
+   Then review the JSON diff (`git diff src/themes/school/geometry.snapshot.json`): only the items you meant to change may appear in it. If any other item changed, a shared helper moved it: fix that instead of committing the snapshot.
 
 ## 11. Style references (`src/themes/school/items/`)
 
