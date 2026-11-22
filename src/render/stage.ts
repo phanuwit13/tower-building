@@ -6,6 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { GRID_SIZE, type QualityTier } from '../game/types';
+import { clampPanTarget } from './panClamp';
 
 export interface Stage {
   renderer: THREE.WebGLRenderer;
@@ -110,13 +111,28 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
 
   const controls = new OrbitControls(camera, canvas);
   controls.target.copy(MAP_CENTER);
-  controls.enablePan = false;
+  controls.enablePan = true;
+  controls.screenSpacePanning = false; // pan slides along the ground, never up or down
   controls.minDistance = CAMERA.minDistance;
   controls.maxDistance = CAMERA.maxDistance;
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = 1.25;
   controls.enableDamping = true;
-  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  // Mouse: left orbits, right pans, wheel zooms (OrbitControls defaults). Touch: one finger orbits, two pinch and pan.
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // right-drag pans
+  // Keep the target on the map: shift camera and target together so the view slides to a stop at the edge.
+  controls.addEventListener('change', () => {
+    const t = controls.target;
+    const c = clampPanTarget(t.x, t.z);
+    const dx = c.x - t.x;
+    const dz = c.z - t.z;
+    if (dx === 0 && dz === 0) return;
+    t.x += dx;
+    t.z += dz;
+    camera.position.x += dx;
+    camera.position.z += dz;
+  });
   controls.update();
 
   let width = 1;

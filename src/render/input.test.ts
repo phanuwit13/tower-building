@@ -110,6 +110,28 @@ describe('attachInput pointer robustness', () => {
     dispose();
   });
 
+  it('a right-button press (mouse pan) is never a tap or a ghost drag', () => {
+    const { canvas, controls, c, dispose } = setup(() => true);
+    const right = (type: string) =>
+      new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', clientX: 400, clientY: 300, button: 2, bubbles: true });
+    canvas.dispatchEvent(right('pointerdown'));
+    window.dispatchEvent(right('pointerup'));
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    expect(controls.enabled).toBe(true);
+    dispose();
+  });
+
+  it('a two-finger gesture (pinch / pan) never taps, even if one finger lifts without moving', () => {
+    const { canvas, c, dispose } = setup(() => false);
+    canvas.dispatchEvent(ptr('pointerdown', 1, 400, 300));
+    canvas.dispatchEvent(ptr('pointerdown', 2, 450, 300));
+    window.dispatchEvent(ptr('pointerup', 1, 400, 300));
+    window.dispatchEvent(ptr('pointerup', 2, 450, 300));
+    expect(c.tapTile).not.toHaveBeenCalled();
+    dispose();
+  });
+
   it('a pointerup that only reaches window ends the gesture; the disposer removes window listeners', () => {
     const add = vi.spyOn(window, 'addEventListener');
     const remove = vi.spyOn(window, 'removeEventListener');
