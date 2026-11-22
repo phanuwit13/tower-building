@@ -21,24 +21,26 @@ type BasePreset = Omit<EnvPreset, 'glowStrength' | 'stars'>;
  * far ground fades into it). `sunDir` points from the map towards the sun (or moon at night); the
  * default camera looks from +x/+z, so a sun from +z lights the faces kids see first.
  */
+/** Fog distances below were tuned on the first, 10 x 10 map and grow with it (the camera sits proportionally further back). */
+const MAP_SCALE = GRID_SIZE / 10;
 const SUNNY: Record<TimeId, BasePreset> = {
   dawn: {
-    sky: 0x9ab8f0, fog: 0xffd6cc, fogNear: 30, fogFar: 74,
+    sky: 0x9ab8f0, fog: 0xffd6cc, fogNear: 30 * MAP_SCALE, fogFar: 74 * MAP_SCALE,
     hemiSky: 0xeedcf8, hemiGround: 0xa08caa, hemiIntensity: 1.05,
     sunColor: 0xffcaa4, sunIntensity: 1.4, sunDir: [-0.85, 0.45, 0.4],
   },
   day: {
-    sky: 0x58b4f4, fog: 0xc9e9fc, fogNear: 32, fogFar: 84,
+    sky: 0x58b4f4, fog: 0xc9e9fc, fogNear: 32 * MAP_SCALE, fogFar: 84 * MAP_SCALE,
     hemiSky: 0xe4f2ff, hemiGround: 0xc8b890, hemiIntensity: 1.0,
     sunColor: 0xfff2da, sunIntensity: 1.65, sunDir: [-0.35, 0.82, 0.45],
   },
   dusk: {
-    sky: 0x7a6cc4, fog: 0xffb89a, fogNear: 30, fogFar: 72,
+    sky: 0x7a6cc4, fog: 0xffb89a, fogNear: 30 * MAP_SCALE, fogFar: 72 * MAP_SCALE,
     hemiSky: 0xdab6ee, hemiGround: 0x7d6294, hemiIntensity: 1.1,
     sunColor: 0xffb27c, sunIntensity: 1.5, sunDir: [0.9, 0.55, 0.15],
   },
   night: {
-    sky: 0x121a44, fog: 0x2b3874, fogNear: 30, fogFar: 70,
+    sky: 0x121a44, fog: 0x2b3874, fogNear: 30 * MAP_SCALE, fogFar: 70 * MAP_SCALE,
     hemiSky: 0x5f6fd8, hemiGround: 0x2e2a52, hemiIntensity: 0.9,
     sunColor: 0xaab8ff, sunIntensity: 0.8, sunDir: [0.3, 0.85, 0.5],
   },
@@ -100,10 +102,21 @@ export function acesFilmic([r, g, b]: Vec3, exposure = 1): Vec3 {
 }
 
 const CENTER = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
-const SUN_DISTANCE = 30;
+const SUN_DISTANCE = 3 * GRID_SIZE;
+/** The sun's shadow camera spans the map's corners (half-diagonal 0.71 * GRID_SIZE) with a margin for tall items. */
+const SHADOW_HALF = 0.85 * GRID_SIZE;
 const SKY_RADIUS = 150;
 const STAR_COUNT = 1400;
-const RAIN = { pretty: 2500, smooth: 500, speed: 18, width: 14, height: 12, depth: 14 } as const;
+/**
+ * The rain box is 1.4 x the map on each side (as the 10 x 10 map's was); drops per volume are the
+ * same as then (2500 / 500 drops in 14 x 14 x 12), so the counts grow with the box's floor area.
+ */
+const RAIN_SIDE = 1.4 * GRID_SIZE;
+const RAIN_AREA_SCALE = (RAIN_SIDE / 14) ** 2;
+const RAIN = {
+  pretty: Math.round(2500 * RAIN_AREA_SCALE), smooth: Math.round(500 * RAIN_AREA_SCALE),
+  speed: 18, width: RAIN_SIDE, height: 12, depth: RAIN_SIDE,
+} as const;
 
 /**
  * Gradient sky dome: below the horizon = fog colour (so it meets the faded ground with no seam),
@@ -244,12 +257,12 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.02;
   const shadowCam = sun.shadow.camera;
-  shadowCam.left = -8.5; shadowCam.right = 8.5; shadowCam.top = 8.5; shadowCam.bottom = -8.5;
+  shadowCam.left = -SHADOW_HALF; shadowCam.right = SHADOW_HALF; shadowCam.top = SHADOW_HALF; shadowCam.bottom = -SHADOW_HALF;
   shadowCam.near = 1; shadowCam.far = SUN_DISTANCE * 2.2;
   shadowCam.updateProjectionMatrix();
   sun.target.position.copy(CENTER);
 
-  const fog = new THREE.Fog(0xffffff, 30, 80);
+  const fog = new THREE.Fog(0xffffff, 30 * MAP_SCALE, 80 * MAP_SCALE);
   const sky = createSky();
   const stars = createStars();
   const rain = createRain();

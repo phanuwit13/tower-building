@@ -14,6 +14,8 @@ export interface GallerySlot { item: ItemModel; x: number; z: number }
 
 const GAP = 1; // empty tiles between items in a row
 const ROW_GAP = 2; // empty tiles between rows: the labels (thumbnail + text) sit here
+/** Review pages are 10 x 10 tiles on purpose (labels stay readable; not tied to the map size); the page is framed by its own bounds. */
+const GALLERY_PAGE = 10;
 const BIG = 4; // footprint area from which an item goes in the back rows
 
 /**
@@ -21,7 +23,7 @@ const BIG = 4; // footprint area from which an item goes in the back rows
  * small ones the front rows (so nothing tall hides a small item from the default camera); each
  * row is centred, items in a row share a front edge, and a page holds as many rows as fit.
  */
-export function galleryPages(items: readonly ItemModel[], size = GRID_SIZE): GallerySlot[][] {
+export function galleryPages(items: readonly ItemModel[], size = GALLERY_PAGE): GallerySlot[][] {
   const rows: ItemModel[][] = [];
   for (const band of [items.filter((i) => i.footprint.w * i.footprint.d >= BIG), items.filter((i) => i.footprint.w * i.footprint.d < BIG)]) {
     let row: ItemModel[] = [];

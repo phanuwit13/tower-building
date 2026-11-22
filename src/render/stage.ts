@@ -32,8 +32,8 @@ interface TierSettings {
  * sampling radius on a bigger map instead.
  */
 const TIERS: Record<QualityTier, TierSettings> = {
-  pretty: { maxPixelRatio: 1.5, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 3, postProcessing: true },
-  smooth: { maxPixelRatio: 1, shadowType: THREE.PCFShadowMap, shadowSize: 1024, shadowRadius: 1, postProcessing: false },
+  pretty: { maxPixelRatio: 1.5, shadowType: THREE.PCFShadowMap, shadowSize: 4096, shadowRadius: 3, postProcessing: true },
+  smooth: { maxPixelRatio: 1, shadowType: THREE.PCFShadowMap, shadowSize: 2048, shadowRadius: 1, postProcessing: false },
 };
 
 /** Size a light's shadow map for a tier; a resized map is dropped so three rebuilds it. */
@@ -47,6 +47,19 @@ export function setShadowTier(shadow: THREE.LightShadow, q: QualityTier): void {
 }
 
 const MAP_CENTER = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+
+/**
+ * Camera limits, all in multiples of the map size so they follow GRID_SIZE. The default view looks
+ * from the +x/+z corner (direction 6:13:6) far enough back that the whole map fits a 16:10 screen;
+ * zooming in reaches a distance where one 1 x 1 tile is about 150 px on a 768 px tall tablet.
+ */
+export const CAMERA = {
+  fov: 40,
+  direction: new THREE.Vector3(6, 13, 6).normalize(),
+  distance: GRID_SIZE * 2.05,
+  minDistance: 6,
+  maxDistance: GRID_SIZE * 2.8,
+} as const;
 /**
  * Lights are authored dimmer and the exposure raised to match, so lit daytime surfaces stay under
  * the bloom threshold (0.85, measured before exposure) and only glowing parts bloom.
@@ -80,14 +93,14 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   container.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
-  camera.position.set(16, 13, 16);
+  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 300);
+  camera.position.copy(MAP_CENTER).addScaledVector(CAMERA.direction, CAMERA.distance);
 
   const controls = new OrbitControls(camera, canvas);
   controls.target.copy(MAP_CENTER);
   controls.enablePan = false;
-  controls.minDistance = 8;
-  controls.maxDistance = 26;
+  controls.minDistance = CAMERA.minDistance;
+  controls.maxDistance = CAMERA.maxDistance;
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = 1.25;
   controls.enableDamping = true;

@@ -1,4 +1,4 @@
-export const GRID_SIZE = 10;
+export const GRID_SIZE = 20;
 export type Rotation = 0 | 1 | 2 | 3; // quarter turns
 export interface Footprint { w: number; d: number } // tiles along x / z at rotation 0
 export interface ItemSpec { id: string; footprint: Footprint }
@@ -22,4 +22,4 @@ export interface GameState {
   current: string; next: string;
   status: GameStatus; nextUid: number;
 }
-export interface FillStats { items: number; tilesUsed: number; percent: number } // percent = Math.round(tilesUsed) (100 tiles)
+export interface FillStats { items: number; tilesUsed: number; percent: number } // percent = round(tilesUsed / GRID_SIZE^2 * 100)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../game/game';
 import { loadGame, QUALITY_KEY, SAVE_KEY, saveGame, type KeyValueStore } from '../game/save';
-import type { GameState } from '../game/types';
+import { GRID_SIZE, type GameState } from '../game/types';
 import { getCatalog, getTheme } from '../themes/registry';
 import { createController, type Controller } from './controller';
 
@@ -80,10 +80,10 @@ describe('controller flow', () => {
   });
   it('edge rotate keeps ghost inside the map', () => {
     const c = make(seeded({ current: 'classroom' }));
-    c.tapTile(9, 9);
-    expect(c.getState().ghost).toMatchObject({ x: 8, z: 7, rotation: 0 });
+    c.tapTile(GRID_SIZE - 1, GRID_SIZE - 1);
+    expect(c.getState().ghost).toMatchObject({ x: GRID_SIZE - 2, z: GRID_SIZE - 3, rotation: 0 });
     c.rotateGhost();
-    expect(c.getState().ghost).toMatchObject({ x: 7, z: 8, rotation: 1 });
+    expect(c.getState().ghost).toMatchObject({ x: GRID_SIZE - 3, z: GRID_SIZE - 2, rotation: 1 });
   });
   it('rotateGhost without ghost is a no-op', () => {
     const c = make(seeded());
@@ -95,9 +95,10 @@ describe('controller flow', () => {
     c.moveGhost(1, 0);
     const g = c.getState().ghost!;
     expect(g.valid).toBe(true);
-    expect(Math.abs(g.x - 4.5)).toBeLessThan(3);
+    expect(Math.abs(g.x - (GRID_SIZE / 2 - 0.5))).toBeLessThan(3);
+    expect(Math.abs(g.z - (GRID_SIZE / 2 - 0.5))).toBeLessThan(3);
     for (let i = 0; i < 20; i++) c.moveGhost(1, 0);
-    expect(c.getState().ghost!.x).toBeLessThanOrEqual(9);
+    expect(c.getState().ghost!.x).toBeLessThanOrEqual(GRID_SIZE - 1);
     c.moveGhost(-1, 0);
     expect(c.getState().ghost!.x).toBeGreaterThanOrEqual(0);
   });
@@ -143,7 +144,7 @@ describe('controller round end and no-op emits', () => {
     const c = make(store);
     c.chooseTheme('school');
     let ended = false;
-    for (let i = 0; i < 100 && !ended; i++) {
+    for (let i = 0; i < GRID_SIZE * GRID_SIZE && !ended; i++) {
       c.moveGhost(0, 0); // appears on the nearest free spot
       expect(c.getState().ghost!.valid).toBe(true);
       c.place();

@@ -37,9 +37,9 @@ describe('rotatedFootprint', () => {
 });
 
 describe('buildOccupancy', () => {
-  it('marks rotated footprints at z*10+x', () => {
+  it('marks rotated footprints at z*GRID_SIZE+x', () => {
     const o = buildOccupancy([p('big', 0, 0, 1)], cat); // 3 wide x 2 deep
-    expect(o.length).toBe(100);
+    expect(o.length).toBe(N * N);
     expect([...o].reduce((a, b) => a + b, 0)).toBe(6);
     expect(o[1 * N + 2]).toBe(1);
     expect(o[2 * N + 0]).toBe(0);
@@ -58,8 +58,9 @@ describe('canPlace', () => {
     expect(canPlace(empty(), fp, 0, 0, 1.5)).toBe(false);
   });
   it('respects map bounds and occupancy', () => {
-    expect(canPlace(empty(), { w: 2, d: 3 }, 0, 9, 0)).toBe(false);
-    expect(canPlace(empty(), { w: 2, d: 3 }, 0, 8, 7)).toBe(true);
+    expect(canPlace(empty(), { w: 2, d: 3 }, 0, N - 1, 0)).toBe(false);
+    expect(canPlace(empty(), { w: 2, d: 3 }, 0, N - 2, N - 3)).toBe(true);
+    expect(canPlace(empty(), { w: 2, d: 3 }, 0, N - 2, N - 2)).toBe(false);
     expect(canPlace(empty(), { w: 1, d: 1 }, 0, -1, 0)).toBe(false);
     expect(canPlace(occWithTile(3, 3), { w: 1, d: 1 }, 0, 3, 3)).toBe(false);
     expect(canPlace(occWithTile(3, 3), { w: 2, d: 2 }, 0, 2, 2)).toBe(false);
@@ -78,7 +79,7 @@ describe('fitsAnywhere', () => {
 
 describe('clampPosition', () => {
   it('pulls the footprint back inside the map', () => {
-    expect(clampPosition({ w: 2, d: 3 }, 1, 9, 9)).toEqual({ x: 7, z: 8 });
+    expect(clampPosition({ w: 2, d: 3 }, 1, N - 1, N - 1)).toEqual({ x: N - 3, z: N - 2 });
     expect(clampPosition({ w: 2, d: 3 }, 0, -3, -1)).toEqual({ x: 0, z: 0 });
     expect(clampPosition({ w: 2, d: 3 }, 0, 4, 4)).toEqual({ x: 4, z: 4 });
   });
@@ -86,19 +87,26 @@ describe('clampPosition', () => {
 
 describe('nearestFreeSpot', () => {
   it('picks the spot centred nearest the target', () => {
-    expect(nearestFreeSpot(empty(), { w: 2, d: 2 }, 0, 5, 5)).toEqual({ x: 4, z: 4 });
+    expect(nearestFreeSpot(empty(), { w: 2, d: 2 }, 0, N / 2, N / 2)).toEqual({ x: N / 2 - 1, z: N / 2 - 1 });
   });
   it('skips occupied tiles', () => {
-    expect(nearestFreeSpot(occWithTile(5, 5), { w: 1, d: 1 }, 0, 5.5, 5.5)).toEqual({ x: 5, z: 4 });
+    expect(nearestFreeSpot(occWithTile(N / 2, N / 2), { w: 1, d: 1 }, 0, N / 2 + 0.5, N / 2 + 0.5)).toEqual({ x: N / 2, z: N / 2 - 1 });
   });
   it('returns null when nothing fits', () => {
-    expect(nearestFreeSpot(full(), { w: 1, d: 1 }, 0, 5, 5)).toBeNull();
+    expect(nearestFreeSpot(full(), { w: 1, d: 1 }, 0, N / 2, N / 2)).toBeNull();
   });
 });
 
 describe('fillStats', () => {
   it('counts items, tiles and percent', () => {
-    expect(fillStats([p('big', 0, 0), p('one', 5, 5)], cat)).toEqual({ items: 2, tilesUsed: 7, percent: 7 });
+    expect(fillStats([p('big', 0, 0), p('one', 5, 5)], cat)).toEqual({
+      items: 2, tilesUsed: 7, percent: Math.round((7 / (N * N)) * 100),
+    });
     expect(fillStats([], cat)).toEqual({ items: 0, tilesUsed: 0, percent: 0 });
+  });
+  it('percent is of the whole map (GRID_SIZE squared tiles), not of 100', () => {
+    const stats = fillStats(Array.from({ length: 10 }, (_, i) => p('big', 0, i)), cat); // 10 x 6 tiles (stacked; only the tile count matters)
+    expect(stats.tilesUsed).toBe(60);
+    expect(stats.percent).toBe(Math.round((60 / (N * N)) * 100));
   });
 });

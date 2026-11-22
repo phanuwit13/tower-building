@@ -28,8 +28,8 @@ const GRID_HALF_WIDTH = 0.015; // world units
  * `end` it is pure horizon colour, the same as the sky dome behind it, so the plane can stop there.
  * The environment fades night stars in over the same band (see createStars).
  */
-export const SURROUND_FADE = { start: 9, end: 32, y: -SLAB } as const;
-const SURROUND_SIZE = 2 * SURROUND_FADE.end + 16;
+export const SURROUND_FADE = { start: 0.9 * GRID_SIZE, end: 3.2 * GRID_SIZE, y: -SLAB } as const;
+const SURROUND_SIZE = 2 * SURROUND_FADE.end + GRID_SIZE * 1.6;
 
 function scaleHex(hex: number, k: number): number {
   const ch = (shift: number) => Math.round(((hex >> shift) & 255) * k) << shift;

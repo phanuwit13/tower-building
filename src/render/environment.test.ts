@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { TIME_IDS, WEATHER_IDS } from '../game/types';
+import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
 import { acesFilmic, envPreset } from './environment';
+import { CAMERA } from './stage';
 
 const ALL = TIME_IDS.flatMap((time) => WEATHER_IDS.map((weather) => ({ time, weather })));
 
@@ -51,6 +52,11 @@ describe('envPreset', () => {
     for (const { time, weather } of ALL) {
       expect(envPreset(time, weather).stars).toBe(time === 'night' && weather === 'sunny');
     }
+  });
+
+  it('never fogs out the far corner of the map, even zoomed out as far as allowed', () => {
+    const farCorner = CAMERA.maxDistance + (GRID_SIZE * Math.SQRT2) / 2;
+    for (const { time, weather } of ALL) expect(envPreset(time, weather).fogFar, `${time} ${weather}`).toBeGreaterThan(farCorner);
   });
 
   it('keeps every preset usable: fog ends after it starts, lights on, sun above the horizon', () => {
