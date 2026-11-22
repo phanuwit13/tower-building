@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rotatedFootprint } from '../game/grid';
 import { GRID_SIZE, type Footprint, type Placement, type Rotation } from '../game/types';
+import { CULL_MARGIN } from '../models/motion';
 
 /**
  * Static batching of placed items. Placed items never move, so each square chunk of the map
@@ -56,9 +57,10 @@ export interface KitMaterials { body: THREE.Material; glow: THREE.Material }
 
 /**
  * Merge items into world-space body and glow geometries, after `base` (an earlier merge, left
- * as it is) when given. Each mesh's geometry is cloned and moved into place, normals included;
- * the prototypes' own geometry is never changed or disposed. Body and glow stay apart: they have
- * different attributes (glow adds glowColor) and materials.
+ * as it is) when given. Each mesh's geometry is cloned and moved into place, normals included,
+ * and so are the motion attributes: `pivot` moves like a position, `axis` turns like a direction
+ * (kept unit length). The prototypes' own geometry is never changed or disposed. Body and glow
+ * stay apart: they have different attributes (glow adds glowColor) and materials.
  */
 export function mergeItems(items: readonly BatchItem[], materials: KitMaterials, base?: Merged): Merged {
   const parts: Record<keyof Merged, THREE.BufferGeometry[]> = { body: [], glow: [] };
@@ -69,7 +71,10 @@ export function mergeItems(items: readonly BatchItem[], materials: KitMaterials,
       if (!(o instanceof THREE.Mesh)) return;
       const kind = o.material === materials.body ? 'body' : o.material === materials.glow ? 'glow' : null;
       if (!kind) throw new Error(`city batch: mesh "${o.name}" does not use a kit material`);
-      parts[kind].push((o.geometry as THREE.BufferGeometry).clone().applyMatrix4(world.multiplyMatrices(matrix, o.matrixWorld)));
+      const g = (o.geometry as THREE.BufferGeometry).clone().applyMatrix4(world.multiplyMatrices(matrix, o.matrixWorld));
+      g.attributes.pivot?.applyMatrix4(world);
+      g.attributes.axis?.transformDirection(world);
+      parts[kind].push(g);
     });
   }
   const merge = (kind: keyof Merged): THREE.BufferGeometry | null => {
@@ -79,7 +84,9 @@ export function mergeItems(items: readonly BatchItem[], materials: KitMaterials,
     const merged = mergeGeometries(prev ? [prev, ...list] : list, false);
     for (const g of list) g.dispose();
     if (!merged) throw new Error(`city batch: merging the ${kind} geometry failed`);
-    merged.computeBoundingSphere(); // for frustum culling (view and sun); exact, done once per merge
+    // For frustum culling (view and sun), once per merge; padded so a sway near an edge never pops.
+    merged.computeBoundingSphere();
+    merged.boundingSphere!.radius += CULL_MARGIN;
     return merged;
   };
   return { body: merge('body'), glow: merge('glow') };

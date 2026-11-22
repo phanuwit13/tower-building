@@ -6,6 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { GRID_SIZE, type QualityTier } from '../game/types';
+import { advanceMotion, watchReducedMotion } from '../models/motion';
 import { clampPanTarget } from './panClamp';
 
 export interface Stage {
@@ -230,11 +231,15 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   new ResizeObserver(resize).observe(container);
   resize();
   stage.setQuality(q);
+  watchReducedMotion(); // prefers-reduced-motion: reduce holds every item at rest, live
 
   let last = -1;
   renderer.setAnimationLoop((now) => {
     const dt = last < 0 ? 0 : Math.min(now - last, 100); // clamp: no rain jump after a hidden tab
     last = now;
+    // Item animation runs in the kit shaders off one shared clock, advanced once here. It never
+    // touches the shadow map: shadows are drawn from the rest pose, only when invalidated.
+    advanceMotion(dt);
     for (const cb of frameCallbacks) cb(dt, now);
     controls.update();
     renderer.info.reset();

@@ -69,8 +69,8 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
     const g = mesh.geometry;
     const isGlow = mesh.material === kit.materials.glow;
     const names = Object.keys(g.attributes).sort().join(',');
-    if (names !== (isGlow ? 'color,glowColor,normal,position' : 'color,normal,position')) {
-      errs.push(`${tag}: ${isGlow ? 'glow' : 'body'} geometry must have exactly ${isGlow ? 'position, normal, color and glowColor' : 'position, normal and color'} attributes (has ${names || 'none'}); build parts with the kit`);
+    if (names !== (isGlow ? 'anim,axis,color,glowColor,normal,pivot,position' : 'anim,axis,color,normal,pivot,position')) {
+      errs.push(`${tag}: ${isGlow ? 'glow' : 'body'} geometry must have exactly ${isGlow ? 'position, normal, color, glowColor, anim, pivot and axis' : 'position, normal, color, anim, pivot and axis'} attributes (has ${names || 'none'}); build parts with the kit`);
     } else {
       if (offPaletteColor(g, 'color')) errs.push(`${tag}: vertex colour is not a palette colour`);
       if (isGlow && offPaletteColor(g, 'glowColor')) errs.push(`${tag}: glow colour is not a palette colour`);

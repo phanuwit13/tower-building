@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ItemModel } from '../models/contract';
 import type { StyleKit } from '../models/kit';
+import { freezeMotion } from '../models/motion';
 
 const SIZE = 128;
 const VIEW_DIR = new THREE.Vector3(1, 0.85, 1).normalize(); // fixed 3/4 angle
@@ -53,9 +54,11 @@ export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createG
         }
       }
       const { renderer, scene, camera } = gl;
-      // Thumbnails must not bake the current night-time window glow into the picture.
+      // Thumbnails must not bake the current night-time window glow, or a moment of a sway or a
+      // spin, into the picture: glow off, motion at its rest pose (the shared clock is restored).
       const glow = kit.getGlowStrength();
       kit.setGlowStrength(0);
+      const restoreMotion = freezeMotion();
       let model: THREE.Object3D | null = null;
       let url = '';
       try {
@@ -74,6 +77,7 @@ export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createG
         url = ''; // this item only: it is cached as '' and never retried
       } finally {
         kit.setGlowStrength(glow);
+        restoreMotion();
         if (model) {
           scene.remove(model);
           model.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); // shared kit materials stay

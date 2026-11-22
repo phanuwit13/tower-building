@@ -79,7 +79,7 @@ describe('validateItemModel', () => {
   });
   it('setGlowStrength updates the shared uniform', () => {
     kit.setGlowStrength(0.7);
-    const shader = { uniforms: {} as Record<string, { value: number }>, vertexShader: 'void main() {}', fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
+    const shader = { uniforms: {} as Record<string, { value: number }>, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
     kit.materials.glow.onBeforeCompile(shader as never, null as never);
     expect(shader.uniforms.glowStrength.value).toBe(0.7);
     kit.setGlowStrength(0);
@@ -193,5 +193,32 @@ describe('validateItemModel footprint coverage', () => {
   it('all 50 School items pass every rule', () => {
     expect(school.items).toHaveLength(50);
     for (const it of school.items) expect(validateItemModel(it, kit)).toEqual([]);
+  });
+});
+
+describe('validateItemModel motion attributes', () => {
+  const moving = (mutate: (body: THREE.BufferGeometry) => void = () => {}) => model({
+    build: (k) => {
+      const g = k.finish([
+        k.cylinder(0.05, 0.05, 0.5, [0, 0.25, 0], 'bark'),
+        k.sphere(0.3, [0, 0.7, 0], 'leaf', { motion: { kind: 'sway', pivot: [0, 0.5, 0] } }),
+        k.box([0.1, 0.1, 0.1], [0, 0.8, 0.25], 'lampWarm', { glow: true, motion: { kind: 'spin', pivot: [0, 0.8, 0] } }),
+      ]);
+      mutate((g.children[0] as THREE.Mesh).geometry);
+      return g;
+    },
+  });
+  it('accepts kit parts with anim, pivot and axis, static and animated in one mesh', () => {
+    expect(validateItemModel(moving(), kit)).toEqual([]);
+  });
+  it('rejects a body mesh missing anim, pivot or axis', () => {
+    for (const name of ['anim', 'pivot', 'axis']) {
+      expect(validateItemModel(moving((g) => g.deleteAttribute(name)), kit).join('|'), name).toContain('exactly');
+    }
+  });
+  it('still rejects a foreign attribute', () => {
+    const errs = validateItemModel(moving((g) => g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2))), kit);
+    expect(errs.join('|')).toContain('exactly');
+    expect(errs.join('|')).toContain('uv');
   });
 });

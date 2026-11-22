@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { getStyleKit } from './kit';
+import { getStyleKit, type PartOpts } from './kit';
+import { CULL_MARGIN, MOTION_CODE, motionUniforms } from './motion';
 import { PALETTE } from './palette';
 
 const kit = getStyleKit();
@@ -14,6 +15,8 @@ const size = (g: THREE.BufferGeometry) => box(g).getSize(new THREE.Vector3());
 const centre = (g: THREE.BufferGeometry) => box(g).getCenter(new THREE.Vector3());
 const tris = (g: THREE.BufferGeometry) => g.attributes.position.count / 3;
 const attrs = (g: THREE.BufferGeometry) => Object.keys(g.attributes).sort();
+const BODY_ATTRS = ['anim', 'axis', 'color', 'normal', 'pivot', 'position'];
+const GLOW_ATTRS = ['anim', 'axis', 'color', 'glowColor', 'normal', 'pivot', 'position'];
 
 /**
  * Faces whose winding (counter-clockwise seen from outside) or stored normal does not point away
@@ -74,7 +77,7 @@ describe('style kit wedge', () => {
     const col = p.geometry.attributes.color;
     expect(col.getX(0)).toBeCloseTo(want.r);
     expect(col.getZ(5)).toBeCloseTo(want.b);
-    expect(Object.keys(p.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(Object.keys(p.geometry.attributes).sort()).toEqual(GLOW_ATTRS);
     const g = kit.finish([p, kit.box([1, 1, 1], [0, 0, 0], 'red')]);
     expect(g.children).toHaveLength(2);
   });
@@ -96,7 +99,7 @@ describe('style kit glow colour', () => {
   it('body parts get no glowColor and finish merges body + both glow kinds', () => {
     const body = kit.box([1, 1, 1], [0, 0, 0], 'red');
     expect(body.glow).toBe(false);
-    expect(Object.keys(body.geometry.attributes).sort()).toEqual(['color', 'normal', 'position']);
+    expect(Object.keys(body.geometry.attributes).sort()).toEqual(BODY_ATTRS);
     const g = kit.finish([
       body,
       kit.box([1, 1, 1], [0, 0, 0], 'glassBlue', { glow: 'windowWarm' }),
@@ -104,10 +107,10 @@ describe('style kit glow colour', () => {
     ]);
     expect(g.children).toHaveLength(2);
     const glowMesh = g.children[1] as THREE.Mesh;
-    expect(Object.keys(glowMesh.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(Object.keys(glowMesh.geometry.attributes).sort()).toEqual(GLOW_ATTRS);
   });
   it('the glow shader emits glowColor, not vColor', () => {
-    const shader = { uniforms: {}, vertexShader: 'void main() {\n}', fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
     kit.materials.glow.onBeforeCompile(shader as never, null as never);
     expect(shader.fragmentShader).toContain('vGlowColor * glowStrength');
     expect(shader.vertexShader).toContain('vGlowColor = glowColor');
@@ -159,10 +162,10 @@ describe('style kit scale', () => {
 });
 
 describe('style kit torus', () => {
-  it('is a low-poly ring in the x-y plane around `at`, with exactly position, normal and color', () => {
+  it('is a low-poly ring in the x-y plane around `at`, with exactly the body attributes', () => {
     const p = kit.torus(0.5, 0.1, [1, 2, 3], 'orange');
     const g = p.geometry;
-    expect(attrs(g)).toEqual(['color', 'normal', 'position']);
+    expect(attrs(g)).toEqual(BODY_ATTRS);
     expect(p.glow).toBe(false);
     expect(tris(g)).toBe(6 * 12 * 2);
     const b = box(g);
@@ -192,17 +195,17 @@ describe('style kit torus', () => {
   it('can glow', () => {
     const p = kit.torus(0.3, 0.05, [0, 0, 0], 'skyBlue', { glow: 'windowWarm' });
     expect(p.glow).toBe(true);
-    expect(attrs(p.geometry)).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(attrs(p.geometry)).toEqual(GLOW_ATTRS);
     expect(new THREE.Color().fromBufferAttribute(p.geometry.attributes.glowColor as THREE.BufferAttribute, 0).getHex())
       .toBe(new THREE.Color(PALETTE.windowWarm).getHex());
   });
 });
 
 describe('style kit dome', () => {
-  it('is a closed low-poly hemisphere standing on y = at[1], with exactly position, normal and color', () => {
+  it('is a closed low-poly hemisphere standing on y = at[1], with exactly the body attributes', () => {
     const p = kit.dome(0.5, [1, 2, 3], 'white');
     const g = p.geometry;
-    expect(attrs(g)).toEqual(['color', 'normal', 'position']);
+    expect(attrs(g)).toEqual(BODY_ATTRS);
     expect(p.glow).toBe(false);
     const b = box(g);
     expect(b.min.toArray().map((v) => +v.toFixed(6))).toEqual([0.5, 2, 2.5]);
@@ -235,8 +238,122 @@ describe('style kit dome', () => {
   it('can glow with its own colour', () => {
     const p = kit.dome(0.3, [0, 0, 0], 'lampWarm', { glow: true });
     expect(p.glow).toBe(true);
-    expect(attrs(p.geometry)).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(attrs(p.geometry)).toEqual(GLOW_ATTRS);
     const g = kit.finish([p, kit.torus(0.3, 0.05, [0, 0.3, 0], 'navy')]);
     expect(g.children).toHaveLength(2);
+  });
+});
+
+describe('style kit motion attributes', () => {
+  /** The distinct values of a vector attribute, as rounded arrays. */
+  const values = (g: THREE.BufferGeometry, name: string): number[][] => {
+    const a = g.attributes[name];
+    const seen = new Map<string, number[]>();
+    for (let i = 0; i < a.count; i++) {
+      const v = [a.getX(i), a.getY(i), a.getZ(i), a.itemSize > 3 ? a.getW(i) : undefined]
+        .slice(0, a.itemSize).map((x) => +(x as number).toFixed(5));
+      seen.set(v.join(','), v);
+    }
+    return [...seen.values()];
+  };
+
+  it('every part carries anim (vec4), pivot and axis (vec3), one per vertex, all zero when static', () => {
+    for (const p of [kit.box([1, 1, 1], [0, 0.5, 0], 'red'), kit.sphere(0.3, [0, 1, 0], 'lampWarm', { glow: true })]) {
+      const g = p.geometry;
+      const n = g.attributes.position.count;
+      expect(g.attributes.anim.itemSize).toBe(4);
+      expect(g.attributes.pivot.itemSize).toBe(3);
+      expect(g.attributes.axis.itemSize).toBe(3);
+      for (const name of ['anim', 'pivot', 'axis']) {
+        expect(g.attributes[name].count).toBe(n);
+        expect(values(g, name)).toEqual([new Array(g.attributes[name].itemSize).fill(0)]);
+      }
+    }
+  });
+
+  it('an animated part stores its kind code, amount, speed, phase, pivot and axis on every vertex', () => {
+    const p = kit.cylinder(0.3, 0.3, 0.1, [0, 0.4, 0], 'orange', {
+      motion: { kind: 'spin', pivot: [0, 0.4, 0], axis: [0, 2, 0], speed: 0.8, phase: 0.5 },
+    });
+    expect(values(p.geometry, 'anim')).toEqual([[MOTION_CODE.spin, 1, 0.8, 0.5]]);
+    expect(values(p.geometry, 'pivot')).toEqual([[0, 0.4, 0]]);
+    expect(values(p.geometry, 'axis')).toEqual([[0, 1, 0]]);
+  });
+
+  it('sway defaults its pivot to the base of the part, after scale and rotate', () => {
+    const p = kit.sphere(0.5, [0.1, 1.2, -0.2], 'leaf', { scale: [1, 0.6, 1], motion: { kind: 'sway' } });
+    const [pivot] = values(p.geometry, 'pivot');
+    expect(pivot[0]).toBeCloseTo(0.1);
+    expect(pivot[1]).toBeCloseTo(box(p.geometry).min.y, 4);
+    expect(pivot[1]).toBeLessThan(1.2 - 0.2);
+    expect(pivot[2]).toBeCloseTo(-0.2);
+    expect(values(p.geometry, 'axis')).toEqual([[0, 1, 0]]);
+    expect(values(p.geometry, 'anim')[0][0]).toBe(MOTION_CODE.sway);
+  });
+
+  it('kind codes for every kind, glow parts included', () => {
+    const code = (motion: NonNullable<PartOpts['motion']>, glow = false) =>
+      values(kit.box([0.2, 0.2, 0.2], [0, 1, 0], 'red', { motion, glow }).geometry, 'anim')[0][0];
+    expect(code({ kind: 'sway' })).toBe(1);
+    expect(code({ kind: 'wave', pivot: [0, 1, 0] })).toBe(2);
+    expect(code({ kind: 'spin' })).toBe(3);
+    expect(code({ kind: 'swing' }, true)).toBe(4);
+    expect(code({ kind: 'water' })).toBe(5);
+    expect(code({ kind: 'water', water: 'pool' })).toBe(6);
+  });
+
+  it('motion leaves positions, normals and colours exactly as without it', () => {
+    const plain = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { rotate: [0.2, 0.3, 0] }).geometry;
+    const moving = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { rotate: [0.2, 0.3, 0], motion: { kind: 'sway' } }).geometry;
+    for (const name of ['position', 'normal', 'color']) {
+      expect(Array.from(moving.attributes[name].array)).toEqual(Array.from(plain.attributes[name].array));
+    }
+  });
+
+  it('rejects a bad motion with a style kit error', () => {
+    expect(() => kit.box([1, 1, 1], [0, 0.5, 0], 'red', { motion: { kind: 'spin', axis: [0, 0, 0] } })).toThrow(/style kit.*axis/);
+  });
+
+  it('finish merges static and animated parts into one body mesh with the same attributes', () => {
+    const g = kit.finish([
+      kit.cylinder(0.05, 0.05, 1, [0, 0.5, 0], 'bark'),
+      kit.sphere(0.4, [0, 1.3, 0], 'leaf', { motion: { kind: 'sway', pivot: [0, 1, 0] } }),
+      kit.box([0.1, 0.1, 0.1], [0, 1.8, 0], 'lampWarm', { glow: true, motion: { kind: 'sway', pivot: [0, 1, 0] } }),
+    ]);
+    expect(g.children).toHaveLength(2);
+    const [body, glow] = g.children as THREE.Mesh[];
+    expect(attrs(body.geometry)).toEqual(BODY_ATTRS);
+    expect(attrs(glow.geometry)).toEqual(GLOW_ATTRS);
+    expect(values(body.geometry, 'anim').map((v) => v[0]).sort()).toEqual([0, MOTION_CODE.sway]);
+  });
+
+  it('finish pads the bounding sphere of a moving mesh, not of a still one', () => {
+    const still = kit.finish([kit.sphere(0.4, [0, 0.4, 0], 'leaf')]).children[0] as THREE.Mesh;
+    const moving = kit.finish([kit.sphere(0.4, [0, 0.4, 0], 'leaf', { motion: { kind: 'sway' } })]).children[0] as THREE.Mesh;
+    const exact = moving.geometry.clone();
+    exact.computeBoundingSphere();
+    expect(moving.geometry.boundingSphere!.radius).toBeCloseTo(exact.boundingSphere!.radius + CULL_MARGIN);
+    expect(still.geometry.boundingSphere).toBeNull(); // three computes the exact one when it first culls
+  });
+});
+
+describe('style kit materials', () => {
+  const standard = () => ({
+    uniforms: {} as Record<string, THREE.IUniform>,
+    vertexShader: THREE.ShaderLib.standard.vertexShader,
+    fragmentShader: THREE.ShaderLib.standard.fragmentShader,
+  });
+  it('both materials get the motion shader and share the motion uniforms', () => {
+    for (const m of [kit.materials.body, kit.materials.glow]) {
+      const s = standard();
+      m.onBeforeCompile(s as never, null as never);
+      expect(s.vertexShader).toContain('attribute vec4 anim;');
+      expect(s.vertexShader).toContain('transformed = motionRest');
+      expect(s.uniforms.uTime).toBe(motionUniforms.uTime);
+    }
+  });
+  it('the two materials never share a compiled program', () => {
+    const { body, glow } = kit.materials;
+    expect(body.customProgramCacheKey()).not.toBe(glow.customProgramCacheKey());
   });
 });

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
 import { getStyleKit } from '../models/kit';
+import { motionUniforms } from '../models/motion';
 import { acesFilmic, createEnvironment, envPreset } from './environment';
 import { CAMERA, type Stage } from './stage';
 
@@ -114,6 +115,22 @@ describe('createEnvironment', () => {
     expect(invalidateShadows).toHaveBeenCalledTimes(3);
     const sun = stage.scene.children.find((c): c is THREE.DirectionalLight => c instanceof THREE.DirectionalLight)!;
     expect(sun.shadow.mapSize.x).toBe(2048); // smooth
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('drives the motion uniforms: rain blows harder, night follows the time of day', () => {
+    const stage = { scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows: () => {} } as unknown as Stage;
+    const env = createEnvironment(stage, getStyleKit());
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBe(1);
+    expect(motionUniforms.uNight.value).toBe(0);
+    env.apply({ weather: 'rain', time: 'night', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBeGreaterThan(1.5);
+    expect(motionUniforms.uNight.value).toBe(1);
+    env.apply({ weather: 'sunny', time: 'dusk', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBe(1);
+    expect(motionUniforms.uNight.value).toBe(0.6);
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
     getStyleKit().setGlowStrength(0);
   });
 });

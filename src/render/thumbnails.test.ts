@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { getStyleKit } from '../models/kit';
+import { advanceMotion, motionUniforms } from '../models/motion';
 import type { ItemModel } from '../models/contract';
 import { createThumbnailer, type ThumbGl } from './thumbnails';
 
@@ -44,6 +45,22 @@ describe('thumbnailer', () => {
     expect(seen).toBe(0);
     expect(kit.getGlowStrength()).toBe(0.8);
     kit.setGlowStrength(0);
+  });
+
+  it('renders with motion frozen (time 0, motion off) and restores the shared clock', () => {
+    advanceMotion(5000);
+    let seen = { time: -1, motion: -1 };
+    const gl = fakeGl(() => { seen = { time: motionUniforms.uTime.value, motion: motionUniforms.uMotion.value }; });
+    createThumbnailer(kit, () => gl).get(item('swing'));
+    expect(seen).toEqual({ time: 0, motion: 0 });
+    expect(motionUniforms.uTime.value).toBeCloseTo(5);
+    expect(motionUniforms.uMotion.value).toBe(1);
+    // a throwing render restores it too
+    const bad = fakeGl(() => { throw new Error('context lost'); });
+    createThumbnailer(kit, () => bad).get(item('y'));
+    expect(motionUniforms.uTime.value).toBeCloseTo(5);
+    expect(motionUniforms.uMotion.value).toBe(1);
+    motionUniforms.uTime.value = 0;
   });
 
   it('one failing item returns "" once and does not disable the others; scene is cleaned', () => {

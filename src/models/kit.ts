@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CULL_MARGIN, MOTION_CODE, patchMotionShader, resolveMotion, type MotionOpts } from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
@@ -23,6 +24,14 @@ export interface PartOpts {
    * surface use `color` by day and emit that colour at night (glass-blue windows, warm glow).
    */
   glow?: boolean | PaletteColor;
+  /**
+   * Animate the part on the GPU (no extra draw calls): `sway` leans it downwind from `pivot` (its
+   * base by default), `wave` ripples cloth out along `axis` from the pole at `pivot`, `spin` turns
+   * it about `axis` through `pivot`, `swing` rocks it about `axis` through `pivot`; `water` marks a
+   * water surface (drawn in the fragment shader). `pivot` and `axis` are in item space, like `at`.
+   * See MotionOpts (motion.ts) for the defaults.
+   */
+  motion?: MotionOpts;
 }
 
 export interface StyleKit {
@@ -58,7 +67,11 @@ export interface StyleKit {
   finish(parts: Part[]): THREE.Group;
 }
 
-/** Non-indexed geometry with exactly position, normal, color (+ glowColor on glow parts); transformed and coloured. */
+/**
+ * Non-indexed geometry with exactly position, normal, color, anim, pivot, axis (+ glowColor on glow
+ * parts); transformed and coloured. Every part has the motion attributes (zeros when still) so any
+ * two parts, and any two placed items, always merge.
+ */
 function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?: PartOpts): Part {
   let g = src.index ? src.toNonIndexed() : src;
   if (g !== src) src.dispose();
@@ -80,7 +93,33 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   fill('color', color);
   const glow = opts?.glow;
   if (glow) fill('glowColor', glow === true ? color : glow);
+  const m = opts?.motion ? resolveMotion(opts.motion, at, lowestY(g)) : null;
+  const repeat = (name: string, v: readonly number[] | null, size: number) => {
+    const arr = new Float32Array(n * size);
+    if (v) for (let i = 0; i < n; i++) arr.set(v, i * size);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  };
+  repeat('anim', m?.anim ?? null, 4);
+  repeat('pivot', m?.pivot ?? null, 3);
+  repeat('axis', m?.axis ?? null, 3);
   return { geometry: g, glow: !!glow };
+}
+
+function lowestY(g: THREE.BufferGeometry): number {
+  const pos = g.attributes.position;
+  let y = Infinity;
+  for (let i = 0; i < pos.count; i++) y = Math.min(y, pos.getY(i));
+  return y;
+}
+
+/** Whether any vertex of a merged geometry moves (sway, wave, spin, swing). */
+function moves(g: THREE.BufferGeometry): boolean {
+  const anim = g.attributes.anim;
+  for (let i = 0; i < anim.count; i++) {
+    const k = Math.round(anim.getX(i));
+    if (k >= MOTION_CODE.sway && k <= MOTION_CODE.swing) return true;
+  }
+  return false;
 }
 
 /** Scale a non-indexed geometry; a mirroring scale also reverses each triangle so it still faces out. */
@@ -155,7 +194,12 @@ function createKit(): StyleKit {
   const glowUniform = { value: 0 };
   const body = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
   const glow = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
+  // Both read the motion attributes (motion.ts). Explicit cache keys: the two must never share a program.
+  body.onBeforeCompile = (s) => patchMotionShader(s);
+  body.customProgramCacheKey = () => 'kit-body';
+  glow.customProgramCacheKey = () => 'kit-glow';
   glow.onBeforeCompile = (s) => {
+    patchMotionShader(s);
     s.uniforms.glowStrength = glowUniform;
     s.vertexShader = ('attribute vec3 glowColor;\nvarying vec3 vGlowColor;\n' + s.vertexShader)
       .replace(/void main\(\) ?\{/, 'void main() {\n  vGlowColor = glowColor;');
@@ -169,6 +213,10 @@ function createKit(): StyleKit {
     const merged = mergeGeometries(parts.map((p) => p.geometry), false);
     for (const p of parts) p.geometry.dispose();
     if (!merged) throw new Error('style kit: mergeGeometries failed');
+    if (moves(merged)) { // never culled while part of it is swayed or swung out of its rest bounds
+      merged.computeBoundingSphere();
+      merged.boundingSphere!.radius += CULL_MARGIN;
+    }
     const mesh = new THREE.Mesh(merged, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;

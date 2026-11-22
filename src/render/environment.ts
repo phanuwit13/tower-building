@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { nextRandom } from '../game/rng';
 import { GRID_SIZE, type QualityTier, type SceneSettings, type TimeId, type WeatherId } from '../game/types';
 import type { StyleKit } from '../models/kit';
+import { setNight, setWind } from '../models/motion';
 import { SURROUND_FADE } from './ground';
 import { setShadowTier, type Stage } from './stage';
 
@@ -50,6 +51,8 @@ const GLOW: Record<TimeId, number> = { dawn: 0.3, day: 0, dusk: 0.6, night: 1 };
 const RAIN_SUN = 0.5;
 const RAIN_HEMI = 0.7;
 const RAIN_FOG_FAR = 0.6;
+/** Wind strength for item sway and flags (motion.ts): calm 1, rain blows harder. */
+const RAIN_WIND = 1.8;
 
 /** Pull a colour towards its own grey and darken it a little (rain clouds). */
 function greyed(hex: number, amount = 0.7, dim = 0.85): number {
@@ -294,6 +297,8 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
       stars.visible = p.stars;
       rain.set(s.weather === 'rain', q, greyed(p.hemiSky, 0.45, 0.9)); // drops pick up the sky light, softened
       kit.setGlowStrength(p.glowStrength);
+      setWind(s.weather === 'rain' ? RAIN_WIND : 1);
+      setNight(p.glowStrength); // how night it is: 0 day, 0.3 dawn, 0.6 dusk, 1 night
     },
   };
 }
