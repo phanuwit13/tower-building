@@ -23,6 +23,25 @@ describe('validateItemModel', () => {
     const m = model({ build: (k) => k.finish([k.box([1.2, 0.5, 0.5], [0, 0.25, 0], 'wall')]) });
     expect(validateItemModel(m, kit).join('|')).toContain('footprint');
   });
+  it('turns a throwing build() into an error naming the item', () => {
+    const m = model({ id: 'boom', build: () => { throw new Error('bad geometry'); } });
+    const errs = validateItemModel(m, kit);
+    expect(errs).toHaveLength(1);
+    expect(errs[0]).toContain('"boom"');
+    expect(errs[0]).toContain('bad geometry');
+  });
+  it('rejects an empty group', () => {
+    const errs = validateItemModel(model({ build: () => new THREE.Group() }), kit);
+    expect(errs.join('|')).toContain('no meshes');
+  });
+  it('rejects a floating item (box does not start on the ground)', () => {
+    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.75, 0], 'wall')]) });
+    expect(validateItemModel(m, kit).join('|')).toContain('ground');
+  });
+  it('rejects an item sunk below the ground', () => {
+    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.1, 0], 'wall')]) });
+    expect(validateItemModel(m, kit).join('|')).toContain('ground');
+  });
   it('rejects a mesh with its own material', () => {
     const m = model({
       build: () => new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5).translate(0, 0.25, 0), new THREE.MeshBasicMaterial()),

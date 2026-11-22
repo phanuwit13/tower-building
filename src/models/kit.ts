@@ -10,6 +10,7 @@ interface PartOpts { rotate?: Vec3; glow?: boolean }
 export interface StyleKit {
   materials: { body: THREE.MeshStandardMaterial; glow: THREE.MeshStandardMaterial };
   setGlowStrength(v: number): void;
+  getGlowStrength(): number;
   box(size: Vec3, at: Vec3, color: PaletteColor, opts?: PartOpts & { round?: number }): Part;
   cylinder(rTop: number, rBottom: number, h: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
   cone(r: number, h: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
@@ -61,6 +62,7 @@ function createKit(): StyleKit {
   return {
     materials: { body, glow },
     setGlowStrength(v) { glowUniform.value = v; },
+    getGlowStrength: () => glowUniform.value,
     box(size, at, color, opts) {
       const r = opts?.round ?? 0;
       const geo = r > 0

@@ -15,9 +15,16 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
   if (!FOOTPRINTS.includes(`${w}x${d}`)) errs.push(`${tag}: footprint ${w}x${d} not allowed`);
   if (!CATEGORIES.includes(m.category)) errs.push(`${tag}: unknown category "${m.category}"`);
 
-  const obj = m.build(kit);
+  let obj: THREE.Object3D;
+  try {
+    obj = m.build(kit);
+  } catch (e) {
+    errs.push(`${tag}: build() threw: ${e instanceof Error ? e.message : String(e)}`);
+    return errs;
+  }
   const meshes: THREE.Mesh[] = [];
   obj.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+  if (meshes.length === 0) errs.push(`${tag}: model has no meshes (empty group)`);
   if (meshes.length > 2) errs.push(`${tag}: ${meshes.length} meshes (max 2)`);
   let triangles = 0;
   for (const mesh of meshes) {
@@ -34,6 +41,7 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
       errs.push(`${tag}: bounding box exceeds footprint ${w}x${d}`);
     }
     if (box.min.y < -TOL || box.max.y > 5 + TOL) errs.push(`${tag}: height outside [0, 5]`);
+    if (Math.abs(box.min.y) > TOL) errs.push(`${tag}: origin must be on the ground (lowest point y=${box.min.y.toFixed(3)}, expected 0)`);
   }
   const budget = 800 + 400 * w * d;
   if (triangles > budget) errs.push(`${tag}: ${triangles} triangles exceeds budget ${budget}`);

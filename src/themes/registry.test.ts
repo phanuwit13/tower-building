@@ -14,4 +14,8 @@ describe('registry', () => {
     expect(getTheme('nope')).toBeUndefined();
     expect(getCatalog('nope')).toBeUndefined();
   });
+  it('getCatalog builds a theme catalog once', () => {
+    const a = getCatalog('school');
+    expect(getCatalog('school')).toBe(a);
+  });
 });

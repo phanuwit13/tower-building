@@ -137,6 +137,48 @@ describe('controller flow', () => {
   });
 });
 
+describe('controller round end and no-op emits', () => {
+  it('a place() that ends the round finishes the game, clears the ghost and saves', () => {
+    const store = memStore();
+    const c = make(store);
+    c.chooseTheme('school');
+    let ended = false;
+    for (let i = 0; i < 100 && !ended; i++) {
+      c.moveGhost(0, 0); // appears on the nearest free spot
+      expect(c.getState().ghost!.valid).toBe(true);
+      c.place();
+      ended = c.getState().screen === 'finished';
+    }
+    expect(ended).toBe(true);
+    const s = c.getState();
+    expect(s.ghost).toBeNull();
+    expect(s.game!.status).toBe('finished');
+    const saved = loadGame(store, getCatalog)!;
+    expect(saved.status).toBe('finished');
+    expect(saved.placements.length).toBe(s.game!.placements.length);
+  });
+  it('dragging over the same tile does not re-emit; a change does', () => {
+    const c = make(seeded());
+    let n = 0;
+    c.subscribe(() => n++);
+    c.dragGhostTo(3, 3);
+    expect(n).toBe(1);
+    c.dragGhostTo(3, 3);
+    c.tapTile(3, 3);
+    expect(n).toBe(1);
+    c.dragGhostTo(4, 3);
+    expect(n).toBe(2);
+  });
+  it('moving into a wall (clamped, nothing changes) does not re-emit', () => {
+    const c = make(seeded());
+    c.tapTile(0, 0);
+    let n = 0;
+    c.subscribe(() => n++);
+    c.moveGhost(-1, 0);
+    expect(n).toBe(0);
+  });
+});
+
 describe('controller storage', () => {
   it('throwing store: plays normally, saveFailed sticky', () => {
     const c = make(throwingStore);

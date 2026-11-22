@@ -51,6 +51,15 @@ export function createController(deps: ControllerDeps): Controller {
     emit({ ...state, game, ghost, screen, saveFailed: state.saveFailed || !ok });
   }
 
+  const sameGhost = (a: GhostState | null, b: GhostState): boolean =>
+    a !== null && a.x === b.x && a.z === b.z && a.rotation === b.rotation && a.valid === b.valid;
+
+  /** Move/replace the ghost; nothing is emitted (rendered, re-laid out) when it did not change. */
+  function setGhost(next: GhostState): void {
+    if (sameGhost(state.ghost, next)) return;
+    emit({ ...state, ghost: next });
+  }
+
   function playing(): { game: GameState; catalog: Catalog } | null {
     if (state.screen !== 'playing' || !state.game) return null;
     const catalog = deps.getCatalog(state.game.themeId);
@@ -71,7 +80,7 @@ export function createController(deps: ControllerDeps): Controller {
     if (!p) return;
     const r = state.ghost?.rotation ?? 0;
     const { w, d } = rotatedFootprint(p.catalog.items[p.game.current].footprint, r);
-    emit({ ...state, ghost: ghostAt(p.game, p.catalog, r, tx - Math.floor((w - 1) / 2), tz - Math.floor((d - 1) / 2)) });
+    setGhost(ghostAt(p.game, p.catalog, r, tx - Math.floor((w - 1) / 2), tz - Math.floor((d - 1) / 2)));
   }
 
   return {
@@ -95,7 +104,7 @@ export function createController(deps: ControllerDeps): Controller {
       const fp = p.catalog.items[p.game.current].footprint;
       const g = state.ghost;
       if (g) {
-        emit({ ...state, ghost: ghostAt(p.game, p.catalog, g.rotation, g.x + dx, g.z + dz) });
+        setGhost(ghostAt(p.game, p.catalog, g.rotation, g.x + dx, g.z + dz));
         return;
       }
       const occ = buildOccupancy(p.game.placements, p.catalog);
@@ -119,10 +128,7 @@ export function createController(deps: ControllerDeps): Controller {
       const cz = g.z + Math.floor((old.d - 1) / 2);
       const r = ((g.rotation + 1) % 4) as Rotation;
       const nw = rotatedFootprint(fp, r);
-      emit({
-        ...state,
-        ghost: ghostAt(p.game, p.catalog, r, cx - Math.floor((nw.w - 1) / 2), cz - Math.floor((nw.d - 1) / 2)),
-      });
+      setGhost(ghostAt(p.game, p.catalog, r, cx - Math.floor((nw.w - 1) / 2), cz - Math.floor((nw.d - 1) / 2)));
     },
     place() {
       const p = playing();

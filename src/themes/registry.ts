@@ -8,7 +8,15 @@ export function getTheme(id: string): ThemeDef | undefined {
   return THEMES.find((t) => t.id === id);
 }
 
+const catalogs = new Map<string, Catalog>();
+
+/** Built once per theme: the catalog is read on every drag/move. */
 export function getCatalog(id: string): Catalog | undefined {
+  const hit = catalogs.get(id);
+  if (hit) return hit;
   const t = getTheme(id);
-  return t ? toCatalog(t) : undefined;
+  if (!t) return undefined;
+  const built = toCatalog(t);
+  catalogs.set(id, built);
+  return built;
 }
