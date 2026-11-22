@@ -1,6 +1,7 @@
 import { test as plain } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { T } from '../src/ui/strings';
+import { school } from '../src/themes/school';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
 
@@ -92,4 +93,28 @@ test('booting removes a fallback message that is already showing', async ({ page
   await page.getByRole('button', { name: 'โรงเรียน' }).click();
   await expect(page.getByText(T.noWebGL)).toHaveCount(0);
   await expect(page.getByText(placed(0))).toBeVisible();
+});
+
+test('gallery shows every item of the theme with its Thai name, and no game', async ({ page }) => {
+  await page.goto('/?gallery=school');
+  await expect(page.getByRole('heading', { name: /โรงเรียน/ })).toBeVisible();
+  // every item exactly once, over as many pages as the theme needs
+  const seen: string[] = [];
+  for (;;) {
+    await expect(page.locator('.gallery-label').first()).toBeVisible();
+    seen.push(...await page.locator('.gallery-label strong').allTextContents());
+    const next = page.getByRole('button', { name: 'หน้าถัดไป' });
+    if (!(await next.isVisible()) || (await next.isDisabled())) break;
+    await next.click();
+  }
+  expect(seen.sort()).toEqual(school.items.map((i) => i.name).sort());
+  await expect(page.getByText(T.pickTheme)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: T.place })).toHaveCount(0);
+  // lighting stays switchable; the game-only actions are not offered
+  await page.getByRole('button', { name: T.settings }).click();
+  await page.locator('.chip', { hasText: new RegExp(`^${T.time.night}$`) }).click();
+  await expect(page.locator('.chip.selected', { hasText: new RegExp(`^${T.time.night}$`) })).toBeVisible();
+  await expect(page.getByRole('button', { name: T.restart })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: T.clear })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.length)).toBe(0); // the gallery saves nothing
 });

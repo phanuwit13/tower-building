@@ -10,7 +10,7 @@ const kit = getStyleKit();
 function model(over: Partial<ItemModel> = {}): ItemModel {
   return {
     id: 'sample', name: 'ตัวอย่าง', category: 'decoration', footprint: { w: 1, d: 1 },
-    build: (k) => k.finish([k.box([0.8, 0.8, 0.8], [0, 0.4, 0], 'wall')]),
+    build: (k) => k.finish([k.box([0.8, 0.8, 0.8], [0, 0.4, 0], 'cream')]),
     ...over,
   };
 }
@@ -20,7 +20,7 @@ describe('validateItemModel', () => {
     expect(validateItemModel(model(), kit)).toEqual([]);
   });
   it('rejects a box wider than the footprint', () => {
-    const m = model({ build: (k) => k.finish([k.box([1.2, 0.5, 0.5], [0, 0.25, 0], 'wall')]) });
+    const m = model({ build: (k) => k.finish([k.box([1.2, 0.5, 0.5], [0, 0.25, 0], 'cream')]) });
     expect(validateItemModel(m, kit).join('|')).toContain('footprint');
   });
   it('turns a throwing build() into an error naming the item', () => {
@@ -35,11 +35,11 @@ describe('validateItemModel', () => {
     expect(errs.join('|')).toContain('no meshes');
   });
   it('rejects a floating item (box does not start on the ground)', () => {
-    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.75, 0], 'wall')]) });
+    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.75, 0], 'cream')]) });
     expect(validateItemModel(m, kit).join('|')).toContain('ground');
   });
   it('rejects an item sunk below the ground', () => {
-    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.1, 0], 'wall')]) });
+    const m = model({ build: (k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.1, 0], 'cream')]) });
     expect(validateItemModel(m, kit).join('|')).toContain('ground');
   });
   it('rejects a mesh with its own material', () => {
@@ -50,7 +50,7 @@ describe('validateItemModel', () => {
   });
   it('rejects a model over the triangle budget', () => {
     const m = model({
-      build: (k) => k.finish([k.sphere(0.4, [0, 0.4, 0], 'wall', { detail: 20 })]),
+      build: (k) => k.finish([k.sphere(0.4, [0, 0.4, 0], 'cream', { detail: 20 })]),
     });
     expect(validateItemModel(m, kit).join('|')).toContain('triangles');
   });
@@ -69,8 +69,8 @@ describe('validateItemModel', () => {
   });
   it('finish merges into body + glow meshes with shared materials', () => {
     const g = kit.finish([
-      kit.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'wall'),
-      kit.cylinder(0.1, 0.1, 0.3, [0, 0.6, 0], 'wall', { glow: true }),
+      kit.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream'),
+      kit.cylinder(0.1, 0.1, 0.3, [0, 0.6, 0], 'cream', { glow: true }),
     ]);
     const meshes = g.children as THREE.Mesh[];
     expect(meshes).toHaveLength(2);

@@ -79,7 +79,7 @@ describe('controller flow', () => {
     expect(c.place()).toBe(false);
   });
   it('edge rotate keeps ghost inside the map', () => {
-    const c = make(seeded({ current: 'block-2x3-a' }));
+    const c = make(seeded({ current: 'classroom' }));
     c.tapTile(9, 9);
     expect(c.getState().ghost).toMatchObject({ x: 8, z: 7, rotation: 0 });
     c.rotateGhost();
@@ -102,7 +102,7 @@ describe('controller flow', () => {
     expect(c.getState().ghost!.x).toBeGreaterThanOrEqual(0);
   });
   it('dragGhostTo keeps rotation', () => {
-    const c = make(seeded({ current: 'block-2x3-a' }));
+    const c = make(seeded({ current: 'classroom' }));
     c.tapTile(5, 5);
     c.rotateGhost();
     c.dragGhostTo(2, 2);

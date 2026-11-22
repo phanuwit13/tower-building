@@ -15,6 +15,12 @@ export interface StyleKit {
   cylinder(rTop: number, rBottom: number, h: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
   cone(r: number, h: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { segments?: number }): Part;
   sphere(r: number, at: Vec3, color: PaletteColor, opts?: PartOpts & { detail?: number }): Part;
+  /**
+   * Triangular prism (gable roof, ramp, slide, tent): base `size[0]` wide along x, `size[1]` tall,
+   * `size[2]` long along z; `at` is its bounding-box centre. `apex` moves the ridge across the
+   * base, from -0.5 (straight up from the -x edge: a ramp) to 0.5; default 0 (centred). 8 triangles.
+   */
+  wedge(size: Vec3, at: Vec3, color: PaletteColor, opts?: PartOpts & { apex?: number }): Part;
   finish(parts: Part[]): THREE.Group;
 }
 
@@ -35,6 +41,18 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   for (let i = 0; i < n; i++) { colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b; }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return { geometry: g, glow: opts?.glow ?? false };
+}
+
+function wedgeGeometry([w, h, d]: Vec3, apex: number): THREE.BufferGeometry {
+  const x0 = -w / 2, x1 = w / 2, xa = Math.max(-0.5, Math.min(0.5, apex)) * w;
+  const y0 = -h / 2, y1 = h / 2, z0 = -d / 2, z1 = d / 2;
+  const A = [x0, y0, z1], B = [x1, y0, z1], C = [xa, y1, z1]; // front (+z) end
+  const D = [x0, y0, z0], E = [x1, y0, z0], F = [xa, y1, z0]; // back (-z) end
+  const tris = [A, B, C, E, D, F, D, E, B, D, B, A, A, C, F, A, F, D, B, E, F, B, F, C]; // CCW from outside
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat(), 3));
+  g.computeVertexNormals(); // non-indexed: one flat normal per face
+  return g;
 }
 
 function createKit(): StyleKit {
@@ -78,6 +96,9 @@ function createKit(): StyleKit {
     },
     sphere(r, at, color, opts) {
       return prepare(new THREE.IcosahedronGeometry(r, opts?.detail ?? 1), at, color, opts);
+    },
+    wedge(size, at, color, opts) {
+      return prepare(wedgeGeometry(size, opts?.apex ?? 0), at, color, opts);
     },
     finish(parts) {
       const group = new THREE.Group();

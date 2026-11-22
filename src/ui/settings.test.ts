@@ -44,4 +44,14 @@ describe('settings panel', () => {
     panel.close();
     expect(panel.isOpen()).toBe(false);
   });
+  it('leaves out restart and clear when it has no handlers for them (gallery)', () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const panel = createSettingsPanel(root, { onWeather: noop, onTime: noop, onGround: noop, onQuality: noop });
+    panel.open(cur);
+    const labels = [...root.querySelectorAll('button')].map((b) => b.textContent);
+    expect(labels).not.toContain('เริ่มใหม่');
+    expect(labels).not.toContain('เคลียร์');
+    expect(labels).toContain('กลางคืน');
+    expect(root.querySelector('.settings-danger')).toBeNull();
+  });
 });

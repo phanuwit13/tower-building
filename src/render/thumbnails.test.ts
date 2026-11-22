@@ -7,7 +7,7 @@ import { createThumbnailer, type ThumbGl } from './thumbnails';
 const kit = getStyleKit();
 const item = (id: string, build?: ItemModel['build']): ItemModel => ({
   id, name: id, category: 'decoration', footprint: { w: 1, d: 1 },
-  build: build ?? ((k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'wall')])),
+  build: build ?? ((k) => k.finish([k.box([0.5, 0.5, 0.5], [0, 0.25, 0], 'cream')])),
 });
 
 function fakeGl(onRender?: () => void): ThumbGl & { renders: number } {
