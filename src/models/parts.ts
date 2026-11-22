@@ -1,6 +1,6 @@
 /**
- * Shared building parts: windows, doors, wall signs and gable roofs, built only from kit
- * primitives. Each returns `Part[]` to spread into an item's parts list before `kit.finish`.
+ * Shared building parts: windows, doors, wall signs, gable and barrel roofs, rods and wheels, plus
+ * the direction maths behind them, built only from kit primitives. Each returns `Part[]` to spread into an item's parts list before `kit.finish`.
  * They hold the facing and roof maths so items never repeat it. Controller-owned: sculptors use
  * these and never edit them (ask the controller for a new helper or option).
  */
@@ -111,6 +111,141 @@ export function gableRoof(kit: StyleKit, o: {
     parts.push(kit.cylinder(RIDGE_CAP.r * k, RIDGE_CAP.r * k, o.length + 2 * RIDGE_CAP.overhang,
       [o.at[0], o.at[1] + o.rise + RIDGE_CAP.lift * k, o.at[2]], o.ridge,
       { rotate: alongX ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0], segments: 8 }));
+  }
+  return parts;
+}
+
+/** A detail-0 icosphere's lowest point sits this share of its radius below its centre (rest one on y = ground + r * ICO_LOW). */
+export const ICO_LOW = 0.851;
+
+/**
+ * Euler XYZ rotation (for a part's `rotate`) that turns the part's own +y onto the direction `dir`
+ * (any length; not zero). Two ways to get there, with a different twist about `dir`:
+ * - `'x'` (default): tilt in the x-y plane, then about x. The twist rods use.
+ * - `'y'`: tilt away from +y, then swing round y. For things placed around a vertical axis
+ *   (a globe's land patches, pins on a pole): the part's local z stays level.
+ */
+export function aim(dir: Vec3, turn: 'x' | 'y' = 'x'): Vec3 {
+  const len = Math.hypot(...dir);
+  if (turn === 'x') return [Math.atan2(dir[2], dir[1]), 0, -Math.asin(Math.max(-1, Math.min(1, dir[0] / len)))];
+  const c = Math.acos(Math.max(-1, Math.min(1, dir[1] / len)));
+  return [0, Math.abs(Math.sin(c)) < 1e-6 ? 0 : Math.atan2(dir[2], -dir[0]), c];
+}
+
+/** Unit direction for a yaw about y (0 = +x, positive turns towards -z) and a pitch (positive = up). A part rotated `[0, yaw, pitch]` has its +x along it. */
+export function heading(yaw: number, pitch: number): Vec3 {
+  return [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
+}
+
+/** The point `s` from `p` along `d`. */
+export function along(p: Vec3, d: Vec3, s: number): Vec3 {
+  return [p[0] + d[0] * s, p[1] + d[1] * s, p[2] + d[2] * s];
+}
+
+/**
+ * A round rod (cylinder, same radius both ends) from point `a` to point `b`: struts, bars,
+ * net strands, slanted frame members. Default 6 `segments`. `a` and `b` may not be the same point.
+ */
+export function rod(kit: StyleKit, a: Vec3, b: Vec3, radius: number, color: PaletteColor, opts?: { segments?: number; glow?: PartOpts['glow'] }): Part {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  return kit.cylinder(radius, radius, Math.hypot(...d), mid, color, { segments: opts?.segments ?? 6, rotate: aim(d), ...(opts?.glow ? { glow: opts.glow } : {}) });
+}
+
+/**
+ * A barrel (half-ellipse) roof: faceted slabs over an arch, plus an optional fan of wedges that
+ * closes both ends under the arch.
+ * - `at`: the centre of the ellipse (middle of the roof along the barrel, centred across it); the
+ *   crown is `rise` above `at[1]`.
+ * - `width`: across the barrel (full ellipse width); `length`: roof length along it.
+ * - `along`: barrel direction, 'x' (default) or 'z'. `segments`: slabs, default 8; `thickness`
+ *   default 0.07; `overlap`: each slab is this much longer than its chord to close the joints, default 0.03.
+ * - `spring`: angle in radians where the arch starts above the horizontal, default 0.2 (the roof
+ *   meets the wall tops at a slant, so `at[1]` sits `rise * sin(spring)` above the wall tops).
+ * - `endWall`: wedges in `color`, `length` long along the barrel and centred at `center` (default the
+ *   roof's middle), to shut the arch ends; pull them in a little from the wall faces.
+ * Triangles: 12 per slab, plus 8 per end-wall wedge.
+ */
+export function barrelRoof(kit: StyleKit, o: {
+  at: Vec3; length: number; width: number; rise: number; color: PaletteColor;
+  segments?: number; along?: 'x' | 'z'; thickness?: number; overlap?: number; spring?: number;
+  endWall?: { color: PaletteColor; length: number; center?: number };
+}): Part[] {
+  const n = o.segments ?? 8;
+  const thick = o.thickness ?? 0.07;
+  const overlap = o.overlap ?? 0.03;
+  const t0 = o.spring ?? 0.2;
+  const alongZ = o.along === 'z';
+  const a = o.width / 2, b = o.rise;
+  const cy = o.at[1];
+  const cu = alongZ ? o.at[0] : o.at[2]; // across-the-barrel centre
+  const mid = alongZ ? o.at[2] : o.at[0]; // along-the-barrel centre
+  // points on the half ellipse, in (y, u) with u across the barrel, from +u over the top to -u
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + (i / n) * (Math.PI - 2 * t0);
+    pts.push([cy + b * Math.sin(t), a * Math.cos(t)]);
+  }
+  const parts: Part[] = [];
+  for (let i = 0; i < n; i++) {
+    const [y0, u0] = pts[i];
+    const [y1, u1] = pts[i + 1];
+    const c = Math.hypot(y1 - y0, u1 - u0);
+    const dy = (y1 - y0) / c, du = (u1 - u0) / c;
+    // F: the foot of the perpendicular from the ellipse centre to this chord; v: unit vector from the chord towards the centre
+    const k = (cy - y0) * dy + (0 - u0) * du;
+    const fy = y0 + dy * k, fu = u0 + du * k;
+    const h = Math.hypot(cy - fy, -fu);
+    const vy = (cy - fy) / h, vu = -fu / h;
+    const my = (y0 + y1) / 2, mu = (u0 + u1) / 2;
+    // turn a part's local x onto the chord, its local y onto v and its local z onto the barrel's axis
+    const rotate: Vec3 = alongZ ? [0, 0, Math.atan2(-vu, vy)] : [Math.atan2(vu, vy), Math.PI / 2, 0];
+    const chord = alongZ ? [-vu, vy] : [vu, -vy]; // chord direction in (y, u)
+    const apex = ((fy - my) * chord[0] + (fu - mu) * chord[1]) / c; // where the centre sits along the chord, from its middle
+    const place = (axisPos: number, y: number, u: number): Vec3 => (alongZ ? [cu + u, y, axisPos] : [axisPos, y, cu + u]);
+    const sizeFor = (w: number, hh: number, len: number): Vec3 => [w, hh, len];
+    parts.push(kit.box(sizeFor(c + overlap, thick, o.length), place(mid, my - vy * thick / 2, mu - vu * thick / 2), o.color, { rotate }));
+    if (o.endWall) {
+      parts.push(kit.wedge(sizeFor(c, h, o.endWall.length), place(o.endWall.center ?? mid, my + vy * h / 2, mu + vu * h / 2), o.endWall.color, { rotate, apex }));
+    }
+  }
+  return parts;
+}
+
+/**
+ * A spoked wheel standing upright: a torus tyre, an optional hub and `spokes` flat bars across it.
+ * - `at`: the wheel's centre; `radius`: to the middle of the tyre's tube; `tube`: the tube's radius.
+ * - `axis`: 'z' rolls along x (its axle along z), 'x' rolls along z (its axle along x).
+ * - `hubColor` adds a 6-sided hub (radius `hubRadius`, default radius / 4; `hubLength` along the axle, default 4 * tube).
+ * - `spokes`: full-diameter bars through the hub (default 2, so four spokes), `spokeWidth` across and
+ *   `spokeThick` along the axle (defaults tube * 0.6 and tube * 0.5), in `spokeColor` (default 'white'),
+ *   the first at 45 degrees, the rest evenly spread over a half turn.
+ * - `tubularSegments` (default 12; keep a multiple of 4 so a vertex sits at the bottom) and `radialSegments` (default 4).
+ */
+export function wheel(kit: StyleKit, o: {
+  at: Vec3; radius: number; tube: number; axis: 'x' | 'z'; color: PaletteColor;
+  hubColor?: PaletteColor; hubRadius?: number; hubLength?: number;
+  spokes?: number; spokeColor?: PaletteColor; spokeWidth?: number; spokeThick?: number;
+  tubularSegments?: number; radialSegments?: number;
+}): Part[] {
+  const axisZ = o.axis === 'z';
+  const parts: Part[] = [
+    kit.torus(o.radius, o.tube, o.at, o.color, {
+      radialSegments: o.radialSegments ?? 4, tubularSegments: o.tubularSegments ?? 12,
+      ...(axisZ ? {} : { rotate: [0, Math.PI / 2, 0] as Vec3 }),
+    }),
+  ];
+  if (o.hubColor) {
+    const r = o.hubRadius ?? o.radius / 4;
+    parts.push(kit.cylinder(r, r, o.hubLength ?? 4 * o.tube, o.at, o.hubColor, { segments: 6, rotate: axisZ ? [Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2] }));
+  }
+  const spokes = o.spokes ?? 2;
+  const w = o.spokeWidth ?? o.tube * 0.6;
+  const th = o.spokeThick ?? o.tube * 0.5;
+  for (let i = 0; i < spokes; i++) {
+    const ang = Math.PI / 4 + (i * Math.PI) / spokes;
+    parts.push(kit.box(axisZ ? [w, 2 * o.radius, th] : [th, 2 * o.radius, w], o.at, o.spokeColor ?? 'white',
+      { rotate: axisZ ? [0, 0, ang] : [ang, 0, 0] }));
   }
   return parts;
 }
