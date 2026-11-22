@@ -1,0 +1,5 @@
+# AI workflow: per-developer local state (plans, MR/issue drafts) and worktrees
+.wf/
+.claude/worktrees/
+.worktrees/
+.claude/settings.local.json
