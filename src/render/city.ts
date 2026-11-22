@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { rotatedFootprint } from '../game/grid';
-import type { Footprint, Rotation } from '../game/types';
+import type { Placement } from '../game/types';
 import type { AppState } from '../app/controller';
 import type { StyleKit } from '../models/kit';
 import type { ThemeDef } from '../themes/types';
+import { chunkOf, createBatch, placementMatrix, placementTransform, planBatch, type BatchItem } from './batch';
 import type { Stage } from './stage';
+
+export { placementTransform }; // the gallery and tests place items with it
 
 /**
  * Ghost tints. Valid is a pale mint "hologram": lighter than the grass and the leaf greens, so it
@@ -17,18 +20,6 @@ export const GHOST_INVALID = 0xff2a4d;
 const MARK_VALID = 0x1f9a4c;
 const MARK_INVALID = 0xc4162f;
 const OPACITY = { valid: { body: 0.6, fill: 0.45 }, invalid: { body: 0.75, fill: 0.7 } } as const;
-
-/** World transform of an item whose rotated footprint's min-corner tile is (x, z). Models are centred on the footprint. */
-export function placementTransform(fp: Footprint, x: number, z: number, r: Rotation): { x: number; y: number; z: number; rotY: number } {
-  const { w, d } = rotatedFootprint(fp, r);
-  return { x: x + w / 2, y: 0, z: z + d / 2, rotY: -r * (Math.PI / 2) };
-}
-
-function applyTransform(o: THREE.Object3D, fp: Footprint, x: number, z: number, r: Rotation): void {
-  const t = placementTransform(fp, x, z, r);
-  o.position.set(t.x, t.y, t.z);
-  o.rotation.y = t.rotY;
-}
 
 function markTexture(glyph: string, color: number): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -68,14 +59,15 @@ export function createCityView(
   kit: StyleKit,
   getTheme: (id: string) => ThemeDef | undefined,
 ): CityView {
-  void kit;
   const root = new THREE.Group();
   root.name = 'city';
   stage.scene.add(root);
 
-  const built = new Map<string, THREE.Object3D>(); // `${themeId}:${itemId}` -> shared prototype
-  const placed = new Map<number, THREE.Object3D>();
-  let placedTheme: string | null = null;
+  const built = new Map<string, THREE.Object3D>(); // `${themeId}:${itemId}` -> shared prototype (merge source, ghost)
+  // Placed items are drawn merged per map chunk (see batch.ts); `shown` is what the batch holds.
+  const batch = createBatch(root, kit.materials);
+  let shown: readonly Placement[] = [];
+  let shownTheme: string | null = null;
 
   const prototype = (themeId: string, itemId: string): THREE.Object3D | null => {
     const key = `${themeId}:${itemId}`;
@@ -169,36 +161,41 @@ export function createCityView(
 
   let buildMs: number | undefined;
 
+  /** Merge placements into their chunks, one re-merge per chunk touched. */
+  const addToBatch = (themeId: string, list: readonly Placement[]): void => {
+    const byChunk = new Map<number, BatchItem[]>();
+    for (const pl of list) {
+      const model = prototype(themeId, pl.itemId);
+      const fp = getTheme(themeId)?.items.find((i) => i.id === pl.itemId)?.footprint;
+      if (!model || !fp) continue;
+      const chunk = chunkOf(fp, pl.x, pl.z, pl.rotation);
+      const items = byChunk.get(chunk) ?? [];
+      items.push({ model, matrix: placementMatrix(fp, pl.x, pl.z, pl.rotation) });
+      byChunk.set(chunk, items);
+    }
+    for (const [chunk, items] of byChunk) batch.add(chunk, items);
+  };
+
+  /** Bring the merged meshes in line with the game's placements; true when anything was redrawn. */
+  const syncPlaced = (themeId: string | null, placements: readonly Placement[]): boolean => {
+    const plan = themeId === shownTheme ? planBatch(shown, placements) : { kind: 'rebuild' as const };
+    if (plan.kind === 'same') return false;
+    const empty = shown.length === 0;
+    shown = placements;
+    shownTheme = themeId;
+    if (plan.kind === 'append' && themeId) {
+      addToBatch(themeId, plan.added);
+      return true;
+    }
+    batch.clear();
+    if (themeId) addToBatch(themeId, placements);
+    return !(empty && placements.length === 0);
+  };
+
   function sync(s: AppState): void {
     const game = s.game;
-    const themeId = game?.themeId ?? null;
     const t0 = performance.now();
-    let changed = false;
-    if (themeId !== placedTheme) {
-      for (const o of placed.values()) root.remove(o); // clones share geometry; nothing to dispose
-      changed ||= placed.size > 0;
-      placed.clear();
-      placedTheme = themeId;
-    }
-    if (game) {
-      const live = new Set<number>();
-      for (const pl of game.placements) {
-        live.add(pl.uid);
-        if (placed.has(pl.uid)) continue;
-        const proto = prototype(game.themeId, pl.itemId);
-        const fp = getTheme(game.themeId)?.items.find((i) => i.id === pl.itemId)?.footprint;
-        if (!proto || !fp) continue;
-        const o = proto.clone();
-        applyTransform(o, fp, pl.x, pl.z, pl.rotation);
-        root.add(o);
-        placed.set(pl.uid, o);
-        changed = true;
-      }
-      for (const [uid, o] of placed) {
-        if (!live.has(uid)) { root.remove(o); placed.delete(uid); changed = true; }
-      }
-    }
-    if (changed) buildMs = performance.now() - t0;
+    if (syncPlaced(game?.themeId ?? null, game?.placements ?? [])) buildMs = performance.now() - t0;
 
     const g = s.ghost;
     const item = game && s.screen === 'playing' ? getTheme(game.themeId)?.items.find((i) => i.id === game.current) : undefined;
