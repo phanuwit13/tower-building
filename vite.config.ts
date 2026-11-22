@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   build: {
-    target: 'es2022',
+    target: ['es2022', 'safari16'],
     rollupOptions: {
       output: {
         // three.js in its own chunk: cached across deploys and keeps the app chunk small.
