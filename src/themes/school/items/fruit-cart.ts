@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
+import type { PaletteColor } from '../../../models/palette';
 import { gableRoof, wheel } from '../../../models/parts';
 
 // A flat wooden fruit handcart, long side along z, the selling side (+x) to the front. Two big
@@ -18,7 +19,8 @@ const AXLE_BLOCK = { x: 0.22, w: 0.06, d: 0.1 }; // two blocks hang the axle und
 const CANOPY = { y: 1.18, rise: 0.12, eave: 0.05, t: 0.04 };
 const FRUIT_X = 0.15; // centre line of the front trays
 const ORANGE_R = 0.055;
-const SLICE = { w: 0.13, len: 0.15, t: 0.03 }; // watermelon slice: rind width (z), point length (x), thickness
+// A watermelon slice lies flat as a round: green rind, a white band, red flesh, each layer a little thicker than the one below
+const SLICE = { r: 0.085, rind: 0.03, band: 0.012, flesh: 0.026, seed: 0.014 }; // radius; rind width round the edge; band and flesh layers' extra height
 
 /** รถเข็นผลไม้: a wooden fruit handcart with two big wheels, a green canopy, oranges and watermelon. */
 export const item: ItemModel = {
@@ -77,16 +79,17 @@ export const item: ItemModel = {
       for (const dz of [-0.12, 0, 0.12]) parts.push(kit.sphere(ORANGE_R, [FRUIT_X + dx, oy, oz + dz], 'orange', { detail: 0 }));
     }
     parts.push(kit.sphere(ORANGE_R, [FRUIT_X, oy + ORANGE_R * 1.3, oz], 'orange', { detail: 0 }));
-    // front, -z end: watermelon slices lying flat, green rind to the front, points to the back
+    // front, -z end: round watermelon slices lying on a tray
     const wz = -0.25;
     parts.push(kit.box([0.26, 0.03, 0.54], [FRUIT_X, trayY, wz], 'sand'));
-    const sliceY = trayY + 0.015 + SLICE.t / 2;
-    for (const dz of [-0.2, -0.067, 0.067, 0.2]) {
-      parts.push(
-        // wedge turned so its base runs along z, its point aims at -x and its thickness is vertical
-        kit.wedge([SLICE.w, SLICE.len, SLICE.t], [FRUIT_X + 0.01, sliceY, wz + dz], 'red', { rotate: [Math.PI / 2, 0, Math.PI / 2] }),
-        kit.box([0.025, SLICE.t + 0.01, SLICE.w], [FRUIT_X + 0.01 + SLICE.len / 2 + 0.0125, sliceY, wz + dz], 'leaf'),
-      );
+    const sliceY = trayY + 0.015;
+    const layers: Array<[number, number, PaletteColor]> = [ // [radius, height, colour], bottom first
+      [SLICE.r, 0.03, 'leaf'], [SLICE.r - SLICE.rind / 2, 0.03 + SLICE.band, 'white'], [SLICE.r - SLICE.rind, 0.03 + SLICE.band + SLICE.flesh, 'red'],
+    ];
+    for (const dz of [-0.17, 0, 0.17]) {
+      for (const [r, h, color] of layers) parts.push(kit.cylinder(r, r, h, [FRUIT_X, sliceY + h / 2, wz + dz], color, { segments: 10 }));
+      const top = sliceY + 0.03 + SLICE.band + SLICE.flesh;
+      for (const sx of [-0.022, 0.022]) parts.push(kit.box([SLICE.seed, 0.004, SLICE.seed * 0.6], [FRUIT_X + sx, top + 0.002, wz + dz + sx * 0.4], 'charcoal'));
     }
     // back row, mostly under the canopy: a whole watermelon behind the slices, two pineapples behind the oranges
     parts.push(kit.sphere(0.12, [-0.14, BED.top + 0.1, -0.2], 'leaf', { detail: 0, scale: [0.9, 0.85, 1.25] }));
