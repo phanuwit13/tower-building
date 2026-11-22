@@ -8,9 +8,9 @@ export interface HudView {
 }
 export interface HudHandlers { onRotate(): void; onPlace(): void; onSettings(): void; onScreenshot(): void }
 
-function cardView(label: string, cls: string) {
+function cardView(label: string, cls: string, testId?: string) {
   const thumb = el('img', { class: 'card-thumb', attrs: { alt: '' } });
-  const name = el('div', { class: 'card-name' });
+  const name = el('div', { class: 'card-name', attrs: testId ? { 'data-testid': testId } : {} });
   const size = el('div', { class: 'card-size' });
   const box = el('div', { class: `card ${cls}` }, [el('div', { class: 'card-label', text: label }), thumb, name, size]);
   return {
@@ -26,7 +26,7 @@ function cardView(label: string, cls: string) {
 }
 
 export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudView): void } {
-  const cur = cardView(T.current, 'card-current');
+  const cur = cardView(T.current, 'card-current', 'current-name');
   const nxt = cardView(T.next, 'card-next');
   const placed = el('div', { class: 'hud-placed' });
   const hint = el('div', { class: 'hud-hint', attrs: { role: 'status' } });

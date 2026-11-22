@@ -91,3 +91,4 @@ button:disabled { opacity: 0.45; cursor: default; }
 /* Notices */
 .notices { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: min(480px, 92vw); }
 .notice { background: var(--ink); color: #fff; border-radius: 16px; padding: 10px 16px; text-align: center; }
+.no-webgl { position: fixed; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; background: var(--sky); box-sizing: border-box; }
