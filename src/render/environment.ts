@@ -109,12 +109,13 @@ const SKY_RADIUS = 150;
 const STAR_COUNT = 1400;
 /**
  * The rain box is 1.4 x the map on each side (as the 10 x 10 map's was); drops per volume are the
- * same as then (2500 / 500 drops in 14 x 14 x 12), so the counts grow with the box's floor area.
+ * same as then for pretty (2500 drops in 14 x 14 x 12), so its count grows with the box's floor area.
+ * Smooth is a fixed 800 (was 500): sparse rain, cheap on a low-end Chromebook.
  */
 const RAIN_SIDE = 1.4 * GRID_SIZE;
 const RAIN_AREA_SCALE = (RAIN_SIDE / 14) ** 2;
 const RAIN = {
-  pretty: Math.round(2500 * RAIN_AREA_SCALE), smooth: Math.round(500 * RAIN_AREA_SCALE),
+  pretty: Math.round(2500 * RAIN_AREA_SCALE), smooth: 800, // smooth stays sparse and cheap: a fixed count, not scaled by map area
   speed: 18, width: RAIN_SIDE, height: 12, depth: RAIN_SIDE,
 } as const;
 
