@@ -12,10 +12,12 @@ import { createThumbnailer } from './thumbnails';
 /** An item shown in the gallery at rotation 0; (x, z) is its min-corner tile, as in a placement. */
 export interface GallerySlot { item: ItemModel; x: number; z: number }
 
-const GAP = 1; // empty tiles between items in a row
-const ROW_GAP = 2; // empty tiles between rows: the labels (thumbnail + text) sit here
+const GAP = 2; // empty tiles between items in a row: a label is ~130 px wide, so neighbours need two tiles at the page zoom
+const ROW_GAP = 3; // empty tiles between rows: the labels (thumbnail + text) sit here
 /** Review pages are 10 x 10 tiles on purpose (labels stay readable; not tied to the map size); the page is framed by its own bounds. */
 const GALLERY_PAGE = 10;
+/** Labels are fixed-size on screen, so a page with more items than this has colliding labels (seen at 15 small items). */
+const MAX_PER_PAGE = 5;
 const BIG = 4; // footprint area from which an item goes in the back rows
 
 /**
@@ -50,7 +52,7 @@ export function galleryPages(items: readonly ItemModel[], size = GALLERY_PAGE): 
   };
   for (const row of rows) {
     const depth = Math.max(...row.map((i) => i.footprint.d));
-    if (page.length > 0 && z + depth > size) {
+    if (page.length > 0 && (z + depth > size || page.length + row.length > MAX_PER_PAGE)) {
       finish();
       page = [];
       z = 0;
@@ -154,7 +156,7 @@ export function attachGallery(
       box.union(bounds);
       const { w, d } = slot.item.footprint;
       // the footprint and a strip in front of it, where the label goes
-      box.expandByPoint(new THREE.Vector3(slot.x, 0, slot.z)).expandByPoint(new THREE.Vector3(slot.x + w + 0.5, 0, slot.z + d + 1.5));
+      box.expandByPoint(new THREE.Vector3(slot.x, 0, slot.z)).expandByPoint(new THREE.Vector3(slot.x + w + 0.5, 0, slot.z + d + 2.5));
       const thumb = el('img', { class: 'gallery-thumb' });
       thumb.alt = '';
       const url = thumbs.get(slot.item);

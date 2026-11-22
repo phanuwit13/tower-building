@@ -15,8 +15,10 @@ const loaders: Record<string, () => Promise<unknown>> = import.meta.env.DEV
   : {};
 
 /** DEV: load one batch's items. Rejects (caller shows a message) when the module is missing or broken. */
-export async function loadBatch(n: number): Promise<readonly ItemModel[]> {
-  const load = loaders[`../themes/school/batches/b${n}.ts`];
+export async function loadBatch(
+  n: number, source: Record<string, () => Promise<unknown>> = loaders,
+): Promise<readonly ItemModel[]> {
+  const load = source[`../themes/school/batches/b${n}.ts`];
   if (!load) throw new Error(`no batch module for batch ${n}`);
   const mod = (await load()) as { items?: readonly ItemModel[] };
   if (!Array.isArray(mod.items)) throw new Error(`batch ${n} does not export "items"`);

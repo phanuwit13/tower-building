@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ItemModel } from '../models/contract';
 import { loadBatch, parseBatchParam } from './batchGallery';
 
 describe('parseBatchParam', () => {
@@ -13,10 +14,20 @@ describe('parseBatchParam', () => {
 });
 
 describe('loadBatch', () => {
+  // Fixture loaders: this test must not depend on any real batch module.
+  const fixture = { id: 'fixture' } as unknown as ItemModel;
+  const key = (n: number): string => `../themes/school/batches/b${n}.ts`;
   it('loads a batch module lazily', async () => {
-    expect(Array.isArray(await loadBatch(1))).toBe(true);
+    let loaded = 0;
+    const source = { [key(1)]: async () => { loaded++; return { items: [fixture] }; } };
+    expect(loaded).toBe(0);
+    expect(await loadBatch(1, source)).toEqual([fixture]);
+    expect(loaded).toBe(1);
   });
   it('rejects for an unknown batch', async () => {
-    await expect(loadBatch(9)).rejects.toThrow();
+    await expect(loadBatch(9, {})).rejects.toThrow();
+  });
+  it('rejects when the module does not export items', async () => {
+    await expect(loadBatch(1, { [key(1)]: async () => ({}) })).rejects.toThrow('items');
   });
 });

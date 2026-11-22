@@ -190,8 +190,8 @@ describe('validateItemModel footprint coverage', () => {
     expect(validateItemModel(sized(1, 2, 0.9, 1.3), kit).join('|')).toContain('along z');
     expect(validateItemModel(sized(2, 1, 1.3, 0.9), kit).join('|')).toContain('along x');
   });
-  it('all six approved School items pass every rule', () => {
-    expect(school.items).toHaveLength(6);
+  it('all 50 School items pass every rule', () => {
+    expect(school.items).toHaveLength(50);
     for (const it of school.items) expect(validateItemModel(it, kit)).toEqual([]);
   });
 });

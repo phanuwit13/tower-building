@@ -28,6 +28,12 @@ function checkPage(page: GallerySlot[]): void {
 }
 
 describe('galleryPages', () => {
+  it('puts at most 5 items on a page so the fixed-size labels do not collide', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({ ...small[3], id: `m${i}` }));
+    const pages = galleryPages(many);
+    expect(pages.reduce((n, p) => n + p.length, 0)).toBe(40);
+    for (const p of pages) expect(p.length).toBeLessThanOrEqual(5);
+  });
   it('fits a small list on one page, big footprints behind small ones', () => {
     const pages = galleryPages(small);
     expect(pages).toHaveLength(1);

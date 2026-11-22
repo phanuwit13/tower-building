@@ -11,9 +11,7 @@ describe('school batch 5', () => {
     expect(validateBatch(items, getStyleKit(), ASSIGNED)).toEqual([]);
   });
 
-  // The integration step makes this strict (drop the guard); until then an empty batch passes.
-  it('has every assigned id once the batch is started', () => {
-    if (items.length === 0) return;
+  it('has every assigned id', () => {
     expect(items.map((i) => i.id).sort()).toEqual([...ASSIGNED].sort());
   });
 });

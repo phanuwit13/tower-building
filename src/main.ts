@@ -266,14 +266,14 @@ function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void 
 
 /** DEV only, `?gallery=batch-<n>`: the School theme reduced to one sculptor batch (module loaded lazily). */
 function bootBatchGallery(app: HTMLElement, n: number): void {
-  loadBatch(n).then(
-    (items) => bootGallery(app, { ...school, name: `โรงเรียน · batch ${n}`, items },
-      items.length === 0 ? `batch ${n} is empty: add items to src/themes/school/batches/b${n}.ts` : undefined),
-    (e: unknown) => {
-      console.error(`batch ${n} failed to load`, e);
-      app.append(el('p', { class: 'gallery-dev-note', text: `batch ${n} failed to load: ${e instanceof Error ? e.message : String(e)}` }));
-    },
-  );
+  loadBatch(n)
+    .then((items) => bootGallery(app, { ...school, name: `โรงเรียน · batch ${n}`, items },
+      items.length === 0 ? `batch ${n} is empty: add items to src/themes/school/batches/b${n}.ts` : undefined))
+    .catch((e: unknown) => {
+      // Covers a failed load and an error thrown while booting the gallery (e.g. an item's build throwing).
+      console.error(`batch ${n} failed`, e);
+      app.append(el('p', { class: 'gallery-dev-note', text: `batch ${n} failed: ${e instanceof Error ? e.message : String(e)}` }));
+    });
 }
 
 const app = document.getElementById('app');

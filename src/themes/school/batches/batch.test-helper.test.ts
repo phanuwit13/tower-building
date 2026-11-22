@@ -22,11 +22,11 @@ describe('parseItemTable', () => {
     expect(table.get('library')).toEqual({ footprint: '2x3', exists: false });
     expect(table.size).toBe(3);
   });
-  it('parses the real doc: 50 items, six built', () => {
+  it('parses the real doc: 50 items, all built', () => {
     return import('../../../../docs/game/items-school.md?raw').then((m) => {
       const t = parseItemTable(m.default);
       expect(t.size).toBe(50);
-      expect([...t.values()].filter((r) => r.exists)).toHaveLength(6);
+      expect([...t.values()].filter((r) => r.exists)).toHaveLength(50);
     });
   });
 });
