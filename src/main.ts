@@ -226,6 +226,8 @@ if (app) {
     console.error('boot failed', e);
     showFatal(app); // never leave a blank page
   }
-  // public/boot-check.js shows the same message if this flag is still unset after a few seconds
+  // public/boot-check.js shows the same message if this flag is still unset a few seconds after the
+  // page has loaded; if it is already showing (an extremely slow load), take it away.
   (window as unknown as { __cityBooted?: boolean }).__cityBooted = true;
+  document.getElementById('boot-fallback')?.remove();
 }

@@ -58,3 +58,38 @@ plain('fallback message shows when the app bundle never boots', async ({ page })
   await page.goto('/');
   await expect(page.getByText(T.noWebGL)).toBeVisible({ timeout: 8000 });
 });
+
+test('a slow download does not cover the game with the fallback message', async ({ page }) => {
+  test.setTimeout(45_000);
+  // A slow school network: the app bundle arrives after 6 s, well past the old fixed 4 s check.
+  await page.route('**/assets/index-*.js', async (r) => {
+    await new Promise((done) => setTimeout(done, 6000));
+    await r.continue();
+  });
+  await page.goto('/', { waitUntil: 'commit' });
+  const school = page.getByRole('button', { name: 'โรงเรียน' });
+  await expect(school).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(4000); // past the grace period after the page finished loading
+  await expect(page.getByText(T.noWebGL)).toHaveCount(0);
+  await school.click(); // nothing covers it
+  await expect(page.getByText(placed(0))).toBeVisible();
+});
+
+test('booting removes a fallback message that is already showing', async ({ page }) => {
+  // Stand-in for boot-check.js having already given up (e.g. an extremely slow load): the overlay
+  // is on screen before the app runs. Booting must take it away.
+  await page.route('**/boot-check.js', (r) => r.fulfill({
+    contentType: 'text/javascript',
+    body: `(function () {
+      var p = document.createElement('p');
+      p.id = 'boot-fallback';
+      p.className = 'no-webgl';
+      p.textContent = ${JSON.stringify(T.noWebGL)};
+      document.body.appendChild(p);
+    })();`,
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'โรงเรียน' }).click();
+  await expect(page.getByText(T.noWebGL)).toHaveCount(0);
+  await expect(page.getByText(placed(0))).toBeVisible();
+});
