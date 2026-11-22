@@ -45,11 +45,19 @@ function markTexture(glyph: string, color: number): THREE.CanvasTexture {
   return tex;
 }
 
+export interface CityView {
+  sync(s: AppState): void;
+  /** World box (footprint x item height) of the visible ghost, for hit-testing; null when none is shown. */
+  ghostBox(): THREE.Box3 | null;
+  /** Hide/show the ghost, its outline and its marker (e.g. for a screenshot). Persists across sync. */
+  setGhostVisible(v: boolean): void;
+}
+
 export function createCityView(
   stage: Stage,
   kit: StyleKit,
   getTheme: (id: string) => ThemeDef | undefined,
-): { sync(s: AppState): void } {
+): CityView {
   void kit;
   const root = new THREE.Group();
   root.name = 'city';
@@ -112,6 +120,14 @@ export function createCityView(
   root.add(sprite);
   sprite.visible = false;
 
+  let wanted = false; // the game state wants a ghost on screen
+  let suppressed = false; // ...but a capture asked to hide it
+  const box = new THREE.Box3();
+  const applyVisibility = (): void => {
+    ghost.visible = wanted && !suppressed;
+    sprite.visible = wanted && !suppressed;
+  };
+
   let ghostModel: THREE.Object3D | null = null;
   let ghostKey = '';
   const topOf = new Map<string, number>();
@@ -170,8 +186,8 @@ export function createCityView(
     const g = s.ghost;
     const item = game && s.screen === 'playing' ? getTheme(game.themeId)?.items.find((i) => i.id === game.current) : undefined;
     if (!g || !game || !item) {
-      ghost.visible = false;
-      sprite.visible = false;
+      wanted = false;
+      applyVisibility();
       return;
     }
     const top = setGhostModel(game.themeId, item.id);
@@ -187,9 +203,17 @@ export function createCityView(
     footFill.scale.set(w, 1, d);
     footLine.scale.set(w, 1, d);
     sprite.position.set(g.x + w / 2, top + 0.7, g.z + d / 2);
-    ghost.visible = true;
-    sprite.visible = true;
+    box.set(new THREE.Vector3(g.x, 0, g.z), new THREE.Vector3(g.x + w, top, g.z + d));
+    wanted = true;
+    applyVisibility();
   }
 
-  return { sync };
+  return {
+    sync,
+    ghostBox: () => (wanted ? box.clone() : null),
+    setGhostVisible(v) {
+      suppressed = !v;
+      applyVisibility();
+    },
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { deliverImage, screenshotFilename, type ShareEnv } from './screenshot';
+import { deliverImage, isTabletLike, screenshotFilename, type ShareEnv } from './screenshot';
 
 const blob = new Blob(['x'], { type: 'image/png' });
 
@@ -51,5 +51,33 @@ describe('deliverImage', () => {
   it('downloads when canShare is false or share is missing', async () => {
     expect(await deliverImage(blob, 'a.png', env({ canShare: () => false }))).toBe('downloaded');
     expect(await deliverImage(blob, 'a.png', env({ share: undefined }))).toBe('downloaded');
+  });
+});
+
+describe('isTabletLike', () => {
+  const win = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120';
+  const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/16.0 Safari/605.1.15';
+  it('touchscreen Windows/ChromeOS laptop with a fine pointer is not a tablet', () => {
+    expect(isTabletLike({ coarsePointer: false, userAgent: win, maxTouchPoints: 10 })).toBe(false);
+  });
+  it('iPadOS with a desktop user agent and touch is a tablet', () => {
+    expect(isTabletLike({ coarsePointer: false, userAgent: mac, maxTouchPoints: 5 })).toBe(true);
+  });
+  it('Android tablet (coarse pointer) is a tablet', () => {
+    expect(isTabletLike({ coarsePointer: true, userAgent: 'Mozilla/5.0 (Linux; Android 13)', maxTouchPoints: 5 })).toBe(true);
+  });
+  it('a mouse-only desktop (also a Mac) is not', () => {
+    expect(isTabletLike({ coarsePointer: false, userAgent: win, maxTouchPoints: 0 })).toBe(false);
+    expect(isTabletLike({ coarsePointer: false, userAgent: mac, maxTouchPoints: 0 })).toBe(false);
+  });
+});
+
+describe('deliverImage share errors', () => {
+  it('warns about a non-abort share error before downloading', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const e = env({ share: vi.fn(async () => { throw new Error('boom'); }) });
+    await deliverImage(blob, 'a.png', e);
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 });

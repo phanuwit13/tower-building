@@ -7,11 +7,22 @@ export interface ShareEnv {
   download(blob: Blob, name: string): void;
 }
 
+const REVOKE_DELAY_MS = 60_000;
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** `city-<theme>-<yyyy-mm-dd>.png`, using the local date. */
 export function screenshotFilename(themeId: string, d: Date): string {
   return `city-${themeId}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.png`;
+}
+
+export interface TabletInfo { coarsePointer: boolean; userAgent: string; maxTouchPoints: number }
+
+/**
+ * Phones and tablets, not touchscreen laptops: the primary pointer is coarse, or it is an iPad
+ * reporting a desktop (Macintosh) user agent while having a multi-touch screen.
+ */
+export function isTabletLike(info: TabletInfo): boolean {
+  return info.coarsePointer || (/Macintosh/.test(info.userAgent) && info.maxTouchPoints > 1);
 }
 
 /**
@@ -35,6 +46,7 @@ export async function deliverImage(blob: Blob, name: string, env: ShareEnv): Pro
       return 'shared';
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
+      console.warn('share failed, downloading instead', e);
     }
   }
   env.download(blob, name);
@@ -44,7 +56,11 @@ export async function deliverImage(blob: Blob, name: string, env: ShareEnv): Pro
 /** Real-browser `ShareEnv` built from `navigator` and `document`. */
 export function createBrowserShareEnv(): ShareEnv {
   const nav = navigator;
-  const isTouch = nav.maxTouchPoints > 0 || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+  const isTouch = isTabletLike({
+    coarsePointer: typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches,
+    userAgent: nav.userAgent,
+    maxTouchPoints: nav.maxTouchPoints,
+  });
   return {
     isTouch,
     canShare: typeof nav.canShare === 'function' ? (d) => nav.canShare(d) : undefined,
@@ -57,7 +73,8 @@ export function createBrowserShareEnv(): ShareEnv {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      // Safari and older browsers can cancel the download if the URL is revoked straight away.
+      setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
     },
   };
 }
