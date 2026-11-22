@@ -8,7 +8,7 @@
  * are for trim and shaded parts of the same object, not for whole items.
  *
  * Any palette colour may be used for a glow part. `glow: true` keeps its colour by day and emits
- * it at dusk and night (`lampWarm`: a pale bulb). `glow: 'windowWarm'` on a `glassBlue` part gives
+ * it at dusk and night (`lampWarm`: a pale bulb). `glow: 'windowWarm'` on a `skyBlue` part gives
  * glass-blue windows by day that glow warm at night.
  */
 export const PALETTE = {
@@ -41,7 +41,7 @@ export const PALETTE = {
   blue: '#3f7fdb',
   navy: '#2f4a86',
   glassBlue: '#c2e8f7',
-  // glow colours: `lampWarm` with `glow: true`, `windowWarm` as the `glow` of a glassBlue part
+  // glow colours: `lampWarm` with `glow: true`, `windowWarm` as the `glow` of a skyBlue part
   lampWarm: '#ffeaa6',
   windowWarm: '#ffd873',
 } as const;
