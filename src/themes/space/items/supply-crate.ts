@@ -39,9 +39,9 @@ export const item: ItemModel = {
       kit.cylinder(0.1, 0.1, 0.2, [0.3, 0.1, -0.3], 'teal', { segments: 10 }),
       kit.cylinder(0.105, 0.105, 0.04, [0.3, 0.2, -0.3], 'white', { segments: 10 }),
     ];
-    parts.push(...label(kit, [0.18 + 0.025, 0.14, 0.0], 0.2, 'teal', 'disc', 'x'));
-    parts.push(...label(kit, [-0.1 + 0.0, 0.14, 0.18 + 0.0], 0.2, 'sunYellow', 'diamond', 'z'));
-    parts.push(...label(kit, [0.01 + 0.0, 0.4, -0.1 + 0.0], 0.15, 'red', 'diamond', 'x'));
+    parts.push(...label(kit, [0.17, 0.14, -0.08], 0.18, 'teal', 'disc', 'x'));
+    parts.push(...label(kit, [-0.1, 0.14, 0.18], 0.2, 'sunYellow', 'diamond', 'z'));
+    parts.push(...label(kit, [0.12, 0.4, -0.1], 0.15, 'red', 'diamond', 'x'));
     parts.push(...label(kit, [0.26, 0.11, 0.43], 0.16, 'blue', 'disc', 'z'));
     return kit.finish(parts);
   },

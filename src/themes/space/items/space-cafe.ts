@@ -57,19 +57,18 @@ export const item: ItemModel = {
       }));
     }
     // a belt ring round the dome halfway up
-    parts.push(kit.torus(RIB_R * 0.8, 0.03, [0, DRUM_H + 0.02 + RIB_H * 0.6, 0], 'teal', { radialSegments: 4, tubularSegments: 16, rotate: [Math.PI / 2, 0, 0] }));
-    // one lit glass pane between the ribs, low on the +x side
-    parts.push(kit.dome(0.17, [0, DRUM_H + RIB_H - 0.02, 0], 'skyBlue', { segments: 8, glow: 'windowWarm', light: 'window' }));
-    // tables and a warm lamp inside
+    parts.push(kit.torus(RIB_R * 0.8, 0.035, [0, DRUM_H + 0.02 + RIB_H * 0.6, 0], 'skyBlue', { radialSegments: 4, tubularSegments: 16, rotate: [Math.PI / 2, 0, 0], glow: 'teal', light: 'window' }));
+    // lit glass: a warm ring round the dome foot and a teal belt halfway up (both glow at night)
+    parts.push(kit.torus(RIB_R, 0.035, [0, DRUM_H + 0.06, 0], 'skyBlue', { radialSegments: 4, tubularSegments: 16, rotate: [Math.PI / 2, 0, 0], glow: 'windowWarm', light: 'window' }));
+    // tables inside
     parts.push(...table(kit, 0.4, 0.3, 'sunYellow', 'orange'));
     parts.push(...table(kit, -0.35, 0.4, 'sunYellow', 'blue'));
     parts.push(...table(kit, 0.05, -0.45, 'sunYellow', 'purple'));
-    parts.push(kit.sphere(0.07, [0, DRUM_H + 0.3, 0.05], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }));
     // round windows in the drum, on the visible sides
     for (let i = 0; i < 6; i++) {
       const a = (-0.38 + i * 0.28) * Math.PI;
       const n: Vec3 = [Math.cos(a), 0, Math.sin(a)];
-      parts.push(...porthole(kit, [n[0] * WALL, 0.2, n[2] * WALL], n, 0.055, 'red', i % 2 ? 'teal' : 'windowWarm'));
+      parts.push(...porthole(kit, [n[0] * WALL, 0.2, n[2] * WALL], n, 0.07, 'red', i % 2 ? 'teal' : 'windowWarm'));
     }
     // the giant cup on top: cup, red band, coffee, handle and a saucer
     const cy = DRUM_H + RIB_H + 0.02;
