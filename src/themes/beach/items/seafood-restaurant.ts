@@ -5,12 +5,12 @@ import { door, gableRoof, glassWindow } from '../../../models/parts';
 const SAND_H = 0.03;
 const DECK = { x0: -0.95, x1: 0.85, y: 0.2, t: 0.05 }; // plank deck on low stilts
 const FLOOR = DECK.y + DECK.t; // 0.25
-const WALL = { x: -0.42, w: 0.8, l: 2.2, h: 0.6 }; // the building takes the back half of the deck
+const WALL = { x: -0.42, w: 0.8, l: 2.2, h: 0.8 }; // the building takes the back half of the deck
 const WALL_TOP = FLOOR + WALL.h;
-const RISE = 0.5;
+const RISE = 0.4;
 const FRONT = WALL.x + WALL.w / 2; // the +x wall face
 const TABLES: Array<[number, number]> = [[0.38, -0.65], [0.38, 0.6]];
-const SIGN = { x: 0.74, z: 1.15, y: 1.12 }; // the fish sign on a pole at the front corner
+const SIGN = { x: 0.72, z: 1.05, y: 1.4 }; // the fish sign on a pole at the front corner
 
 /** ร้านอาหารทะเล: a wooden restaurant on low stilts with a thatched roof, a fish sign and tables on the deck. */
 export const item: ItemModel = {
@@ -34,13 +34,13 @@ export const item: ItemModel = {
     parts.push(
       kit.box([WALL.w, WALL.h, WALL.l], [WALL.x, FLOOR + WALL.h / 2, 0], 'cream'),
       kit.wedge([WALL.w, RISE, WALL.l], [WALL.x, WALL_TOP + RISE / 2, 0], 'cream'),
-      ...gableRoof(kit, { at: [WALL.x, WALL_TOP, 0], length: 2.5, width: WALL.w, rise: RISE, eave: 0.1, color: 'brass', ridge: 'woodDark' }),
-      ...door(kit, { at: [FRONT, FLOOR + 0.23, -0.1], facing: 'x+', w: 0.3, h: 0.46, color: 'woodDark', knob: 'sunYellow' }),
-      ...glassWindow(kit, { at: [FRONT, FLOOR + 0.3, -0.75], facing: 'x+', w: 0.4, h: 0.26 }),
-      ...glassWindow(kit, { at: [FRONT, FLOOR + 0.3, 0.7], facing: 'x+', w: 0.4, h: 0.26 }),
-      ...glassWindow(kit, { at: [WALL.x - WALL.w / 2, FLOOR + 0.3, 0], facing: 'x-', w: 0.6, h: 0.26, panes: 3 }),
-      ...glassWindow(kit, { at: [WALL.x, FLOOR + 0.3, WALL.l / 2], facing: 'z+', w: 0.4, h: 0.26 }),
-      ...glassWindow(kit, { at: [WALL.x, FLOOR + 0.3, -WALL.l / 2], facing: 'z-', w: 0.4, h: 0.26 }),
+      ...gableRoof(kit, { at: [WALL.x, WALL_TOP, 0], length: 2.5, width: WALL.w, rise: RISE, eave: 0.04, color: 'brass', ridge: 'woodDark' }),
+      ...door(kit, { at: [FRONT, FLOOR + 0.28, -0.1], facing: 'x+', w: 0.3, h: 0.56, color: 'woodDark', knob: 'sunYellow' }),
+      ...glassWindow(kit, { at: [FRONT, FLOOR + 0.42, -0.75], facing: 'x+', w: 0.4, h: 0.32 }),
+      ...glassWindow(kit, { at: [FRONT, FLOOR + 0.42, 0.7], facing: 'x+', w: 0.4, h: 0.32 }),
+      ...glassWindow(kit, { at: [WALL.x - WALL.w / 2, FLOOR + 0.42, 0], facing: 'x-', w: 0.6, h: 0.32, panes: 3 }),
+      ...glassWindow(kit, { at: [WALL.x, FLOOR + 0.42, WALL.l / 2], facing: 'z+', w: 0.4, h: 0.32 }),
+      ...glassWindow(kit, { at: [WALL.x, FLOOR + 0.42, -WALL.l / 2], facing: 'z-', w: 0.4, h: 0.32 }),
       // a blue stripe above the front windows
       kit.box([0.02, 0.05, WALL.l], [FRONT + 0.005, WALL_TOP - 0.06, 0], 'blue'),
       // warm lamps under the front eave
@@ -52,7 +52,7 @@ export const item: ItemModel = {
       parts.push(
         kit.cylinder(0.03, 0.03, 0.26, [tx, FLOOR + 0.13, tz], 'woodDark', { segments: 6 }),
         kit.cylinder(0.17, 0.17, 0.035, [tx, FLOOR + 0.28, tz], 'blue', { segments: 8 }),
-        kit.cylinder(0.07, 0.07, 0.015, [tx, FLOOR + 0.3, tz], 'white', { segments: 8 }),
+        kit.cylinder(0.07, 0.07, 0.015, [tx, FLOOR + 0.42, tz], 'white', { segments: 8 }),
         kit.sphere(0.035, [tx, FLOOR + 0.33, tz], 'orange', { detail: 0, scale: [1.5, 0.8, 1] }),
       );
       for (let k = 0; k < 3; k++) {
@@ -72,11 +72,11 @@ export const item: ItemModel = {
     // the fish-shaped sign: a pole, a flat orange fish (head towards +z), tail, fin, eye
     parts.push(
       kit.cylinder(0.03, 0.03, SIGN.y - FLOOR, [SIGN.x, FLOOR + (SIGN.y - FLOOR) / 2, SIGN.z], 'woodDark', { segments: 6 }),
-      kit.sphere(1, [SIGN.x + 0.04, SIGN.y, SIGN.z], 'orange', { scale: [0.05, 0.14, 0.22] }),
-      kit.cone(0.13, 0.17, [SIGN.x + 0.04, SIGN.y, SIGN.z - 0.3], 'red', { segments: 4, scale: [0.35, 1, 1], rotate: [Math.PI / 2, 0, 0] }),
-      kit.cone(0.08, 0.12, [SIGN.x + 0.04, SIGN.y + 0.17, SIGN.z - 0.02], 'red', { segments: 4, scale: [0.35, 1, 1] }),
-      kit.sphere(0.035, [SIGN.x + 0.085, SIGN.y + 0.03, SIGN.z + 0.13], 'white', { detail: 0 }),
-      kit.sphere(0.018, [SIGN.x + 0.115, SIGN.y + 0.03, SIGN.z + 0.13], 'charcoal', { detail: 0 }),
+      kit.sphere(1, [SIGN.x + 0.04, SIGN.y, SIGN.z], 'orange', { scale: [0.07, 0.24, 0.38] }),
+      kit.cone(0.22, 0.3, [SIGN.x + 0.04, SIGN.y, SIGN.z - 0.5], 'red', { segments: 4, scale: [0.35, 1, 1], rotate: [Math.PI / 2, 0, 0] }),
+      kit.cone(0.13, 0.2, [SIGN.x + 0.04, SIGN.y + 0.28, SIGN.z - 0.04], 'red', { segments: 4, scale: [0.35, 1, 1] }),
+      kit.sphere(0.06, [SIGN.x + 0.11, SIGN.y + 0.05, SIGN.z + 0.22], 'white', { detail: 0 }),
+      kit.sphere(0.03, [SIGN.x + 0.16, SIGN.y + 0.05, SIGN.z + 0.22], 'charcoal', { detail: 0 }),
     );
     return kit.finish(parts);
   },

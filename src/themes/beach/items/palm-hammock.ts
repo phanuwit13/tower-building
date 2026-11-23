@@ -8,7 +8,7 @@ const SAND_H = 0.03;
 const TRUNK = { z: 0.58, lean: 0.05, top: 1.15, r: 0.065, n: 4 }; // two short leaning palms at z = +-0.58
 const ATTACH = { y: 0.8, z: 0.57 }; // where the hammock ropes meet the trunks (on the hammock's rocking axis)
 const HAMMOCK = { z: 0.5, sag: 0.3, w: 0.32, segs: 8 };
-const FROND_SCALE = 0.62;
+const FROND_SCALE = 0.55;
 const FROND_T = 0.02;
 const FROND_PIECES: Array<[number, number, number]> = [[0.22, 0.15, 0.3], [0.2, 0.13, -0.25], [0.16, 0.09, -0.85]];
 // the crowns sway about the tops of their trunks (each its own pivot), the hammock rocks about the line between the ropes' ends
@@ -17,7 +17,7 @@ const HAMMOCK_ROCK: MotionOpts = { kind: 'swing', pivot: [0, ATTACH.y, 0], axis:
 /** One short palm at z = sign * TRUNK.z: ringed leaning trunk, a crown of fronds and two coconuts. */
 function palm(kit: StyleKit, sign: number): Part[] {
   const top: Vec3 = [0, TRUNK.top, sign * (TRUNK.z + TRUNK.lean)];
-  const sway: MotionOpts = { kind: 'sway', pivot: [top[0], top[1] - 0.02, top[2]], amount: 0.2 };
+  const sway: MotionOpts = { kind: 'sway', pivot: [top[0], top[1] - 0.02, top[2]], amount: 0.08 };
   const at = (t: number): Vec3 => [0, SAND_H + (TRUNK.top - SAND_H) * t, sign * (TRUNK.z + TRUNK.lean * t)];
   const parts: Part[] = [];
   for (let i = 0; i < TRUNK.n; i++) {
