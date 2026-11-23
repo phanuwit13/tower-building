@@ -13,33 +13,36 @@ const WIN = { w: 0.3, h: 0.3, y: FLOOR.y + 0.42 };
 const FRONT_X = CABIN.cx + CABIN.w / 2; // the +x wall
 const STAIR = { x0: 0.7, run: 0.065, rise: 0.1875, hw: 0.28 };
 
-/** Slung hammock between the two posts at z = 0, along x: cloth in alternating stripes. */
+/** Slung hammock along z between the outer posts at x = POST.xs[1], z = -1.2 and 0: it shows from the default camera. */
 function hammock(kit: Parameters<ItemModel['build']>[0], parts: Part[]): void {
-  const x0 = POST.xs[0] + POST.r;
-  const x1 = POST.xs[1] - POST.r;
+  const x = POST.xs[1];
+  const z0 = -1.2 + POST.r;
+  const z1 = -POST.r;
   const endY = 0.58;
   const sag = 0.26;
   const N = 7;
-  const pt = (i: number): [number, number, number] => {
+  const pt = (i: number): [number, number] => {
     const t = i / N;
     const u = 2 * t - 1;
-    return [x0 + (x1 - x0) * t, endY - sag * (1 - u * u), 0];
+    return [z0 + (z1 - z0) * t, endY - sag * (1 - u * u)];
   };
   for (let i = 0; i < N; i++) {
-    const a = pt(i);
-    const b = pt(i + 1);
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const mid = (i + 0.5) / N;
-    const w = 0.1 + 0.22 * Math.sqrt(1 - (2 * mid - 1) ** 2);
+    const [za, ya] = pt(i);
+    const [zb, yb] = pt(i + 1);
+    const len = Math.hypot(zb - za, yb - ya);
+    const u = (2 * (i + 0.5)) / N - 1;
+    const w = 0.1 + 0.34 * Math.sqrt(1 - u * u);
     parts.push(
-      kit.box([len * 1.1, 0.03, w], [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0], i % 2 === 0 ? 'orange' : 'cream', {
-        rotate: [0, 0, Math.atan2(b[1] - a[1], b[0] - a[0])],
+      kit.box([w, 0.03, len * 1.1], [x, (ya + yb) / 2, (za + zb) / 2], i % 2 === 0 ? 'orange' : 'white', {
+        rotate: [-Math.atan2(yb - ya, zb - za), 0, 0],
       }),
     );
   }
+  const [pz, py] = pt(2);
   parts.push(
-    rod(kit, [POST.xs[0] + 0.03, endY + 0.05, 0], pt(0), 0.015, 'stoneDark', { segments: 4 }),
-    rod(kit, [POST.xs[1] - 0.03, endY + 0.05, 0], pt(N), 0.015, 'stoneDark', { segments: 4 }),
+    kit.sphere(0.1, [x, py + 0.07, pz], 'pink', { scale: [1.2, 0.6, 1.1] }),
+    rod(kit, [x, endY + 0.05, -1.2 + 0.03], [x, pt(0)[1], pt(0)[0]], 0.015, 'stoneDark', { segments: 4 }),
+    rod(kit, [x, endY + 0.05, -0.03], [x, pt(N)[1], pt(N)[0]], 0.015, 'stoneDark', { segments: 4 }),
   );
 }
 
@@ -105,15 +108,18 @@ export const item: ItemModel = {
     }
     // under the house: hammock between the middle posts, a bamboo bench and a water jar
     hammock(kit, parts);
-    const benchZ = -0.75;
-    for (let i = 0; i < 4; i++) parts.push(kit.box([1.0, 0.035, 0.07], [-0.1, 0.33, benchZ - 0.15 + 0.1 * i], 'sand'));
-    for (const x of [-0.5, 0.3]) {
-      for (const z of [benchZ - 0.15, benchZ + 0.15]) parts.push(kit.box([0.05, 0.315, 0.05], [x, 0.1575, z], 'wood'));
+    // bench along x at the +z end, with a red mat and a pillow, in view from the default camera
+    const benchZ = 0.85;
+    for (let i = 0; i < 5; i++) parts.push(kit.box([1.1, 0.035, 0.07], [-0.1, 0.33, benchZ - 0.16 + 0.08 * i], 'sand'));
+    for (const x of [-0.6, 0.4]) {
+      for (const z of [benchZ - 0.17, benchZ + 0.17]) parts.push(kit.box([0.05, 0.315, 0.05], [x, 0.1575, z], 'wood'));
     }
     parts.push(
-      kit.cylinder(0.16, 0.12, 0.32, [-0.45, 0.16, 0.8], 'terracotta', { segments: 8 }),
-      kit.cylinder(0.17, 0.17, 0.03, [-0.45, 0.335, 0.8], 'redDark', { segments: 8 }),
-      kit.cylinder(0.14, 0.12, 0.2, [0.2, 0.1, 0.85], 'sand', { segments: 8 }), // rice basket
+      kit.box([0.8, 0.03, 0.34], [-0.1, 0.365, benchZ], 'red'),
+      kit.box([0.08, 0.034, 0.34], [-0.1, 0.366, benchZ], 'white'),
+      kit.sphere(0.09, [-0.45, 0.42, benchZ], 'sunYellow', { scale: [1, 0.6, 1.3], detail: 1 }),
+      kit.cylinder(0.16, 0.12, 0.32, [-0.55, 0.16, -0.6], 'terracotta', { segments: 8 }),
+      kit.cylinder(0.17, 0.17, 0.03, [-0.55, 0.335, -0.6], 'redDark', { segments: 8 }),
     );
     return kit.finish(parts);
   },

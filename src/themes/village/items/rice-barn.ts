@@ -4,7 +4,7 @@ import { door, gableRoof, rod } from '../../../models/parts';
 
 // A raised granary: four posts with round rat guards, a plank box, a tall steep roof; a ladder to the door on +x.
 const CX = -0.15;
-const POST_H = 0.5;
+const POST_H = 0.6;
 const FLOOR_H = 0.08;
 const BOX = { w: 1.0, d: 1.1, h: 0.7, y0: POST_H + FLOOR_H };
 const ROOF = { rise: 0.62, eave: 0.2, length: 1.5 };
@@ -22,7 +22,7 @@ export const item: ItemModel = {
       for (const z of [-0.45, 0.45]) {
         parts.push(
           kit.cylinder(0.055, 0.055, POST_H, [x, POST_H / 2, z], 'woodDark', { segments: 8 }),
-          kit.cylinder(0.11, 0.11, 0.03, [x, 0.36, z], 'stone', { segments: 8 }), // rat guard
+          kit.cylinder(0.11, 0.11, 0.03, [x, 0.46, z], 'stone', { segments: 8 }), // rat guard
         );
       }
     }

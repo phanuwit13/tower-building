@@ -38,10 +38,11 @@ export const item: ItemModel = {
       );
     }
     parts.push(
-      ...wallPanel(kit, { at: [BODY.x1, 1.2, 0], facing: 'x+', w: 0.8, h: 0.22, depth: 0.03, color: 'sunYellow' }),
-      kit.sphere(0.07, [BODY.x1 + 0.05, 1.2, -0.2], 'red', { detail: 0 }),
-      kit.box([0.04, 0.12, 0.1], [BODY.x1 + 0.05, 1.2, 0], 'blue'),
-      kit.box([0.04, 0.1, 0.1], [BODY.x1 + 0.05, 1.2, 0.2], 'leaf'),
+      // gable picture: one big red bottle on a yellow board
+      ...wallPanel(kit, { at: [BODY.x1, 1.2, 0], facing: 'x+', w: 0.5, h: 0.3, depth: 0.03, color: 'sunYellow' }),
+      kit.cylinder(0.07, 0.07, 0.16, [BODY.x1 + 0.05, 1.18, 0], 'red', { segments: 8 }),
+      kit.cylinder(0.03, 0.04, 0.08, [BODY.x1 + 0.05, 1.3, 0], 'red', { segments: 8 }),
+      kit.cylinder(0.035, 0.035, 0.02, [BODY.x1 + 0.05, 1.35, 0], 'white', { segments: 8 }),
       // side windows and the door
       ...glassWindow(kit, { at: [BODY.x0, 0.65, -0.5], facing: 'x-', w: 0.3, h: 0.3 }),
       ...glassWindow(kit, { at: [BODY.x0, 0.65, 0.5], facing: 'x-', w: 0.3, h: 0.3 }),
@@ -50,11 +51,11 @@ export const item: ItemModel = {
     );
     // counter with a coloured front, and the snacks and bottles on it
     parts.push(
-      kit.box([COUNTER.x1 - COUNTER.x0, COUNTER.h, 2 * COUNTER.z], [(COUNTER.x0 + COUNTER.x1) / 2, COUNTER.h / 2, 0], 'wood'),
-      kit.box([0.37, 0.04, 2 * COUNTER.z + 0.04], [(COUNTER.x0 + COUNTER.x1) / 2, COUNTER.h + 0.02, 0], 'woodDark'),
+      kit.box([COUNTER.x1 - COUNTER.x0, COUNTER.h - 0.04, 2 * COUNTER.z], [(COUNTER.x0 + COUNTER.x1) / 2, (COUNTER.h - 0.04) / 2, 0], 'wood'),
+      kit.box([0.37, 0.04, 2 * COUNTER.z + 0.04], [(COUNTER.x0 + COUNTER.x1) / 2, COUNTER.h - 0.02, 0], 'woodDark'),
       kit.box([0.02, 0.22, 1.5], [COUNTER.x1 + 0.01, 0.3, 0], 'orange'),
     );
-    const topY = COUNTER.h + 0.04;
+    const topY = COUNTER.h;
     for (let i = 0; i < 7; i++) {
       const z = -0.66 + 0.22 * i;
       parts.push(
