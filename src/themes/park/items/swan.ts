@@ -4,7 +4,7 @@ import { rod } from '../../../models/parts';
 
 // 1×1. A white swan with an orange beak, gliding on a small round pool.
 const POOL = { rim: 0.46, water: 0.4, rimTop: 0.07, top: 0.08 };
-const K = 0.52; // swan size (head top about 0.38 above the ground)
+const K = 0.36; // swan size (head top about 0.3 above the ground)
 const YAW = 0.35;
 
 /** หงส์ขาว: a friendly white swan on a little pool. */

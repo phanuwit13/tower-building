@@ -1,5 +1,5 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part } from '../../../models/kit';
+import type { Part, StyleKit } from '../../../models/kit';
 
 // 1×2, running along z. A strip of stream between two low banks, with pebbles, rocks and reeds.
 const BED = 0.03;
@@ -13,7 +13,7 @@ const ROCKS: Array<[number, number, number, boolean]> = [[0.37, 0.55, 0.1, false
 const REEDS: Array<[number, number, number]> = [[0.4, 0.15, 0.42], [0.45, 0.25, 0.34], [-0.42, 0.45, 0.4], [-0.36, 0.55, 0.32], [0.44, -0.4, 0.36], [-0.44, -0.85, 0.38]];
 
 /** The stream's parts, shared with stepping-stones so the two line up (z runs the length of the tile). */
-export function streamStrip(kit: Parameters<ItemModel['build']>[0]): Part[] {
+export function streamStrip(kit: StyleKit): Part[] {
   const bankW = 0.5 - BANK.x;
   return [
     kit.box([0.98, BED, 1.98], [0, BED / 2, 0], 'sand'),
