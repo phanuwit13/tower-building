@@ -12,7 +12,7 @@ const WALL_TOP = 1.0;
 const FRONT = BX + W / 2; // 0.35
 const ROOF_TOP = WALL_TOP + 0.07;
 
-function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.035): Part {
+function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.055): Part {
   const dy = b[0] - a[0];
   const dz = b[1] - a[1];
   return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'orange',
@@ -60,6 +60,8 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [BX, 0.55, -L / 2], facing: 'z-', w: 0.6, h: 0.36, panes: 3 }),
       ...glassWindow(kit, { at: [BX - W / 2, 0.55, 0], facing: 'x-', w: 0.7, h: 0.36, panes: 3 }),
     );
+    // orange light strip along the awning edge
+    parts.push(kit.box([0.03, 0.03, 1.6], [FRONT + 0.5, 0.88, 0], 'orange', { glow: 'orange' }));
     // neon croissant sign on the roof front
     const SX = FRONT - 0.1;
     parts.push(kit.box([0.06, 0.42, 0.9], [SX, ROOF_TOP + 0.21, 0], 'charcoal'));

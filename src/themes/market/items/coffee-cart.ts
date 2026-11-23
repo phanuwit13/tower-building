@@ -2,18 +2,19 @@ import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit } from '../../../models/kit';
 
 // A wooden cart on four wheels with a striped umbrella, an espresso machine, a glowing cup lamp that
-// breathes and bulbs round the umbrella rim. A neon cup (orange) is on the front panel.
+// breathes and bulbs round the umbrella rim. A neon cup (teal) is on the front panel.
 const R = 0.17; // wheel radius
 const BODY = { w: 0.7, h: 0.46, d: 1.3, y: R + 0.01 };
 const COUNTER_Y = BODY.y + BODY.h + 0.025;
 const UMB = { z: 0.3, y: 1.4 };
+const BULB = ['pink', 'sunYellow', 'lime'] as const;
 const BREATHE = { glow: true, light: 'breathe' } as const;
 
-function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.03): Part {
+function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.05): Part {
   const dy = b[0] - a[0];
   const dz = b[1] - a[1];
-  return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'orange',
-    { rotate: [Math.atan2(dz, dy), 0, 0], glow: 'orange' });
+  return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'teal',
+    { rotate: [Math.atan2(dz, dy), 0, 0], glow: 'teal' });
 }
 
 /** รถเข็นกาแฟ: a wooden coffee cart with an umbrella, a machine and a glowing cup lamp. */
@@ -68,7 +69,7 @@ export const item: ItemModel = {
     );
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      parts.push(kit.sphere(0.035, [0.38 * Math.cos(a), UMB.y - 0.03, UMB.z + 0.38 * Math.sin(a)], 'lampWarm', { detail: 0, ...BREATHE }));
+      parts.push(kit.sphere(0.045, [0.45 * Math.cos(a), UMB.y - 0.02, UMB.z + 0.45 * Math.sin(a)], BULB[i % 3], { detail: 0, ...BREATHE }));
     }
     return kit.finish(parts);
   },

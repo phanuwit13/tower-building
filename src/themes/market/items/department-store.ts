@@ -12,7 +12,7 @@ const TOP = BASE.h + FLOOR * 3;
 const SIGN = { x: 0.3, y: 2.43, w: 1.9, h: 0.6, d: 0.08 };
 
 /** Neon stroke on a +x facing sign: a thin glowing bar from a to b, both [y, z]. */
-function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.035): Part {
+function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.055): Part {
   const dy = b[0] - a[0];
   const dz = b[1] - a[1];
   return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'pink',
@@ -91,6 +91,8 @@ export const item: ItemModel = {
       return [SIGN.y + R * Math.sin(a), R * Math.cos(a)];
     };
     for (let i = 0; i < 5; i++) parts.push(stroke(kit, faceX, v(i), v((i + 2) % 5)));
+    // pink light strip along the roof edge
+    parts.push(kit.box([0.03, 0.03, L + 0.04], [W / 2 + 0.06, TOP + 0.02, 0], 'pink', { glow: 'pink' }));
     // chase bulbs round the board
     const ring = perimeter(SIGN.y - 0.27, SIGN.y + 0.27, -0.88, 0.88, 0.22);
     ring.forEach(([y, z], index) => {

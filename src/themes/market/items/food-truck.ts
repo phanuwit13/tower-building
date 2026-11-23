@@ -72,15 +72,17 @@ export const item: ItemModel = {
       ...wallPanel(kit, { at: [FACE, 0.54, MZ], facing: 'x+', w: 0.05, h: 0.16, depth: 0.03, color: 'sunYellow' }),
       ...wallPanel(kit, { at: [FACE, 0.54, MZ + 0.07], facing: 'x+', w: 0.05, h: 0.12, depth: 0.03, color: 'sunYellow' }),
     );
-    // roof sign: neon burger on both faces
+    // roof sign: a thick neon burger on both faces
     const SZ = -0.3;
-    parts.push(kit.box([0.05, 0.42, 0.7], [0, TOP + 0.05 + 0.21, SZ], 'charcoal'));
-    for (const x of [0.045, -0.045]) {
+    const B = TOP + 0.05;
+    parts.push(kit.box([0.05, 0.62, 0.9], [0, B + 0.31, SZ], 'charcoal'));
+    for (const s of [1, -1]) {
+      const x = s * 0.07;
       parts.push(
-        kit.box([0.035, 0.08, 0.34], [x, TOP + 0.4, SZ], 'orange', { glow: 'orange' }),
-        kit.box([0.035, 0.04, 0.4], [x, TOP + 0.33, SZ], 'lime', { glow: 'lime' }),
-        kit.box([0.035, 0.06, 0.36], [x, TOP + 0.27, SZ], 'red', { glow: 'red' }),
-        kit.box([0.035, 0.06, 0.34], [x, TOP + 0.2, SZ], 'orange', { glow: 'orange' }),
+        kit.sphere(0.2, [x, B + 0.47, SZ], 'orange', { scale: [0.3, 0.6, 1.5], glow: 'orange' }),
+        kit.box([0.07, 0.05, 0.56], [x, B + 0.33, SZ], 'lime', { glow: 'lime' }),
+        kit.box([0.07, 0.1, 0.5], [x, B + 0.25, SZ], 'red', { glow: 'red' }),
+        kit.box([0.07, 0.1, 0.5], [x, B + 0.14, SZ], 'orange', { glow: 'orange' }),
       );
     }
     return kit.finish(parts);

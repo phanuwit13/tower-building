@@ -6,6 +6,7 @@ import type { Part } from '../../../models/kit';
 const TABLE = { w: 0.62, h: 0.32, d: 1.7 };
 const POST = { x: 0.42, z: 0.85, h: 1.4 };
 const ROOF_Y = 1.38;
+const BULBS = ['red', 'sunYellow', 'lime'] as const;
 const BREATHE = { glow: true, light: 'breathe' } as const;
 const FRUITS = ['red', 'orange', 'pink', 'sunYellow', 'lime'] as const;
 
@@ -45,9 +46,18 @@ export const item: ItemModel = {
       kit.cylinder(0.02, 0.02, 0.16, [0.1, ROOF_Y - 0.1, 0], 'charcoal', { segments: 4 }),
       kit.sphere(0.09, [0.1, ROOF_Y - 0.26, 0], 'lampWarm', { ...BREATHE }),
     );
-    for (let i = 0; i < 5; i++) {
-      parts.push(kit.sphere(0.04, [0.46, ROOF_Y - 0.12, -0.68 + 0.34 * i], 'lampWarm', { detail: 0, ...BREATHE }));
+    for (let i = 0; i < 9; i++) {
+      parts.push(kit.sphere(0.055, [0.45, ROOF_Y - 0.17, -0.8 + 0.2 * i], BULBS[i % 3], { detail: 0, ...BREATHE }));
     }
+    // neon apple on a dark board above the roof
+    parts.push(
+      kit.cylinder(0.025, 0.025, 0.3, [0.1, ROOF_Y + 0.2, -0.3], 'woodDark', { segments: 6 }),
+      kit.cylinder(0.025, 0.025, 0.3, [0.1, ROOF_Y + 0.2, 0.3], 'woodDark', { segments: 6 }),
+      kit.box([0.05, 0.46, 0.9], [0.1, ROOF_Y + 0.37, 0], 'navy'),
+      kit.torus(0.14, 0.04, [0.14, ROOF_Y + 0.35, 0], 'red', { radialSegments: 4, tubularSegments: 12, rotate: [0, Math.PI / 2, 0], glow: 'red' }),
+      kit.box([0.05, 0.1, 0.05], [0.14, ROOF_Y + 0.57, 0.02], 'lime', { rotate: [0.5, 0, 0], glow: 'lime' }),
+      kit.box([0.05, 0.05, 0.14], [0.14, ROOF_Y + 0.55, 0.12], 'lime', { glow: 'lime' }),
+    );
     return kit.finish(parts);
   },
 };

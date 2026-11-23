@@ -3,18 +3,18 @@ import type { Part, StyleKit } from '../../../models/kit';
 import { door, glassWindow } from '../../../models/parts';
 
 // A wide single-storey hall with a long glass front on +x, an orange entrance awning, a trolley bay
-// and a roof sign: a blue neon shopping basket on a dark board.
+// and a roof sign: a teal neon shopping basket on a dark board.
 const BASE = { w: 1.9, h: 0.05, d: 2.9 };
 const W = 1.5;
 const L = 2.7;
 const WALL_TOP = 0.74;
-const SIGN = { x: 0.45, y: 1.4, w: 1.3, h: 0.7, d: 0.08 };
+const SIGN = { x: 0.45, y: 1.55, w: 1.5, h: 0.95, d: 0.08 };
 
-function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.04): Part {
+function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t = 0.065): Part {
   const dy = b[0] - a[0];
   const dz = b[1] - a[1];
-  return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'blue',
-    { rotate: [Math.atan2(dz, dy), 0, 0], glow: 'blue' });
+  return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'teal',
+    { rotate: [Math.atan2(dz, dy), 0, 0], glow: 'teal' });
 }
 
 /** ซูเปอร์มาร์เก็ต: a market hall with a glass front, trolley bay and a basket neon sign. */
@@ -60,22 +60,24 @@ export const item: ItemModel = {
       );
     }
     // roof sign
-    for (const z of [-0.45, 0.45]) parts.push(kit.cylinder(0.03, 0.03, 0.17, [SIGN.x, WALL_TOP + 0.13 + 0.085, z], 'charcoal', { segments: 6 }));
+    for (const z of [-0.45, 0.45]) parts.push(kit.cylinder(0.03, 0.03, 0.21, [SIGN.x, WALL_TOP + 0.13 + 0.085 + 0.02, z], 'charcoal', { segments: 6 }));
     parts.push(kit.box([SIGN.d, SIGN.h, SIGN.w], [SIGN.x, SIGN.y, 0], 'charcoal'));
     const x = SIGN.x + SIGN.d / 2 + 0.02;
     const y = SIGN.y;
-    // basket: rim, slanted sides, base, mesh and a handle
+    // big basket: rim, slanted sides, base, mesh and a handle
     parts.push(
-      stroke(kit, x, [y + 0.1, -0.3], [y + 0.1, 0.3]),
-      stroke(kit, x, [y + 0.1, -0.3], [y - 0.2, -0.2]),
-      stroke(kit, x, [y + 0.1, 0.3], [y - 0.2, 0.2]),
-      stroke(kit, x, [y - 0.2, -0.2], [y - 0.2, 0.2]),
-      stroke(kit, x, [y + 0.1, -0.1], [y - 0.2, -0.07], 0.03),
-      stroke(kit, x, [y + 0.1, 0.1], [y - 0.2, 0.07], 0.03),
-      stroke(kit, x, [y + 0.1, -0.3], [y + 0.27, -0.15]),
-      stroke(kit, x, [y + 0.27, -0.15], [y + 0.27, 0.15]),
-      stroke(kit, x, [y + 0.27, 0.15], [y + 0.1, 0.3]),
+      stroke(kit, x, [y + 0.12, -0.4], [y + 0.12, 0.4]),
+      stroke(kit, x, [y + 0.12, -0.4], [y - 0.27, -0.27]),
+      stroke(kit, x, [y + 0.12, 0.4], [y - 0.27, 0.27]),
+      stroke(kit, x, [y - 0.27, -0.27], [y - 0.27, 0.27]),
+      stroke(kit, x, [y + 0.12, -0.13], [y - 0.27, -0.09], 0.05),
+      stroke(kit, x, [y + 0.12, 0.13], [y - 0.27, 0.09], 0.05),
+      stroke(kit, x, [y + 0.12, -0.4], [y + 0.36, -0.2]),
+      stroke(kit, x, [y + 0.36, -0.2], [y + 0.36, 0.2]),
+      stroke(kit, x, [y + 0.36, 0.2], [y + 0.12, 0.4]),
     );
+    // teal light strip along the roof edge
+    parts.push(kit.box([0.03, 0.03, L + 0.06], [W / 2 + 0.07, WALL_TOP + 0.1, 0], 'teal', { glow: 'teal' }));
     return kit.finish(parts);
   },
 };
