@@ -47,8 +47,13 @@ export const item: ItemModel = {
     }
     parts.push(
       kit.box([0.8, 0.1, 0.8], [RIG.x, TOP + 0.05, RIG.z], 'teal'),
-      kit.cylinder(0.16, 0.16, 0.3, [RIG.x, TOP + 0.25, RIG.z], 'red', { segments: 8 }),
-      kit.sphere(0.07, [RIG.x, TOP + 0.43, RIG.z], 'sunYellow', { detail: 0 }),
+      kit.cylinder(0.1, 0.1, 0.1, [RIG.x, TOP + 0.15, RIG.z], 'charcoal', { segments: 8 }), // still stub
+      // drive wheel on top of the plate, seen from the camera: white disc, red bar, yellow knob and pink paddle,
+      // all turning about the drill axis (reach 0.3 from the axis: inside the 0.4 plate, nothing still above it)
+      kit.cylinder(0.3, 0.3, 0.04, [RIG.x, TOP + 0.22, RIG.z], 'white', { segments: 12, motion: SPIN }),
+      kit.box([0.56, 0.05, 0.12], [RIG.x, TOP + 0.265, RIG.z], 'red', { motion: SPIN }),
+      kit.box([0.12, 0.05, 0.26], [RIG.x, TOP + 0.265, RIG.z + 0.13], 'pink', { motion: SPIN }),
+      kit.sphere(0.06, [RIG.x + 0.2, TOP + 0.32, RIG.z], 'sunYellow', { detail: 0, motion: SPIN }),
     );
     // the drill: everything below turns with the same pivot
     parts.push(
