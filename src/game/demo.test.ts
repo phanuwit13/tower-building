@@ -37,7 +37,7 @@ describe('demoFullGame', () => {
 
   it('is a valid save: loadCities accepts it unchanged, still playing', () => {
     const store = memStore();
-    expect(saveCities(store, { current: 'school', cities: { school: game } })).toBe(true);
+    expect(saveCities(store, { current: 'school', cities: { school: game }, unreadable: {} })).toBe(true);
     const loaded = loadCities(store, getCatalog, isFloorTile).cities.school;
     expect(loaded).toEqual(game);
     expect(loaded?.status).toBe('playing');

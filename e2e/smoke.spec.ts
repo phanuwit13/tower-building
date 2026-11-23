@@ -7,6 +7,11 @@ import { zoo } from '../src/themes/zoo';
 import { beach } from '../src/themes/beach';
 import { market } from '../src/themes/market';
 import { FLOOR_TILES } from '../src/floors';
+import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
+
+/** What is saved under the cities' keys (the v3 record and the legacy one-city save). */
+const savedKeys = (page: import('@playwright/test').Page) =>
+  page.evaluate((keys) => keys.map((k) => localStorage.getItem(k)), [SAVE_KEY, LEGACY_SAVE_KEY]);
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
 
@@ -44,7 +49,7 @@ test('clear returns to theme select', async ({ page }) => {
   await page.getByRole('button', { name: T.confirmClearOk }).click();
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await expect(page.getByRole('button', { name: 'โรงเรียน' })).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('city-builder/save'))).toBeNull();
+  expect(await savedKeys(page)).toEqual([null, null]);
 });
 
 test('keyboard shortcuts do nothing while settings are open', async ({ page }) => {
@@ -173,7 +178,7 @@ test('?demo=full plays a full map in memory; on smooth it draws in a handful of 
   await page.keyboard.press('Enter');
   await expect(page.getByText(T.endTitle)).toBeVisible();
   await expect(page.getByText(/ใช้พื้นที่ 100%/)).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('city-builder/save'))).toBeNull(); // the player's own save is untouched
+  expect(await savedKeys(page)).toEqual([null, null]); // the player's own save is untouched
 });
 
 test('theme select offers สวนสนุก and its round starts with an amusement item', async ({ page }) => {

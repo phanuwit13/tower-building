@@ -4,8 +4,8 @@ import { el } from './dom';
 import { builtLabel, T } from './strings';
 
 /**
- * The first screen: a card per theme. A theme that has a city says how much is built and whether its
- * round is finished (picking it carries on with that city).
+ * The first screen: a card per theme. A theme whose city has something in it says how much is built
+ * (or that floor is laid) and whether its round is finished; picking it carries on with that city.
  */
 export function createThemeSelect(
   root: HTMLElement,
@@ -25,9 +25,10 @@ export function createThemeSelect(
       id: t.id,
       card,
       set(c: CitySummary | undefined) {
-        built.hidden = !c;
+        // an empty city (picked, then left at once, or just restarted) is no different from none
+        const text = !c ? '' : c.placed > 0 ? builtLabel(c.placed) : c.floors > 0 ? T.floorsOnly : '';
+        built.hidden = text === '';
         done.hidden = !c?.finished;
-        const text = c ? builtLabel(c.placed) : '';
         if (built.textContent !== text) built.textContent = text;
       },
     };

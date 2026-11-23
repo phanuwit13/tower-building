@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../game/game';
-import { loadCities, QUALITY_KEY, SAVE_KEY, saveCities, type KeyValueStore } from '../game/save';
+import { LEGACY_SAVE_KEY, loadCities, QUALITY_KEY, SAVE_KEY, saveCities, type KeyValueStore } from '../game/save';
 import { GRID_SIZE, type GameState } from '../game/types';
 import { getCatalog, getTheme } from '../themes/registry';
 import { createController, type Controller } from './controller';
@@ -30,7 +30,7 @@ function make(store: KeyValueStore): Controller {
 /** A store holding one School city, being played. */
 function seeded(patch: Partial<GameState> = {}): ReturnType<typeof memStore> {
   const store = memStore();
-  saveCities(store, { current: 'school', cities: { school: { ...newGame(catalog, settings, 3), ...patch } } });
+  saveCities(store, { current: 'school', cities: { school: { ...newGame(catalog, settings, 3), ...patch } }, unreadable: {} });
   return store;
 }
 /** The city saved for a theme (the stored record, read back as the next page load would). */
@@ -380,7 +380,7 @@ describe('every theme keeps its own city', () => {
     expect(s.screen).toBe('theme-select');
     expect(s.game).toBeNull();
     expect(s.ghost).toBeNull();
-    expect(s.cities).toEqual({ school: { placed: 2, finished: false } });
+    expect(s.cities).toEqual({ school: { placed: 2, floors: 0, finished: false } });
     const saved = loadCities(store, getCatalog, () => true);
     expect(saved.current).toBeNull();
     expect(saved.cities.school).toEqual(before);
@@ -405,7 +405,7 @@ describe('every theme keeps its own city', () => {
     placeOne(c);
     const zoo = c.getState().game!;
     c.goToThemeSelect();
-    expect(c.getState().cities).toEqual({ school: { placed: 1, finished: false }, zoo: { placed: 1, finished: false } });
+    expect(c.getState().cities).toEqual({ school: { placed: 1, floors: 2, finished: false }, zoo: { placed: 1, floors: 0, finished: false } });
 
     c.chooseTheme('school');
     expect(c.getState().screen).toBe('playing');
@@ -430,7 +430,7 @@ describe('every theme keeps its own city', () => {
     const again = make(store).getState();
     expect(again.screen).toBe('playing');
     expect(again.game).toEqual(zoo);
-    expect(again.cities).toEqual({ school: { placed: 1, finished: false }, zoo: { placed: 0, finished: false } });
+    expect(again.cities).toEqual({ school: { placed: 1, floors: 0, finished: false }, zoo: { placed: 0, floors: 0, finished: false } });
 
     c.goToThemeSelect();
     const onSelect = make(store).getState();
@@ -441,9 +441,9 @@ describe('every theme keeps its own city', () => {
 
   it('choosing a theme whose round is finished resumes it finished', () => {
     const store = memStore();
-    saveCities(store, { current: null, cities: { school: { ...newGame(catalog, settings, 3), status: 'finished' } } });
+    saveCities(store, { current: null, cities: { school: { ...newGame(catalog, settings, 3), status: 'finished' } }, unreadable: {} });
     const c = make(store);
-    expect(c.getState().cities).toEqual({ school: { placed: 0, finished: true } });
+    expect(c.getState().cities).toEqual({ school: { placed: 0, floors: 0, finished: true } });
     c.chooseTheme('school');
     expect(c.getState().screen).toBe('finished');
   });
@@ -451,12 +451,14 @@ describe('every theme keeps its own city', () => {
   it('an old one-city save (v2) is that theme\'s city, and the game opens on it', () => {
     const store = memStore();
     const old = { ...newGame(catalog, settings, 3), floors: newGame(catalog, settings, 3).floors.map((_, i) => (i === 5 ? 't1' : null)) };
-    store.setItem(SAVE_KEY, JSON.stringify({ v: 2, state: old }));
+    const legacy = JSON.stringify({ v: 2, state: old });
+    store.setItem(LEGACY_SAVE_KEY, legacy);
     const c = make(store);
     expect(c.getState().screen).toBe('playing');
     expect(c.getState().game).toEqual(old);
     c.goToThemeSelect();
     expect(JSON.parse(store.map.get(SAVE_KEY)!)).toMatchObject({ v: 3, current: null, cities: { school: old } });
+    expect(store.map.get(LEGACY_SAVE_KEY)).toBe(legacy); // never rewritten: an older build still finds it
   });
 
   it('every save is one write holding every city', () => {
@@ -492,7 +494,7 @@ describe('every theme keeps its own city', () => {
     c.restart();
     expect(c.getState().game!.themeId).toBe('zoo');
     expect(c.getState().game!.placements).toHaveLength(0);
-    expect(c.getState().cities).toEqual({ school: { placed: 1, finished: false }, zoo: { placed: 0, finished: false } });
+    expect(c.getState().cities).toEqual({ school: { placed: 1, floors: 0, finished: false }, zoo: { placed: 0, floors: 0, finished: false } });
     expect(savedCity(store, 'school')).toEqual(school);
     expect(savedCity(store, 'zoo')!.placements).toHaveLength(0);
   });
@@ -505,14 +507,17 @@ describe('every theme keeps its own city', () => {
     c.goToThemeSelect();
     c.chooseTheme('zoo');
     placeOne(c);
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: newGame(catalog, settings, 3) }));
     c.clearAll();
     expect(c.getState().screen).toBe('theme-select');
     expect(c.getState().game).toBeNull();
     expect(c.getState().cities).toEqual({});
     expect(store.map.has(SAVE_KEY)).toBe(false);
+    expect(store.map.has(LEGACY_SAVE_KEY)).toBe(false); // or the old city would come back as a migration
+    expect(make(store).getState().cities).toEqual({});
     c.chooseTheme('school');
     expect(c.getState().game!.placements).toHaveLength(0);
-    expect(make(store).getState().cities).toEqual({ school: { placed: 0, finished: false } });
+    expect(make(store).getState().cities).toEqual({ school: { placed: 0, floors: 0, finished: false } });
   });
 
   it('the floor drawer closes when the theme changes (the pick is kept)', () => {
@@ -563,5 +568,86 @@ describe('every theme keeps its own city', () => {
     c.goToThemeSelect();
     expect(savedCity(store, 'school')!.placements).toHaveLength(1);
     expect(c.getState().saveFailed).toBe(true); // the notice has been shown; it stays latched
+  });
+});
+
+describe('two tabs on one store', () => {
+  const placeOne = (c: Controller) => { c.moveGhost(0, 0); expect(c.place()).toBe(true); };
+
+  it('tab B saving its school never reverts tab A\'s zoo; B then opens A\'s zoo as A left it', () => {
+    const store = memStore();
+    const a = make(store);
+    const b = make(store); // opened earlier, idle on theme select
+    a.chooseTheme('zoo');
+    placeOne(a);
+    placeOne(a);
+    const zoo = a.getState().game!;
+
+    b.chooseTheme('school');
+    placeOne(b);
+    expect(savedCity(store, 'zoo')).toEqual(zoo);
+    expect(savedCity(store, 'school')!.placements).toHaveLength(1);
+
+    b.goToThemeSelect();
+    expect(b.getState().cities.zoo).toEqual({ placed: 2, floors: 0, finished: false });
+    b.chooseTheme('zoo');
+    expect(b.getState().game).toEqual(zoo);
+  });
+
+  it('a tab returning to a city picks up what another tab did to it since', () => {
+    const store = memStore();
+    const a = make(store);
+    a.chooseTheme('school');
+    a.goToThemeSelect();
+    const b = make(store);
+    b.chooseTheme('school');
+    placeOne(b);
+    a.chooseTheme('school');
+    expect(a.getState().game).toEqual(b.getState().game);
+  });
+
+  it('another tab\'s เคลียร์ is not undone', () => {
+    const store = memStore();
+    const a = make(store);
+    a.chooseTheme('zoo');
+    placeOne(a);
+    a.goToThemeSelect();
+    const b = make(store);
+    b.chooseTheme('school');
+    a.clearAll();
+    placeOne(b);
+    expect(loadCities(store, getCatalog, () => true).cities).toEqual({ school: b.getState().game });
+  });
+});
+
+describe('a city this build cannot read', () => {
+  it('is kept as it was through play, and written back with every save', () => {
+    const store = memStore();
+    const corruptZoo = { ...JSON.parse(JSON.stringify(newGame(getCatalog('zoo')!, settings, 2))), bag: ['no-such-item'] };
+    const newerTheme = { themeId: 'space', from: 'a newer build' };
+    store.setItem(SAVE_KEY, JSON.stringify({ v: 3, current: 'zoo', cities: { zoo: corruptZoo, space: newerTheme } }));
+    const c = make(store);
+    expect(c.getState().screen).toBe('theme-select'); // its city could not be read
+    expect(c.getState().cities).toEqual({});
+    c.chooseTheme('school');
+    c.moveGhost(0, 0);
+    c.place();
+    c.goToThemeSelect();
+    const stored = JSON.parse(store.map.get(SAVE_KEY)!).cities;
+    expect(stored.zoo).toEqual(corruptZoo);
+    expect(stored.space).toEqual(newerTheme);
+    expect(stored.school.placements).toHaveLength(1);
+  });
+});
+
+describe('theme select summary', () => {
+  it('counts the items and the painted floor cells of each city', () => {
+    const store = memStore();
+    const c = make(store);
+    c.chooseTheme('school');
+    c.pickFloor('t1');
+    c.paintFloors({ x0: 0, z0: 0, x1: 2, z1: 1 });
+    c.goToThemeSelect();
+    expect(c.getState().cities).toEqual({ school: { placed: 0, floors: 6, finished: false } });
   });
 });

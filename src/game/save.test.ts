@@ -2,8 +2,8 @@ import { emptyFloors } from './floors';
 import { describe, expect, it } from 'vitest';
 import { newGame, placeCurrent } from './game';
 import {
-  clearCities, encodeSave, loadCities, loadQuality, QUALITY_KEY, SAVE_KEY, SAVE_VERSION, saveCities, saveQuality,
-  type KeyValueStore, type SavedCities,
+  clearCities, encodeSave, LEGACY_SAVE_KEY, loadCities, loadQuality, openCities, QUALITY_KEY, SAVE_KEY, SAVE_VERSION,
+  saveCities, saveQuality, type KeyValueStore, type SavedCities,
 } from './save';
 import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
 
@@ -44,9 +44,9 @@ function playingState(cat: Catalog = catalog): GameState {
   return s;
 }
 /** A save holding just this city, being played. */
-const one = (s: GameState): SavedCities => ({ current: s.themeId, cities: { [s.themeId]: s } });
+const one = (s: GameState): SavedCities => ({ current: s.themeId, cities: { [s.themeId]: s }, unreadable: {} });
 const load = (store: KeyValueStore, isTile: (id: string) => boolean = anyTile) => loadCities(store, getCatalog, isTile);
-const NONE: SavedCities = { current: null, cities: {} };
+const NONE: SavedCities = { current: null, cities: {}, unreadable: {} };
 
 /** Theme t's city after a v3 save whose t city was changed by `mutate`; null when the city was dropped. */
 function loadWith(mutate: (s: any) => void): GameState | null {
@@ -74,20 +74,20 @@ describe('round trip', () => {
     const store = memStore();
     const t = playingState();
     const u = newGame(catalogU, { ...settings, time: 'night' }, 9);
-    const saved: SavedCities = { current: 'u', cities: { t, u } };
+    const saved: SavedCities = { current: 'u', cities: { t, u }, unreadable: {} };
     saveCities(store, saved);
     expect(load(store)).toEqual(saved);
   });
   it('keeps the cities when the child is on theme select (current null)', () => {
     const store = memStore();
-    const saved: SavedCities = { current: null, cities: { t: playingState(), u: playingState(catalogU) } };
+    const saved: SavedCities = { current: null, cities: { t: playingState(), u: playingState(catalogU) }, unreadable: {} };
     saveCities(store, saved);
     expect(load(store)).toEqual(saved);
   });
   it('stores one versioned record, { v: 3, current, cities }, with one write', () => {
     const store = memStore();
     const t = playingState();
-    saveCities(store, { current: 't', cities: { t, u: playingState(catalogU) } });
+    saveCities(store, { current: 't', cities: { t, u: playingState(catalogU) }, unreadable: {} });
     expect(store.writes).toBe(1);
     expect([...store.map.keys()]).toEqual([SAVE_KEY]);
     const data = JSON.parse(store.map.get(SAVE_KEY)!);
@@ -96,44 +96,62 @@ describe('round trip', () => {
     expect(data.v).toBe(3);
     expect(data.current).toBe('t');
     expect(Object.keys(data.cities).sort()).toEqual(['t', 'u']);
-    expect(store.map.get(SAVE_KEY)).toBe(encodeSave({ current: 't', cities: { t, u: playingState(catalogU) } }));
+    expect(store.map.get(SAVE_KEY)).toBe(encodeSave({ current: 't', cities: { t, u: playingState(catalogU) }, unreadable: {} }));
   });
 });
 
-describe('migration from a one-city save (v1, v2)', () => {
+describe('migration from a one-city save (v1, v2) under the legacy key', () => {
+  it('the v3 record has a key of its own; the legacy key is the old one', () => {
+    expect(SAVE_KEY).toBe('city-builder/cities');
+    expect(LEGACY_SAVE_KEY).toBe('city-builder/save');
+  });
   it('a v2 save becomes its theme\'s city, and the theme being played', () => {
     const store = memStore();
     const s = playingState();
     s.floors[7] = 'tile';
-    store.setItem(SAVE_KEY, JSON.stringify({ v: 2, state: s }));
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: s }));
     expect(load(store)).toEqual(one(s));
   });
   it('a v2 save of a finished round stays finished', () => {
     const store = memStore();
     const s: GameState = { ...playingState(), status: 'finished' };
-    store.setItem(SAVE_KEY, JSON.stringify({ v: 2, state: s }));
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: s }));
     expect(load(store).cities.t?.status).toBe('finished');
   });
   it('a v1 save (no floors) loads with all floors bare', () => {
     const store = memStore();
     const s: any = JSON.parse(JSON.stringify(playingState()));
     delete s.floors;
-    store.setItem(SAVE_KEY, JSON.stringify({ v: 1, state: s }));
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 1, state: s }));
     const saved = load(store);
     expect(saved.current).toBe('t');
     expect(saved.cities.t!.floors).toEqual(emptyFloors());
     expect(saved.cities.t!.placements).toHaveLength(3);
   });
   it('a broken one-city save loads nothing', () => {
-    for (const raw of ['{"v":1}', '{"v":2,"state":null}', JSON.stringify({ v: 2, state: { ...playingState(), themeId: 'zzz' } })]) {
+    for (const raw of ['{"v":1}', '{"v":2,"state":null}', '{nope', JSON.stringify({ v: 2, state: { ...playingState(), themeId: 'zzz' } })]) {
       const store = memStore();
-      store.setItem(SAVE_KEY, raw);
+      store.setItem(LEGACY_SAVE_KEY, raw);
       expect(load(store)).toEqual(NONE);
     }
   });
-  it('loading never writes (the old save stays until the next save)', () => {
+  it('the v3 record wins: the legacy save is only read when there is no v3 record', () => {
+    const store = memStore();
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: playingState() }));
+    const u = playingState(catalogU);
+    saveCities(store, one(u));
+    expect(load(store)).toEqual(one(u));
+    saveCities(store, NONE); // every city gone from the v3 record (still there): no migration
+    expect(load(store)).toEqual(NONE);
+  });
+  it('a v1/v2 record under the new key is not read as one (the key is v3 only)', () => {
     const store = memStore();
     store.setItem(SAVE_KEY, JSON.stringify({ v: 2, state: playingState() }));
+    expect(load(store)).toEqual(NONE);
+  });
+  it('loading never writes (the old save stays as it was)', () => {
+    const store = memStore();
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: playingState() }));
     const before = store.writes;
     load(store);
     expect(store.writes).toBe(before);
@@ -149,26 +167,26 @@ describe('each city is checked on its own', () => {
     return load(store);
   };
   it('a corrupt city is dropped; the others load', () => {
-    expect(withCities({ t: good(), u: bad() })).toEqual({ current: 't', cities: { t: good() } });
+    expect(withCities({ t: good(), u: bad() })).toEqual({ current: 't', cities: { t: good() }, unreadable: { u: bad() } });
   });
   it('the theme being played had the corrupt city: theme select', () => {
-    expect(withCities({ t: good(), u: bad() }, 'u')).toEqual({ current: null, cities: { t: good() } });
+    expect(withCities({ t: good(), u: bad() }, 'u')).toEqual({ current: null, cities: { t: good() }, unreadable: { u: bad() } });
   });
   it('a city of an unknown theme is dropped', () => {
     const z = { ...JSON.parse(JSON.stringify(good())), themeId: 'zzz' };
-    expect(withCities({ t: good(), zzz: z })).toEqual({ current: 't', cities: { t: good() } });
-    expect(withCities({ t: good(), zzz: z }, 'zzz')).toEqual({ current: null, cities: { t: good() } });
+    expect(withCities({ t: good(), zzz: z })).toEqual({ current: 't', cities: { t: good() }, unreadable: { zzz: z } });
+    expect(withCities({ t: good(), zzz: z }, 'zzz')).toEqual({ current: null, cities: { t: good() }, unreadable: { zzz: z } });
   });
   it('a city filed under another theme\'s id is dropped', () => {
-    expect(withCities({ u: good() }, 'u')).toEqual(NONE);
+    expect(withCities({ u: good() }, 'u')).toEqual({ ...NONE, unreadable: { u: good() } });
   });
   it('a current that is not one of the cities is theme select', () => {
     for (const current of [null, 'u', 5, {}]) {
-      expect(withCities({ t: good() }, current)).toEqual({ current: null, cities: { t: good() } });
+      expect(withCities({ t: good() }, current)).toEqual({ current: null, cities: { t: good() }, unreadable: {} });
     }
     const store = memStore();
     store.setItem(SAVE_KEY, JSON.stringify({ v: 3, cities: { t: good() } })); // no current at all
-    expect(load(store)).toEqual({ current: null, cities: { t: good() } });
+    expect(load(store)).toEqual({ current: null, cities: { t: good() }, unreadable: {} });
   });
   it('an own __proto__ key is just an unknown theme', () => {
     const store = memStore();
@@ -176,15 +194,18 @@ describe('each city is checked on its own', () => {
     const saved = load(store);
     expect(Object.keys(saved.cities)).toEqual(['t']);
     expect(Object.getPrototypeOf(saved.cities)).toBe(Object.prototype);
+    expect(Object.keys(saved.unreadable)).toEqual(['__proto__']); // kept as data, like any unknown theme
+    expect(Object.getPrototypeOf(saved.unreadable)).toBe(Object.prototype);
+    expect(Object.hasOwn(JSON.parse(encodeSave(saved)).cities, '__proto__')).toBe(true);
   });
   it('a floor check that throws drops only that city', () => {
     const store = memStore();
     const t = good();
     const u = playingState(catalogU);
     u.floors[0] = 'cursed';
-    saveCities(store, { current: 't', cities: { t, u } });
+    saveCities(store, { current: 't', cities: { t, u }, unreadable: {} });
     const isTile = (id: string) => { if (id === 'cursed') throw new Error('bad tile'); return true; };
-    expect(load(store, isTile)).toEqual({ current: 't', cities: { t } });
+    expect(load(store, isTile)).toEqual({ current: 't', cities: { t }, unreadable: { u: JSON.parse(JSON.stringify(u)) } });
   });
 });
 
@@ -217,7 +238,9 @@ describe('a city is dropped', () => {
   it('when catalog themeId differs from saved', () => {
     const store = memStore();
     saveCities(store, one(playingState()));
-    expect(loadCities(store, () => ({ ...catalog, themeId: 'other' }), anyTile)).toEqual(NONE);
+    const saved = loadCities(store, () => ({ ...catalog, themeId: 'other' }), anyTile);
+    expect(saved.cities).toEqual({});
+    expect(saved.unreadable.t).toEqual(JSON.parse(JSON.stringify(playingState())));
   });
   it('on unknown placement item', () => expect(loadWith((s) => { s.placements[0].itemId = 'zz'; })).toBeNull());
   it('on inherited item id like constructor', () => expect(loadWith((s) => { s.current = 'constructor'; })).toBeNull());
@@ -268,12 +291,14 @@ describe('failing storage', () => {
 });
 
 describe('clearCities and quality', () => {
-  it('clearCities removes every city and nothing else', () => {
+  it('clearCities removes every city, the legacy one-city save too (it would come back), and nothing else', () => {
     const store = memStore();
-    saveCities(store, { current: 't', cities: { t: playingState(), u: playingState(catalogU) } });
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: playingState() }));
+    saveCities(store, { current: 't', cities: { t: playingState(), u: playingState(catalogU) }, unreadable: {} });
     saveQuality(store, 'smooth');
     clearCities(store);
     expect(store.map.has(SAVE_KEY)).toBe(false);
+    expect(store.map.has(LEGACY_SAVE_KEY)).toBe(false);
     expect(store.map.get(QUALITY_KEY)).toBe('smooth');
     expect(load(store)).toEqual(NONE);
   });
@@ -360,5 +385,125 @@ describe('floors in saves', () => {
       expect(g!.floors).toEqual(emptyFloors());
       expect(g!.placements).toHaveLength(3);
     }
+  });
+});
+
+describe('cities this build cannot read are kept', () => {
+  const bad = () => ({ ...JSON.parse(JSON.stringify(playingState(catalogU))), bag: ['zz'] });
+  const unknown = () => ({ ...JSON.parse(JSON.stringify(playingState())), themeId: 'space', note: 'a newer build' });
+  function stored() {
+    const store = memStore();
+    store.setItem(SAVE_KEY, JSON.stringify({ v: 3, current: 't', cities: { t: playingState(), u: bad(), space: unknown() } }));
+    return store;
+  }
+  const storedCities = (store: ReturnType<typeof memStore>) => JSON.parse(store.map.get(SAVE_KEY)!).cities;
+
+  it('the next save writes them back unchanged', () => {
+    const store = stored();
+    const saved = load(store);
+    const t = placeCurrent(saved.cities.t!, catalog, 10, 10, 0)!;
+    saveCities(store, { ...saved, cities: { t } });
+    expect(storedCities(store)).toEqual({ t: JSON.parse(JSON.stringify(t)), u: bad(), space: unknown() });
+    expect(load(store).unreadable).toEqual({ u: bad(), space: unknown() }); // and again on the next load
+  });
+  it('a new city of the same theme takes its place (the only way one goes)', () => {
+    const store = stored();
+    const saved = load(store);
+    const u = newGame(catalogU, settings, 1);
+    saveCities(store, { ...saved, cities: { ...saved.cities, u } });
+    expect(storedCities(store).u).toEqual(JSON.parse(JSON.stringify(u)));
+    expect(storedCities(store).space).toEqual(unknown());
+  });
+});
+
+describe('openCities: one tab\'s view (another tab may save in between)', () => {
+  const t = () => playingState();
+  const u = () => playingState(catalogU);
+  const open = (store: KeyValueStore) => openCities(store, getCatalog, anyTile);
+
+  it('opens on what is stored', () => {
+    const store = memStore();
+    saveCities(store, { current: 'u', cities: { t: t(), u: u() }, unreadable: {} });
+    expect(open(store).get()).toEqual({ current: 'u', cities: { t: t(), u: u() }, unreadable: {} });
+  });
+  it('a save changes only this tab\'s city and current: another tab\'s cities stay', () => {
+    const store = memStore();
+    const a = open(store);
+    const b = open(store); // opened at the same time: knows of no city
+    expect(a.save('u', u())).toBe(true);
+    expect(b.save('t', t())).toBe(true);
+    expect(load(store)).toEqual({ current: 't', cities: { t: t(), u: u() }, unreadable: {} });
+    expect(b.get().cities.u).toEqual(u());
+  });
+  it('one write per save', () => {
+    const store = memStore();
+    const a = open(store);
+    a.save('t', t());
+    a.save(null);
+    expect(store.writes).toBe(2);
+  });
+  it('refresh picks up another tab\'s save', () => {
+    const store = memStore();
+    const a = open(store);
+    const b = open(store);
+    a.save('u', u());
+    expect(b.get().cities).toEqual({});
+    expect(b.refresh().cities).toEqual({ u: u() });
+  });
+  it('another tab\'s เคลียร์ is not undone', () => {
+    const store = memStore();
+    const a = open(store);
+    a.save('t', t());
+    const b = open(store);
+    expect(b.get().cities.t).toBeDefined();
+    a.clear();
+    b.save('u', u());
+    expect(load(store)).toEqual({ current: 'u', cities: { u: u() }, unreadable: {} });
+  });
+  it('another tab\'s unreadable entries are kept too', () => {
+    const store = memStore();
+    const a = open(store);
+    store.setItem(SAVE_KEY, JSON.stringify({ v: 3, current: null, cities: { space: { from: 'a newer build' } } }));
+    a.save('t', t());
+    expect(JSON.parse(store.map.get(SAVE_KEY)!).cities.space).toEqual({ from: 'a newer build' });
+  });
+  it('storage that cannot be written: the cities live on in memory, and the next good save writes them all', () => {
+    const store = memStore();
+    const a = open(store);
+    const setItem = store.setItem;
+    store.setItem = boom;
+    expect(a.save('t', t())).toBe(false);
+    expect(a.save(null)).toBe(false);
+    expect(a.refresh().cities).toEqual({ t: t() });
+    store.setItem = setItem;
+    expect(a.save('u', u())).toBe(true);
+    expect(load(store)).toEqual({ current: 'u', cities: { t: t(), u: u() }, unreadable: {} });
+  });
+  it('storage that cannot be read: the cities live on in memory', () => {
+    const a = open(throwingGet);
+    expect(a.save('t', t())).toBe(false);
+    a.save(null, u());
+    expect(a.refresh()).toEqual({ current: null, cities: { t: t(), u: u() }, unreadable: {} });
+  });
+  it('a legacy save is migrated on open; saving writes the new key and leaves the legacy key exactly as it was', () => {
+    const store = memStore();
+    const legacy = JSON.stringify({ v: 2, state: t() });
+    store.setItem(LEGACY_SAVE_KEY, legacy);
+    const a = open(store);
+    expect(a.get()).toEqual(one(t()));
+    a.save('u', u());
+    expect(store.map.get(LEGACY_SAVE_KEY)).toBe(legacy);
+    expect(load(store)).toEqual({ current: 'u', cities: { t: t(), u: u() }, unreadable: {} });
+  });
+  it('clear deletes both keys and every city in memory', () => {
+    const store = memStore();
+    store.setItem(LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: t() }));
+    const a = open(store);
+    a.save('u', u());
+    a.clear();
+    expect(store.map.has(SAVE_KEY)).toBe(false);
+    expect(store.map.has(LEGACY_SAVE_KEY)).toBe(false);
+    expect(a.get()).toEqual(NONE);
+    expect(a.refresh()).toEqual(NONE);
   });
 });

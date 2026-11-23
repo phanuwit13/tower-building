@@ -30,8 +30,9 @@ function memStore(): KeyValueStore {
 
 function roundTrips(state: GameState): void {
   const store = memStore();
-  expect(saveCities(store, { current: state.themeId, cities: { [state.themeId]: state } })).toBe(true);
-  expect(loadCities(store, getCatalog, () => true)).toEqual({ current: state.themeId, cities: { [state.themeId]: state } });
+  const saved = { current: state.themeId, cities: { [state.themeId]: state }, unreadable: {} };
+  expect(saveCities(store, saved)).toBe(true);
+  expect(loadCities(store, getCatalog, () => true)).toEqual(saved);
 }
 
 for (const seed of [1, 2, 3, 42, 99]) {

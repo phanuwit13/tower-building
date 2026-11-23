@@ -27,6 +27,8 @@ export const T = {
   home: '🏠 เปลี่ยนธีม',
   /** On a theme select card whose city's round is finished. */
   cityDone: 'เมืองเสร็จแล้ว',
+  /** On a theme select card whose city has floor laid but no item yet. */
+  floorsOnly: 'ปูพื้นไว้แล้ว',
   restart: 'เริ่มใหม่',
   confirmRestart: 'เริ่มเมืองนี้ใหม่ไหม? ของและพื้นที่ปูไว้ในเมืองนี้จะหายไป ส่วนเมืองของธีมอื่นยังอยู่',
   confirmRestartOk: 'เริ่มใหม่',

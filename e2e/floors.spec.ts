@@ -179,7 +179,7 @@ test('after the round has finished, [พื้น] is there once the end screen 
   expect(finished.status).toBe('finished');
 
   await page.goto('/');
-  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, encodeSave({ current: 'school', cities: { school: finished } })]);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, encodeSave({ current: 'school', cities: { school: finished }, unreadable: {} })]);
   await page.reload();
   await expect(page.getByText(T.endTitle)).toBeVisible();
   await page.getByRole('button', { name: T.viewCity }).click();

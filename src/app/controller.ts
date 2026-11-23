@@ -2,9 +2,7 @@ import { buildOccupancy, canPlace, clampPosition, nearestFreeSpot, rotatedFootpr
 import { paintRect, type FloorRect } from '../game/floors';
 import { placementAtTile } from './hover';
 import { newGame, placeCurrent, restartGame, withSettings } from '../game/game';
-import {
-  clearCities, loadCities, loadQuality, saveCities, saveQuality, type KeyValueStore, type SavedCities,
-} from '../game/save';
+import { loadQuality, openCities, saveQuality, type KeyValueStore, type SavedCities } from '../game/save';
 import { GRID_SIZE, type Catalog, type GameState, type QualityTier, type Rotation, type SceneSettings } from '../game/types';
 import type { ThemeDef, ThemeId } from '../themes/types';
 
@@ -19,7 +17,8 @@ export interface AppState {
   /** What the theme select shows: every theme that has a city, keyed by theme id. */
   cities: Readonly<Record<string, CitySummary>>;
 }
-export interface CitySummary { placed: number; finished: boolean }
+/** A theme's city at a glance: items placed, floor cells painted, round over. */
+export interface CitySummary { placed: number; floors: number; finished: boolean }
 export interface FloorUiState {
   open: boolean; pick: string | 'eraser'; tool: 'paint' | 'camera'; preview: FloorRect | null;
 }
@@ -50,16 +49,20 @@ const screenOf = (g: GameState | null): AppState['screen'] =>
   g === null ? 'theme-select' : g.status === 'finished' ? 'finished' : 'playing';
 
 const summarize = (cities: SavedCities['cities']): AppState['cities'] =>
-  Object.fromEntries(Object.entries(cities).map(([id, g]) => [id, { placed: g.placements.length, finished: g.status === 'finished' }]));
+  Object.fromEntries(Object.entries(cities).map(([id, g]) => [id, {
+    placed: g.placements.length, floors: g.floors.filter((f) => f !== null).length, finished: g.status === 'finished',
+  }]));
 
 export function createController(deps: ControllerDeps): Controller {
   const { store } = deps;
   /**
-   * Every theme's city as last saved, and the theme being played: the one place cities live (the city
-   * being played is also `state.game`). Kept in memory too, so switching themes works when saving does not.
+   * Every theme's city and the theme being played: the one place cities live (the city being played
+   * is also `state.game`). Re-read before each save and theme change, so another tab's cities are
+   * never reverted; kept in memory too, so switching themes works when saving does not.
    */
-  let saved = loadCities(store, deps.getCatalog, deps.isFloorTile);
-  const initialGame = saved.current === null ? null : saved.cities[saved.current] ?? null;
+  const saves = openCities(store, deps.getCatalog, deps.isFloorTile);
+  const loaded = saves.get();
+  const initialGame = loaded.current === null ? null : loaded.cities[loaded.current] ?? null;
   let state: AppState = {
     screen: screenOf(initialGame),
     game: initialGame,
@@ -68,7 +71,7 @@ export function createController(deps: ControllerDeps): Controller {
     quality: loadQuality(store) ?? deps.detectQuality(),
     saveFailed: false,
     floor: { open: false, pick: deps.firstFloorTile ?? 'eraser', tool: 'paint', preview: null },
-    cities: summarize(saved.cities),
+    cities: summarize(loaded.cities),
   };
   const listeners = new Set<(s: AppState) => void>();
 
@@ -77,16 +80,15 @@ export function createController(deps: ControllerDeps): Controller {
     for (const fn of [...listeners]) fn(state);
   }
 
-  /** Keep `next` and save it (every city, one write). The AppState fields that follow; saveFailed latches once a save fails. */
-  function persist(next: SavedCities): Pick<AppState, 'cities' | 'saveFailed'> {
-    saved = next;
-    const ok = saveCities(store, next);
-    return { cities: summarize(next.cities), saveFailed: state.saveFailed || !ok };
+  /** Save `current` (and `city` as its theme's city) in one write. The AppState fields that follow; saveFailed latches once a save fails. */
+  function persist(current: string | null, city?: GameState): Pick<AppState, 'cities' | 'saveFailed'> {
+    const ok = saves.save(current, city);
+    return { cities: summarize(saves.get().cities), saveFailed: state.saveFailed || !ok };
   }
 
   /** `game` is its theme's city now, and the one being played. */
   const keepCity = (game: GameState): Pick<AppState, 'game' | 'cities' | 'saveFailed'> =>
-    ({ game, ...persist({ current: game.themeId, cities: { ...saved.cities, [game.themeId]: game } }) });
+    ({ game, ...persist(game.themeId, game) });
 
   /** Persist the game, then emit. */
   function commitGame(
@@ -138,15 +140,17 @@ export function createController(deps: ControllerDeps): Controller {
       const theme = deps.getTheme(id);
       const catalog = deps.getCatalog(id);
       if (!theme || !catalog) return;
-      const game = saved.cities[id] ?? newGame(catalog, { weather: 'sunny', time: 'day', ground: theme.defaultGround }, deps.seed());
+      // the freshest copy: another tab may have played this city since
+      const game = saves.refresh().cities[id] ?? newGame(catalog, { weather: 'sunny', time: 'day', ground: theme.defaultGround }, deps.seed());
       state = { ...state, floor: closedFloor() }; // every city opens with the items (commitGame emits this state)
       commitGame(game, null);
     },
     goToThemeSelect() {
       if (state.screen === 'theme-select') return;
-      // The city is already saved: this records that the child is on theme select (and retries a save that failed).
+      // The city is already saved: this records that the child is on theme select (and retries a save that
+      // failed); the badges come from the freshest record.
       emit({
-        ...state, ...persist({ current: null, cities: saved.cities }),
+        ...state, ...persist(null),
         game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor(),
       });
     },
@@ -237,8 +241,7 @@ export function createController(deps: ControllerDeps): Controller {
       commitGame(restartGame(game, catalog, deps.seed()), null, 'playing');
     },
     clearAll() {
-      clearCities(store);
-      saved = { current: null, cities: {} };
+      saves.clear();
       emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor(), cities: {} });
     },
   };

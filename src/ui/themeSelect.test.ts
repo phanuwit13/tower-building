@@ -32,17 +32,24 @@ describe('theme select', () => {
 
   it('a theme with a city shows how much is built, and when its round is finished', () => {
     const { ts, seen } = setup();
-    ts.show({ school: { placed: 32, finished: false }, zoo: { placed: 140, finished: true } });
+    ts.show({ school: { placed: 32, floors: 0, finished: false }, zoo: { placed: 140, floors: 12, finished: true } });
     expect(seen('โรงเรียน')).toBe(`🏫 | โรงเรียน | ${builtLabel(32)}`);
     expect(seen('สวนสัตว์')).toBe(`🦁 | สวนสัตว์ | ${builtLabel(140)} | ${T.cityDone}`);
   });
 
+  it('an empty city (no items, no floor) has no badge; one with only floor says so', () => {
+    const { ts, seen } = setup();
+    ts.show({ school: { placed: 0, floors: 0, finished: false }, zoo: { placed: 0, floors: 5, finished: false } });
+    expect(seen('โรงเรียน')).toBe('🏫 | โรงเรียน');
+    expect(seen('สวนสัตว์')).toBe(`🦁 | สวนสัตว์ | ${T.floorsOnly}`);
+  });
+
   it('the badges follow the cities (a city cleared, a round restarted)', () => {
     const { ts, seen } = setup();
-    ts.show({ school: { placed: 3, finished: true } });
-    ts.show({ zoo: { placed: 0, finished: false } });
+    ts.show({ school: { placed: 3, floors: 0, finished: true }, zoo: { placed: 4, floors: 0, finished: false } });
+    ts.show({ zoo: { placed: 0, floors: 0, finished: false } });
     expect(seen('โรงเรียน')).toBe('🏫 | โรงเรียน');
-    expect(seen('สวนสัตว์')).toBe(`🦁 | สวนสัตว์ | ${builtLabel(0)}`);
+    expect(seen('สวนสัตว์')).toBe('🦁 | สวนสัตว์');
   });
 
   it('picks a theme; focus() puts the keyboard on a theme\'s card', () => {

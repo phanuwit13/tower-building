@@ -4,7 +4,7 @@ import { FLOOR_TILES } from '../src/floors';
 import { demoFullGame } from '../src/game/demo';
 import { newGame, placeCurrent } from '../src/game/game';
 import { buildOccupancy, nearestFreeSpot } from '../src/game/grid';
-import { encodeSave, SAVE_KEY } from '../src/game/save';
+import { encodeSave, LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 import { GRID_SIZE, type Catalog, type GameState } from '../src/game/types';
 import { getCatalog } from '../src/themes/registry';
 import { zoo as zooTheme } from '../src/themes/zoo';
@@ -108,12 +108,12 @@ test('every theme keeps its own city: โรงเรียน → 🏠 → ส�
   await pick(page, ZOO, 1);
 });
 
-test('an old one-city save (v2) becomes that theme\'s city: nothing a child built is lost', async ({ page }) => {
+test('an old one-city save (v2) becomes that theme\'s city: nothing a child built is lost, and the old save stays for an older build', async ({ page }) => {
   const old = cityWith(getCatalog('zoo')!, 3, { weather: 'rain', time: 'dusk', ground: 'grass' }, 5);
   old.floors[3 * GRID_SIZE + 4] = FLOOR_TILES[0].id;
   const v2 = JSON.stringify({ v: 2, state: old }); // what the game saved before every theme kept its own city
   await page.goto('/');
-  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, v2]);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [LEGACY_SAVE_KEY, v2]);
   await page.reload();
 
   await expect(page.getByText(placed(3))).toBeVisible(); // opens on the old city
@@ -129,6 +129,8 @@ test('an old one-city save (v2) becomes that theme\'s city: nothing a child buil
   await expect(themeCard(page, ZOO)).toContainText(builtLabel(3));
   await expect(themeCard(page, SCHOOL)).toContainText(builtLabel(1));
   expect((await savedRecord(page)).cities.zoo).toEqual(old);
+  // never rewritten: a rolled-back build still finds the child's city where it left it
+  expect(await page.evaluate((k) => localStorage.getItem(k), LEGACY_SAVE_KEY)).toBe(v2);
 });
 
 test('เริ่มใหม่ starts only this theme\'s city again', async ({ page }) => {
@@ -150,12 +152,17 @@ test('เริ่มใหม่ starts only this theme\'s city again', async (
 
   await goHome(page);
   await expect(themeCard(page, SCHOOL)).toContainText(builtLabel(1));
-  await expect(themeCard(page, ZOO)).toContainText(builtLabel(0));
+  await expect(themeCard(page, ZOO)).not.toContainText('สร้างแล้ว'); // an empty city has no badge
   expect((await savedRecord(page)).cities.school).toEqual(school);
 });
 
-test('เคลียร์ deletes every theme\'s city and goes back to theme select', async ({ page }) => {
+test('เคลียร์ deletes every theme\'s city (the old one-city save too) and goes back to theme select', async ({ page }) => {
   await page.goto('/');
+  // an old one-city save left behind by the migration: it must not come back after เคลียร์
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [LEGACY_SAVE_KEY, JSON.stringify({ v: 2, state: cityWith(getCatalog('beach')!, 2, { weather: 'sunny', time: 'day', ground: 'sand' }, 4) })]);
+  await page.reload();
+  await expect(page.getByText(placed(2))).toBeVisible(); // it opens on the migrated city
+  await goHome(page);
   await pick(page, SCHOOL, 0);
   await placeOne(page, 1);
   await goHome(page);
@@ -171,7 +178,7 @@ test('เคลียร์ deletes every theme\'s city and goes back to theme s
 
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await expect(page.locator('.theme-built:visible')).toHaveCount(0);
-  expect(await page.evaluate((k) => localStorage.getItem(k), SAVE_KEY)).toBeNull();
+  expect(await page.evaluate((keys) => keys.map((k) => localStorage.getItem(k)), [SAVE_KEY, LEGACY_SAVE_KEY])).toEqual([null, null]);
   await page.reload();
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await expect(page.locator('.theme-built:visible')).toHaveCount(0);
@@ -189,7 +196,7 @@ test('after the round has finished, 🏠 is on the end screen and in the HUD, an
   const finished = placeCurrent(demo, catalog, spot.x, spot.z, rotation)!;
   expect(finished.status).toBe('finished');
   await page.goto('/');
-  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, encodeSave({ current: 'school', cities: { school: finished } })]);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, encodeSave({ current: 'school', cities: { school: finished }, unreadable: {} })]);
   await page.reload();
 
   const endScreen = page.locator('.end-screen');
@@ -209,7 +216,7 @@ test('after the round has finished, 🏠 is on the end screen and in the HUD, an
 
 test('?demo=full stays in memory: 🏠 and another theme never touch the saved cities', async ({ page }) => {
   test.setTimeout(60_000);
-  const mine = encodeSave({ current: null, cities: { zoo: cityWith(getCatalog('zoo')!, 2, { weather: 'sunny', time: 'day', ground: 'grass' }, 3) } });
+  const mine = encodeSave({ current: null, cities: { zoo: cityWith(getCatalog('zoo')!, 2, { weather: 'sunny', time: 'day', ground: 'grass' }, 3) }, unreadable: {} });
   await page.goto('/');
   await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, mine]);
   await page.goto('/?demo=full');
@@ -219,6 +226,32 @@ test('?demo=full stays in memory: 🏠 and another theme never touch the saved c
   await pick(page, ZOO, 0);
   await placeOne(page, 1);
   expect(await page.evaluate((k) => localStorage.getItem(k), SAVE_KEY)).toBe(mine);
+});
+
+test('two tabs: one tab\'s school never reverts the other tab\'s zoo, and each opens the other\'s latest city', async ({ page, context }) => {
+  test.setTimeout(120_000); // two 3D pages on software WebGL at once
+  const other = await context.newPage(); // the same browser, the same saved cities
+  const errors: string[] = [];
+  other.on('pageerror', (e) => errors.push(e.message));
+  other.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  await other.goto('/'); // opened first, left on theme select
+  await expect(other.getByText(T.pickTheme)).toBeVisible();
+
+  await page.goto('/');
+  await pick(page, ZOO, 0);
+  await placeOne(page, 1);
+  await placeOne(page, 2);
+  const zoo = (await savedRecord(page)).cities.zoo as GameState;
+
+  await other.bringToFront();
+  await pick(other, SCHOOL, 0);
+  await placeOne(other, 1);
+  expect((await savedRecord(other)).cities.zoo).toEqual(zoo); // still the first tab's zoo
+  await goHome(other);
+  await expect(themeCard(other, ZOO)).toContainText(builtLabel(2));
+  await pick(other, ZOO, 2);
+  expect(errors).toEqual([]);
+  await other.close();
 });
 
 // 🏠 top left, clear of everything else, on a laptop, an iPad (landscape) and a tablet held upright.

@@ -31,7 +31,7 @@ export function parseDemoParam(search: string): { seed: number; theme: string } 
 export function demoStore(real: KeyValueStore, catalog: Catalog, seed: number, ground: GroundId = 'grass'): KeyValueStore {
   const store = memoryStore({});
   const city = demoFullGame(catalog, { weather: 'sunny', time: 'day', ground }, seed);
-  saveCities(store, { current: city.themeId, cities: { [city.themeId]: city } });
+  saveCities(store, { current: city.themeId, cities: { [city.themeId]: city }, unreadable: {} });
   const quality = loadQuality(real);
   if (quality) saveQuality(store, quality);
   return store;
