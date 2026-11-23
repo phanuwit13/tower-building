@@ -35,10 +35,10 @@ export const item: ItemModel = {
       kit.box([0.1, 0.03, 0.1], [0.12, 0.3, 0.22], 'orange'),
       kit.box([0.1, 0.03, 0.1], [-0.12, 0.34, 0.3], 'orange'),
       // canopy on four posts
-      kit.dome(0.4, [0, 0.82, -0.1], 'orange', { segments: 12, scale: [1, 0.4, 1.4] }),
+      kit.dome(0.3, [0, 0.98, -0.32], 'orange', { segments: 12, scale: [1, 0.4, 1.1] }),
     ];
-    for (const x of [-0.3, 0.3]) {
-      for (const z of [-0.4, 0.2]) parts.push(kit.cylinder(0.02, 0.02, 0.5, [x, 0.57, z], 'white', { segments: 4 }));
+    for (const x of [-0.22, 0.22]) {
+      for (const z of [-0.5, -0.14]) parts.push(kit.cylinder(0.02, 0.02, 0.62, [x, 0.67, z], 'white', { segments: 4 }));
     }
     return kit.finish(parts);
   },
