@@ -24,14 +24,14 @@ export const item: ItemModel = {
       kit.box([BODY.w + 0.02, 0.12, BODY.d + 0.02], [BODY.x, PAD.h + 0.14, 0], 'blue'),
       kit.box([BODY.w + 0.08, 0.08, BODY.d + 0.08], [BODY.x, TOP + 0.04, 0], 'teal'),
       // glass skylight, lit at night
-      kit.cylinder(0.3, 0.3, 0.04, [BODY.x + 0.1, ROOF_TOP + 0.02, 0], 'white', { segments: 12 }),
-      kit.dome(0.25, [BODY.x + 0.1, ROOF_TOP + 0.04, 0], 'skyBlue', { segments: 12, scale: [1, 0.7, 1], glow: 'windowWarm', light: 'window' }),
+      kit.cylinder(0.24, 0.24, 0.04, [BODY.x + 0.1, ROOF_TOP + 0.02, 0], 'white', { segments: 12 }),
+      kit.dome(0.17, [BODY.x + 0.1, ROOF_TOP + 0.04, 0], 'skyBlue', { segments: 12, scale: [1, 0.7, 1], glow: 'teal', light: 'window' }),
       // roof tubes: two stacks and a vent
       kit.cylinder(0.07, 0.07, 0.4, [BODY.x - 0.5, ROOF_TOP + 0.2, -0.35], 'orange', { segments: 8 }),
       kit.sphere(0.09, [BODY.x - 0.5, ROOF_TOP + 0.42, -0.35], 'orange', { detail: 0 }),
       kit.cylinder(0.06, 0.06, 0.3, [BODY.x - 0.5, ROOF_TOP + 0.15, 0.1], 'red', { segments: 8 }),
       kit.sphere(0.08, [BODY.x - 0.5, ROOF_TOP + 0.32, 0.1], 'red', { detail: 0 }),
-      kit.cylinder(0.05, 0.05, 0.5, [BODY.x - 0.5, ROOF_TOP + 0.45, 0.45], 'chrome', { segments: 8, rotate: [Math.PI / 2, 0, 0], scale: [1, 0.5, 1] }),
+      kit.cylinder(0.05, 0.05, 0.7, [BODY.x - 0.5, ROOF_TOP + 0.05, 0.3], 'chrome', { segments: 8, rotate: [Math.PI / 2, 0, 0] }),
       // windows and door
       ...glassWindow(kit, { at: [FRONT, PAD.h + 0.45, 0], facing: 'x+', w: 0.8, h: 0.28, panes: 3 }),
       ...glassWindow(kit, { at: [BODY.x + 0.2, PAD.h + 0.45, BODY.d / 2], facing: 'z+', w: 0.6, h: 0.28, panes: 2 }),

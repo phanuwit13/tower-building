@@ -6,7 +6,7 @@ import { aim, rod } from '../../../models/parts';
 // Three small radio dishes in a row along z (2x2), each on its own coloured pedestal and tilted
 // towards +x so the camera sees the faces. A little blue control hut stands behind them.
 const PAD = { w: 1.9, h: 0.05, d: 1.9 };
-const ROWS: { z: number; color: PaletteColor }[] = [{ z: -0.62, color: 'orange' }, { z: 0, color: 'teal' }, { z: 0.62, color: 'red' }];
+const ROWS: { z: number; color: PaletteColor }[] = [{ z: -0.67, color: 'orange' }, { z: 0, color: 'teal' }, { z: 0.67, color: 'red' }];
 const DISH = { r: 0.3, rBack: 0.08, depth: 0.14, y: 0.78 };
 const TILT = 0.7; // radians above horizontal the dish faces
 const N: [number, number, number] = [Math.cos(TILT), Math.sin(TILT), 0]; // the way a dish faces
