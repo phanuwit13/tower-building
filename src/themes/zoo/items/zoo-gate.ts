@@ -13,7 +13,7 @@ const BEAM = { x: 0.5, h: 0.26, y: 0.86 }; // y = centre; the opening under it i
 const PATH = { x: 1.7, h: 0.025 };
 const FLAG = { poleX: -0.1, w: 0.4, h: 0.24, top: 1.52, strips: 4, wave: 0.18 };
 /** Flags on the beam: [z, [top, middle, bottom] stripe colours]. */
-const FLAGS: Array<[number, PaletteColor[]]> = [[0.5, ['red', 'white', 'red']], [-0.5, ['blue', 'sunYellow', 'blue']]];
+const FLAGS: Array<[number, PaletteColor[]]> = [[0.5, ['leaf', 'lime', 'leaf']], [-0.5, ['orange', 'sunYellow', 'orange']]];
 const HEAD_Y = POST_TOP + 0.04; // the animal heads start on the tower cap
 
 /** ประตูทางเข้าสวนสัตว์: rock-and-wood towers with a giraffe and a lion on top, flags waving on the beam. */

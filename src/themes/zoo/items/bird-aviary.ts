@@ -12,6 +12,8 @@ const GRASS = { r: 0.97, h: 0.05 };
 const MERIDIANS = 6;
 const ARC_STEPS = 3; // each meridian is 3 straight rods
 const RING_STEPS = [1, 2]; // latitude rings at these arc steps (counted from the base)
+// The doorway on +x: meridian 0 and the ring/base segments next to it are left out.
+const isDoor = (m: number): boolean => m === 0 || m === MERIDIANS - 1;
 const NET = { r: 0.016, color: 'white' as PaletteColor };
 const TREE = { x: -0.22, z: -0.12, trunkH: 0.8, crown: { y: 1.06, r: 0.34 } };
 /** Birds: [x, y, z, yaw, body colour, wing colour]. */
@@ -60,12 +62,13 @@ export const item: ItemModel = {
       kit.box([0.3, 0.03, 0.26], [0.8, 0.065, 0], 'stone'),
     ];
     // --- the net ---
-    for (let m = 0; m < MERIDIANS; m++) {
+    for (let m = 1; m < MERIDIANS; m++) {
       const a = (m / MERIDIANS) * Math.PI * 2;
       for (let i = 0; i < ARC_STEPS; i++) parts.push(rod(kit, dome(i, a), dome(i + 1, a), NET.r, NET.color, { segments: 4 }));
     }
     for (const i of RING_STEPS) {
       for (let m = 0; m < MERIDIANS; m++) {
+        if (isDoor(m)) continue;
         const a0 = (m / MERIDIANS) * Math.PI * 2;
         const a1 = ((m + 1) / MERIDIANS) * Math.PI * 2;
         parts.push(rod(kit, dome(i, a0), dome(i, a1), NET.r, NET.color, { segments: 4 }));
@@ -73,6 +76,7 @@ export const item: ItemModel = {
     }
     // base ring and a golden finial on top
     for (let m = 0; m < MERIDIANS; m++) {
+      if (isDoor(m)) continue;
       const a0 = (m / MERIDIANS) * Math.PI * 2;
       const a1 = ((m + 1) / MERIDIANS) * Math.PI * 2;
       parts.push(rod(kit, dome(0, a0), dome(0, a1), 0.03, 'teal', { segments: 4 }));
