@@ -71,7 +71,7 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
     addEventListener(_t: string, fn: () => void) { this.listeners.add(fn); },
     removeEventListener(_t: string, fn: () => void) { this.listeners.delete(fn); },
   };
-  const rig = { turn: vi.fn(), zoomBy: vi.fn() };
+  const rig = { turn: vi.fn(), zoomBy: vi.fn(), settle: vi.fn() };
   const stage = { canvas, camera, controls, rig } as unknown as Stage;
   const floor: FloorUiState = { open: false, pick: 'wood-light', tool: 'paint', preview: null };
   const state = { screen: 'playing', game: null, ghost: null, floor } as unknown as AppState;
@@ -573,6 +573,25 @@ describe('attachInput camera keys', () => {
     dispose();
   });
 
+  it('holding Q / E turns once (no auto-repeat spin); ＋/－ may repeat', () => {
+    const { rig, dispose } = setup(() => false);
+    press('q');
+    press('q', { repeat: true });
+    press('e', { repeat: true });
+    expect(rig.turn.mock.calls).toEqual([[-TURN_STEP]]);
+    press('+');
+    press('+', { repeat: true });
+    expect(rig.zoomBy).toHaveBeenCalledTimes(2);
+    dispose();
+  });
+
+  it('a press on the map settles a glide first', () => {
+    const { canvas, rig, dispose } = setup(() => false);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10, button: 0, bubbles: true }));
+    expect(rig.settle).toHaveBeenCalled();
+    dispose();
+  });
+
   it('work with a Thai layout on', () => {
     const { rig, c, dispose } = setup(() => false);
     press('ๆ', { code: 'KeyQ' });
@@ -682,19 +701,20 @@ describe('attachInput: tap the ✓ to place', () => {
     dispose();
   });
 
-  it('a drag that starts on the ✓ turns the camera: no place, no ghost move', () => {
+  it('a drag that starts on the ✓ moves the ghost (small items sit under the ✓): no place, no camera turn', () => {
     const { canvas, controls, c, at, dispose } = withCheck();
     canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
-    expect(controls.enabled).toBe(true); // the camera keeps the gesture
+    expect(controls.enabled).toBe(false); // the ghost has the gesture, not the camera
     canvas.dispatchEvent(ptr('pointermove', 1, at.x + 120, at.y));
     window.dispatchEvent(ptr('pointerup', 1, at.x + 120, at.y));
+    expect(c.dragGhostTo).toHaveBeenCalled();
     expect(c.place).not.toHaveBeenCalled();
     expect(c.tapTile).not.toHaveBeenCalled();
-    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    expect(controls.enabled).toBe(true);
     dispose();
   });
 
-  it('the ✓ wins over the ghost body under it: a press there never starts a ghost drag', () => {
+  it('the ✓ wins over the ghost body under it: a tap there places once and moves nothing', () => {
     const catalogOf = (() => ({ items: { box: { footprint: { w: 2, d: 2 } } } })) as unknown as InputOptions['catalogOf'];
     const ghostBox = () => new THREE.Box3(new THREE.Vector3(4, 0, 4), new THREE.Vector3(6, 3, 6)); // the ✓ point is inside
     const onGhostBody = (checkMark: InputOptions['checkMark']) => {
@@ -711,7 +731,7 @@ describe('attachInput: tap the ✓ to place', () => {
     const without = onGhostBody(() => null); // no ✓ there: the press grabs the ghost
     expect(without.ghostDrag).toBe(true);
     const withCheckMark = onGhostBody(() => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }));
-    expect(withCheckMark.ghostDrag).toBe(false);
+    expect(withCheckMark.ghostDrag).toBe(true); // a press on the ✓ holds the ghost too, so a drag can move it
     expect(withCheckMark.c.place).toHaveBeenCalledTimes(1);
     expect(withCheckMark.c.dragGhostTo).not.toHaveBeenCalled();
     expect(withCheckMark.c.tapTile).not.toHaveBeenCalled();

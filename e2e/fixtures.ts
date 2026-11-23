@@ -1,4 +1,5 @@
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
+import { T } from '../src/ui/strings';
 
 /**
  * Every test fails on an uncaught page error or a console error. Nothing is ignored: if a known
@@ -20,3 +21,17 @@ export const test = base.extend({
   },
 });
 export { expect };
+
+/** The icon toolbar's buttons, by their Thai name. */
+export const tool = (page: Page, name: string | RegExp) => page.locator('.toolbar').getByRole('button', { name });
+/** ⋯ opened, then one of its items (เริ่มใหม่ / เคลียร์) clicked. */
+export async function fromMore(page: Page, item: string): Promise<void> {
+  await tool(page, T.toolbar.more).click();
+  await page.locator('.tb-pop-more').getByRole('button', { name: item, exact: true }).click();
+}
+/** The time button, clicked until the scene is at `time` (dawn → day → dusk → night → dawn). */
+export async function setTime(page: Page, time: string): Promise<void> {
+  const btn = tool(page, /^ช่วงเวลา/);
+  for (let i = 0; i < 4 && (await btn.getAttribute('aria-label')) !== `${T.time.title}: ${time}`; i++) await btn.click();
+  await expect(btn).toHaveAttribute('aria-label', `${T.time.title}: ${time}`);
+}

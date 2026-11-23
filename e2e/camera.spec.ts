@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, test, tool } from './fixtures';
 import { placementAtTile } from '../src/app/hover';
 import { rotatedFootprint } from '../src/game/grid';
 import { SAVE_KEY } from '../src/game/save';
@@ -106,7 +106,7 @@ test('⟲ turns the view 45 degrees one way and ⟳ the other way, about the sam
   await expect.poll(async () => turnOf(a0, await azimuth(page))).toBeCloseTo(45, 0);
 });
 
-test('Q / E turn and + / - zoom from the keyboard, but not while settings are open', async ({ page }) => {
+test('Q / E turn and + / - zoom from the keyboard, but not while a toolbar popover is open', async ({ page }) => {
   await startSchool(page);
   const a0 = await azimuth(page);
   await page.keyboard.press('q');
@@ -126,7 +126,7 @@ test('Q / E turn and + / - zoom from the keyboard, but not while settings are op
   await page.keyboard.press('=');
   await expect.poll(() => distance(page)).toBeLessThan(d2 - 1);
 
-  await page.getByRole('button', { name: T.settings }).click();
+  await tool(page, T.ground.title).click();
   const a1 = await azimuth(page);
   const d3 = await distance(page);
   for (const key of ['q', 'e', '+', '-']) await page.keyboard.press(key);
@@ -146,6 +146,38 @@ test('a click on the ✓ places the item once, where the ghost was', async ({ pa
   const city = await schoolCity(page);
   expect(city.placements.map(({ itemId: id, x, z, rotation }) => ({ id, x, z, rotation })))
     .toEqual([{ id: itemId, x: ghost.x, z: ghost.z, rotation: 0 }]);
+});
+
+test('a drag that starts on the ✓ moves the ghost (the camera keeps still); a tap on it still places once', async ({ page }) => {
+  await startSchool(page);
+  const { ghost, check } = await ghostWithCheck(page, (p) => page.mouse.click(p.x, p.y));
+  const a0 = await azimuth(page);
+  await page.mouse.move(check.x, check.y);
+  await page.mouse.down();
+  await page.mouse.move(check.x + 160, check.y + 20, { steps: 10 });
+  await page.mouse.up();
+  await expect(page.getByText(placed(0))).toBeVisible(); // a drag never places
+  expect(await azimuth(page)).toBe(a0); // and never turns the camera
+  await page.keyboard.press('Enter'); // the ghost went elsewhere: placing now lands away from where the tap put it
+  await expect(page.getByText(placed(1))).toBeVisible();
+  const city = await schoolCity(page);
+  expect([city.placements[0].x, city.placements[0].z]).not.toEqual([ghost.x, ghost.z]);
+});
+
+test('holding Q does not spin the view: one 45 degree step; a press in the middle of a turn ends on the step', async ({ page }) => {
+  await startSchool(page);
+  const a0 = await azimuth(page);
+  await page.keyboard.down('q');
+  for (let i = 0; i < 5; i++) await page.keyboard.down('q'); // auto-repeat
+  await page.keyboard.up('q');
+  await page.waitForTimeout(600);
+  expect(turnOf(a0, await azimuth(page))).toBeCloseTo(-45, 0);
+  // a turn, then a tap on the map while it glides: the turn finishes on its 45 degrees
+  await page.keyboard.press('e');
+  const { width, height } = page.viewportSize()!;
+  await page.mouse.click(width * 0.3, height * 0.5);
+  await page.waitForTimeout(600);
+  expect(turnOf(a0, await azimuth(page))).toBeCloseTo(0, 0);
 });
 
 test.describe('touch (iPad 1024 x 768)', () => {
@@ -259,7 +291,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 768
         .filter((e) => !e.closest('[hidden]'))
         .map((e) => { const r = e.getBoundingClientRect(); return { name: e.getAttribute('aria-label') ?? e.textContent ?? e.className, x: r.x, y: r.y, w: r.width, h: r.height }; }));
       const mine = await rects('.cam-controls button, .cam-slider-box, .cam-hint');
-      const hud = await rects('.hud .card, .hud .hud-placed, .hud .hud-hint, .hud button');
+      const hud = await rects('.hud .card, .hud .hud-placed, .hud .hud-hint, .hud button, .toolbar .tb-btn');
       expect(mine).toHaveLength(6); // ＋, slider, －, label, ⟲, ⟳
       expect(hud.length).toBeGreaterThan(6);
       for (const m of mine) {

@@ -305,6 +305,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); }
+    stage.rig.settle(); // a press in the middle of a turn: it ends on its 45 degree step first
     const floor = floorMode();
     // Runs before OrbitControls sees the press (capture): a new gesture gets the current tool's mapping.
     if (pointers.size === 0) lendCamera(floor?.tool === 'paint');
@@ -327,8 +328,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
       id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(),
       camPos: camera.position.clone(), target: controls.target.clone(), check: onCheck(e.clientX, e.clientY),
     };
-    // The ✓ is a button: a press on it never grabs the ghost (a drag from it turns the camera).
-    if (!press.check && onGhost(e)) {
+    // A press on the ✓ grabs the ghost too (on a 1x1 item the ✓ disc covers it): a tap on the ✓ places, a drag moves the ghost.
+    if (press.check || onGhost(e)) {
       dragging = true;
       controls.enabled = false;
       try { canvas.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
@@ -339,6 +340,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     if (e.pointerType === 'mouse' && !dragging && pointers.size === 0) updateHover(e);
     if (stroke && e.pointerId === stroke.id) { moveStroke(e); return; }
     if (!dragging || !press || e.pointerId !== press.id || multi) return;
+    // A finger's wobble on the ✓ is still a tap: the ghost only follows once the press has really moved.
+    if (press.check && Math.hypot(e.clientX - press.x, e.clientY - press.y) <= TAP_MAX_MOVE_PX) return;
     const tile = pick(e, true);
     if (tile) c.dragGhostTo(tile.tx, tile.tz);
   };
@@ -428,7 +431,10 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
       e.preventDefault();
       return;
     }
-    switch (shortcutKey(e)) {
+    const key = shortcutKey(e);
+    // Holding Q/E must not stack 45 degree turns into a long spin (＋/－ may repeat: a held key zooms on).
+    if (e.repeat && (key === 'q' || key === 'e')) { e.preventDefault(); return; }
+    switch (key) {
       case 'r': c.rotateGhost(); break;
       case 'Enter': case ' ': c.place(); break;
       // ⟲ / ⟳ and the zoom buttons' keys: Q turns like ⟲, E like ⟳; + or = zooms in, - zooms out.

@@ -132,6 +132,22 @@ describe('camera rig: turn', () => {
     expect(wrap(controls.getAzimuthalAngle() - az)).toBeCloseTo(TURN_STEP, 6);
   });
 
+  it('settle() finishes a turn and a zoom glide on their exact end', () => {
+    const { controls, rig, frame } = setup();
+    const az = controls.getAzimuthalAngle();
+    const d = controls.getDistance();
+    rig.turn(TURN_STEP);
+    rig.zoomBy(ZOOM_STEP);
+    frame(1000 + 50);
+    rig.settle();
+    expect(wrap(controls.getAzimuthalAngle() - az)).toBeCloseTo(TURN_STEP, 6);
+    expect(controls.getDistance()).toBeLessThan(d);
+    const after = controls.getDistance();
+    frame(5000); // nothing is left to glide
+    expect(wrap(controls.getAzimuthalAngle() - az)).toBeCloseTo(TURN_STEP, 6);
+    expect(controls.getDistance()).toBeCloseTo(after, 6);
+  });
+
   it('turns the other way with a negative angle, and presses during a turn queue up', () => {
     const { controls, rig, frame } = setup();
     const az = controls.getAzimuthalAngle();

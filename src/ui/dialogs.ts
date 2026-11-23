@@ -1,11 +1,12 @@
 import { button, el } from './dom';
+import { focusForKeyboard } from './focus';
 import { T } from './strings';
 
 export function confirmDialog(root: HTMLElement, o: { message: string; confirmLabel: string }): Promise<boolean> {
   return new Promise((resolve) => {
     const finish = (v: boolean): void => { document.removeEventListener('keydown', onKey);
       overlay.remove();
-      if (prev && prev.isConnected) prev.focus();
+      focusForKeyboard(prev);
       resolve(v); };
     const ok = button(o.confirmLabel, () => finish(true), 'btn-confirm');
     const cancel = button(T.cancel, () => finish(false), 'btn-cancel');

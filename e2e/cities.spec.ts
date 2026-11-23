@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, fromMore, setTime, test, tool } from './fixtures';
 import { FLOOR_TILES } from '../src/floors';
 import { demoFullGame } from '../src/game/demo';
 import { newGame, placeCurrent } from '../src/game/game';
@@ -57,9 +57,7 @@ test('every theme keeps its own city: โรงเรียน → 🏠 → ส�
   await pick(page, SCHOOL, 0);
   await placeOne(page, 1);
   await placeOne(page, 2);
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.locator('.chip', { hasText: new RegExp(`^${T.time.night}$`) }).click();
-  await page.getByRole('button', { name: T.close }).click();
+  await setTime(page, T.time.night);
   // a floor tile, and 🏠 pressed with the floor drawer still open
   await page.getByRole('button', { name: T.floor.open, exact: true }).click();
   await expect(drawerOf(page)).toBeVisible();
@@ -90,9 +88,7 @@ test('every theme keeps its own city: โรงเรียน → 🏠 → ส�
   await expect(drawerOf(page)).toBeHidden(); // the drawer shut when the theme changed: the city opens with its items
   await expect(page.getByRole('button', { name: T.place })).toBeVisible();
   expect(await savedRecord(page)).toEqual({ v: 3, current: 'school', cities: { school, zoo } });
-  await page.getByRole('button', { name: T.settings }).click();
-  await expect(page.locator('.chip.selected', { hasText: new RegExp(`^${T.time.night}$`) })).toBeVisible();
-  await page.getByRole('button', { name: T.close }).click();
+  await expect(tool(page, /^ช่วงเวลา/)).toHaveAttribute('aria-label', `${T.time.title}: ${T.time.night}`);
 
   // A reload opens on the theme last played, both cities kept
   await page.reload();
@@ -143,8 +139,7 @@ test('เริ่มใหม่ starts only this theme\'s city again', async (
   await placeOne(page, 1);
   await placeOne(page, 2);
 
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.getByRole('button', { name: T.restart }).click();
+  await fromMore(page, T.restart);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(T.confirmRestart)).toBeVisible();
   await dialog.getByRole('button', { name: T.confirmRestartOk }).click();
@@ -169,8 +164,7 @@ test('เคลียร์ deletes every theme\'s city (the old one-city save t
   await pick(page, ZOO, 0);
   await placeOne(page, 1);
 
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.getByRole('button', { name: T.clear }).click();
+  await fromMore(page, T.clear);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(T.confirmClear)).toBeVisible();
   expect(T.confirmClear).toContain('ทุกเมือง');

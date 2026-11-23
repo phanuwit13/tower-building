@@ -47,6 +47,8 @@ export interface CameraRig {
   zoomBy(step: number): void;
   /** Glide the view `rad` about the target's vertical axis (positive: the azimuth grows). Turns pressed during a turn add up. */
   turn(rad: number): void;
+  /** Finish the glides in progress at once, on their exact end (a hand on the map does this, so a tap never leaves a turn at an odd angle). */
+  settle(): void;
   /** Advance the glides to `nowMs`; the stage calls it every frame, before controls.update(). */
   step(nowMs: number): void;
 }
@@ -196,6 +198,17 @@ export function createCameraRig(
         return;
       }
       turning = { start: now(), total, done: 0 };
+    },
+    settle() {
+      if (turning) {
+        turnBy(turning.total - turning.done);
+        turning = null;
+      }
+      if (zooming) {
+        moveTo(zooming.to);
+        zooming = null;
+      }
+      controls.update();
     },
     step(t) {
       if (turning) {

@@ -1,6 +1,7 @@
 import type { FloorUiState } from '../app/controller';
 import type { FloorGroup } from '../floors/types';
 import { button, el } from './dom';
+import { focusForKeyboard } from './focus';
 import { T } from './strings';
 
 /** One tile in the drawer: its Thai name and a thumbnail (null: the name alone). */
@@ -40,7 +41,7 @@ const sameTiles = (a: readonly FloorSwatch[], b: readonly FloorSwatch[]): boolea
   a.length === b.length && a.every((t, i) => t.id === b[i].id && t.name === b[i].name && t.thumb === b[i].thumb);
 
 /**
- * The floor drawer: a bottom sheet with the group tabs, [ยางลบ] [เสร็จ], the 🖌 ปูพื้น / ✋ ขยับกล้อง
+ * The floor drawer: a bottom sheet with the group tabs, [ยางลบ] [เสร็จ], the 🖌 ปูกระเบื้อง / ✋ ขยับกล้อง
  * tool toggle and a sideways-scrolling strip of tile swatches. It only shows the view it is given;
  * every choice goes to a handler. The app re-renders it on every state change, so the swatches are
  * rebuilt only when the shown tiles change and attributes are written only when they change.
@@ -93,8 +94,8 @@ export function createFloorDrawer(
       setPressed(paint, v.tool === 'paint');
       setPressed(camera, v.tool === 'camera');
       if (opening && !box.contains(document.activeElement)) {
-        // Keyboard users land on what is picked; the [พื้น] button that had the focus is now hidden.
-        (swatches.find((s) => s.id === v.pick)?.btn ?? (v.pick === 'eraser' ? eraser : done)).focus();
+        // Keyboard users land on what is picked; the [ปูกระเบื้อง] button that had the focus is now hidden.
+        focusForKeyboard(swatches.find((s) => s.id === v.pick)?.btn ?? (v.pick === 'eraser' ? eraser : done));
       }
     },
   };

@@ -3,7 +3,7 @@ import { newGame } from '../game/game';
 import { LEGACY_SAVE_KEY, loadCities, QUALITY_KEY, SAVE_KEY, saveCities, type KeyValueStore } from '../game/save';
 import { GRID_SIZE, type GameState } from '../game/types';
 import { getCatalog, getTheme } from '../themes/registry';
-import { createController, type Controller } from './controller';
+import { createController, NEXT_COUNT, upcoming, type Controller } from './controller';
 
 function memStore(): KeyValueStore & { map: Map<string, string>; writes: number } {
   const map = new Map<string, string>();
@@ -649,5 +649,29 @@ describe('theme select summary', () => {
     c.paintFloors({ x0: 0, z0: 0, x1: 2, z1: 1 });
     c.goToThemeSelect();
     expect(c.getState().cities).toEqual({ school: { placed: 0, floors: 6, finished: false } });
+  });
+});
+
+describe('upcoming (the next four items)', () => {
+  it('is next, then the front of the bag, four in all', () => {
+    const g = newGame(catalog, settings, 3);
+    expect(NEXT_COUNT).toBe(4);
+    expect(upcoming(g)).toEqual([g.next, ...g.bag.slice(0, 3)]);
+    expect(upcoming(g)).toHaveLength(4);
+  });
+  it('is fewer when the bag runs short, and just next when it is empty', () => {
+    const g = newGame(catalog, settings, 3);
+    expect(upcoming({ next: 'a', bag: ['b', 'c'] })).toEqual(['a', 'b', 'c']);
+    expect(upcoming({ next: 'a', bag: [] })).toEqual(['a']);
+    expect(upcoming(g, 2)).toHaveLength(2);
+  });
+  it('after placing, the queue moves up by one and what comes next is what was drawn', () => {
+    const c = make(seeded());
+    const before = upcoming(c.getState().game!);
+    c.moveGhost(0, 0);
+    expect(c.place()).toBe(true);
+    const g = c.getState().game!;
+    expect(g.current).toBe(before[0]);
+    expect(upcoming(g).slice(0, 3)).toEqual(before.slice(1));
   });
 });
