@@ -127,6 +127,8 @@ test('Q / E turn and + / - zoom from the keyboard, but not while a toolbar popov
   await expect.poll(() => distance(page)).toBeLessThan(d2 - 1);
 
   await tool(page, T.ground.title).click();
+  // The '=' zoom may still be gliding on a loaded machine (the poll above passes mid-glide): let it land first.
+  await page.waitForTimeout(600);
   const a1 = await azimuth(page);
   const d3 = await distance(page);
   for (const key of ['q', 'e', '+', '-']) await page.keyboard.press(key);

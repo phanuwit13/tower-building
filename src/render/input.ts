@@ -141,6 +141,8 @@ export interface InputOptions {
   isBlocked?: () => boolean;
   /** Mouse hover: the tile under the cursor, or null when the preview should hide. Fires only on change. */
   onHover?: (tile: { tx: number; tz: number } | null) => void;
+  /** The mouse moved onto (true) or off (false) the ✓. Fires only on change. */
+  onCheckHover?: (over: boolean) => void;
 }
 
 export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}): () => void {
@@ -202,11 +204,12 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   let lastY = 0;
   let overCanvas = false; // a free mouse last reported a position over the canvas
   let cursor = '';
-  /** The hand over the ✓ tells a mouse it can be clicked. */
+  /** The hand over the ✓ (and the ✓ turning darker) tells a mouse it can be clicked. */
   const setCursor = (v: string): void => {
     if (v === cursor) return;
     cursor = v;
     canvas.style.cursor = v;
+    opts.onCheckHover?.(v === 'pointer');
   };
   const hideHover = (): void => setHover(-1, -1);
   const hoverAt = (x: number, y: number): void => {
@@ -231,6 +234,15 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   const onCameraChange = (): void => {
     if (overCanvas && pointers.size === 0 && !dragging) hoverAt(lastX, lastY);
   };
+  // The game moved the ghost under a still mouse (arrow keys, a placement, a new item): re-check
+  // what is under it, so the ✓ never stays dark (or the hand cursor stays) where the ✓ has left.
+  // Deferred: the city view, which draws the ✓ where checkMark() reads it, listens after us.
+  let recheckQueued = false;
+  const unsubscribe = c.subscribe(() => {
+    if (recheckQueued || !overCanvas) return;
+    recheckQueued = true;
+    queueMicrotask(() => { recheckQueued = false; onCameraChange(); });
+  });
 
   const pointers = new Set<number>();
   /** The press being watched for a tap; `check`: it landed on the ✓, so a tap places instead of moving the ghost. */
@@ -471,6 +483,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     window.removeEventListener('pointercancel', onCancel, cap);
     window.removeEventListener('blur', onBlur);
     document.removeEventListener('keydown', onKey);
+    unsubscribe();
     endDrag();
     lendCamera(false);
     setCursor('');

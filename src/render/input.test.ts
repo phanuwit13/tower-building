@@ -75,8 +75,10 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
   const stage = { canvas, camera, controls, rig } as unknown as Stage;
   const floor: FloorUiState = { open: false, pick: 'wood-light', tool: 'paint', preview: null };
   const state = { screen: 'playing', game: null, ghost: null, floor } as unknown as AppState;
+  const listeners = new Set<(s: AppState) => void>();
   const c = {
     getState: () => state,
+    subscribe: (fn: (s: AppState) => void) => { listeners.add(fn); return () => void listeners.delete(fn); },
     moveGhost: vi.fn(), rotateGhost: vi.fn(), place: vi.fn(() => true), dragGhostTo: vi.fn(), tapTile: vi.fn(),
     previewFloors: vi.fn((r: FloorUiState['preview']) => { floor.preview = r; }),
     paintFloors: vi.fn(() => { floor.preview = null; }),
@@ -85,7 +87,9 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
     previewFloors: ReturnType<typeof vi.fn>; paintFloors: ReturnType<typeof vi.fn>; closeFloors: ReturnType<typeof vi.fn>; tapTile: ReturnType<typeof vi.fn>;
   };
   const dispose = attachInput(stage, c, { isBlocked: blocked, onHover, ...extra });
-  return { canvas, camera, controls, c, floor, state, rig, dispose };
+  /** The controller announces a new state (as after a key moved the ghost or an item was placed). */
+  const emit = () => { for (const fn of listeners) fn(state); };
+  return { canvas, camera, controls, c, floor, state, rig, dispose, emit, listeners };
 }
 
 describe('attachInput keyboard', () => {
@@ -782,8 +786,9 @@ describe('attachInput: tap the ✓ to place', () => {
 
   it('a mouse over the ✓ gets the hand cursor and no hover preview; off it, the preview is back', () => {
     const calls: Array<{ tx: number; tz: number } | null> = [];
+    const over: boolean[] = [];
     let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
-    const s = setup(() => false, (t) => calls.push(t && { ...t }), { checkMark: () => mark });
+    const s = setup(() => false, (t) => calls.push(t && { ...t }), { checkMark: () => mark, onCheckHover: (o) => over.push(o) });
     const v = new THREE.Vector3(5, 2, 5).project(s.camera);
     const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
     const mv = (x: number, y: number) => s.canvas.dispatchEvent(ptr('pointermove', 1, x, y, { pointerType: 'mouse', buttons: 0 }));
@@ -800,6 +805,36 @@ describe('attachInput: tap the ✓ to place', () => {
     mark = null; // placed: the ✓ is gone, the camera change re-checks under the still mouse
     s.controls.listeners.forEach((fn) => fn());
     expect(s.canvas.style.cursor).toBe('');
+    // The ✓ is told each time the mouse moves on or off it (it darkens), and only on change.
+    expect(over).toEqual([true, false, true, false]);
+    s.dispose();
+  });
+
+  it('the ✓ stops looking hovered when the game moves it out from under a still mouse', async () => {
+    const over: boolean[] = [];
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, undefined, { checkMark: () => mark, onCheckHover: (o) => over.push(o) });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    s.canvas.dispatchEvent(ptr('pointermove', 1, ((v.x + 1) / 2) * 800, ((1 - v.y) / 2) * 600, { pointerType: 'mouse', buttons: 0 }));
+    expect(over).toEqual([true]);
+    mark = { center: new THREE.Vector3(9, 2, 1), size: 2.3 }; // an arrow key moved the ghost away
+    s.emit();
+    s.emit(); // many emits, one re-check
+    expect(over).toEqual([true]); // after every listener (the city view redraws the ✓ first)
+    await Promise.resolve();
+    expect(over).toEqual([true, false]);
+    expect(s.canvas.style.cursor).toBe('');
+    s.dispose();
+    expect(s.listeners.size).toBe(0);
+  });
+
+  it('the ✓ stops looking hovered when the mouse leaves the canvas', () => {
+    const over: boolean[] = [];
+    const s = setup(() => false, undefined, { checkMark: () => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }), onCheckHover: (o) => over.push(o) });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    s.canvas.dispatchEvent(ptr('pointermove', 1, ((v.x + 1) / 2) * 800, ((1 - v.y) / 2) * 600, { pointerType: 'mouse', buttons: 0 }));
+    s.canvas.dispatchEvent(ptr('pointerleave', 1, 0, 0, { pointerType: 'mouse', buttons: 0 }));
+    expect(over).toEqual([true, false]);
     s.dispose();
   });
 });

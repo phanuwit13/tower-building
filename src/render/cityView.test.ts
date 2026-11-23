@@ -9,8 +9,8 @@ import type { GameState } from '../game/types';
 import { getStyleKit } from '../models/kit';
 import { getCatalog, getTheme } from '../themes/registry';
 import { CHUNKS_PER_SIDE } from './batch';
-import { createCityView } from './city';
-import type { Stage } from './stage';
+import { createCityView, GHOST_INVALID, HOVER_OPACITY, MARK_INK, OPACITY } from './city';
+import { BLOOM, type Stage } from './stage';
 
 const kit = getStyleKit();
 const catalog = getCatalog('school')!;
@@ -126,6 +126,44 @@ describe('city view batching', () => {
     expect(ghostMeshes).toBeGreaterThan(1); // footprint fill + the item model in ghost material
   });
 
+  it('a placeable ghost shows the item in its own colours, faded; a blocked one turns red', () => {
+    const { view, root } = setup();
+    const game = newGame(catalog, settings, 3);
+    const ghost = () => root.getObjectByName('ghost')!;
+    /** The item model's colour meshes (not the footprint, not the depth-only twins). */
+    const colourMeshes = () => {
+      const out: THREE.Mesh[] = [];
+      ghost().children.find((c) => !(c instanceof THREE.Mesh) && !(c instanceof THREE.LineLoop))!
+        .traverse((o) => { if (o instanceof THREE.Mesh && (o.material as THREE.Material).colorWrite !== false) out.push(o); });
+      return out;
+    };
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const meshes = colourMeshes();
+    expect(meshes.length).toBeGreaterThan(0);
+    for (const m of meshes) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      expect(mat.vertexColors).toBe(true); // the item's own palette colours
+      expect(mat.color.getHex()).toBe(0xffffff); // untinted
+      expect(mat.transparent).toBe(true);
+      expect(mat.opacity).toBe(OPACITY.valid.body);
+      expect(m.geometry.getAttribute('color')).toBeDefined();
+      // A depth-only twin drawn first keeps the item's back walls from showing through its front.
+      const twin = m.children.find((c): c is THREE.Mesh => c instanceof THREE.Mesh)!;
+      expect(twin.geometry).toBe(m.geometry);
+      expect((twin.material as THREE.Material).colorWrite).toBe(false);
+      expect(twin.renderOrder).toBeLessThan(m.renderOrder);
+    }
+
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: false }));
+    for (const m of colourMeshes()) {
+      const mat = m.material as THREE.MeshLambertMaterial;
+      expect(mat.vertexColors).toBe(false);
+      expect(mat.color.getHex()).toBe(GHOST_INVALID);
+    }
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    expect(colourMeshes().map((m) => m.material)).toEqual(meshes.map((m) => m.material));
+  });
+
   it('a merge that throws leaves the view out of sync, so the next sync rebuilds in full', () => {
     let failOnce = true;
     const flaky = (id: string) => {
@@ -206,6 +244,22 @@ describe('setHover', () => {
     expect(first.length).toBeGreaterThan(0);
   });
 
+  it('shows the item in its own colours, fainter than the ghost; red where it cannot go', () => {
+    const { view, root } = setup();
+    const colour = () => meshes(root.getObjectByName('hover')!)
+      .filter((m) => (m.material as THREE.Material).colorWrite !== false && m.renderOrder === 4);
+    view.setHover(hoverAt(true));
+    expect(colour().length).toBeGreaterThan(0);
+    for (const m of colour()) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      expect(mat.vertexColors).toBe(true);
+      expect(mat.opacity).toBe(HOVER_OPACITY.valid.body);
+      expect(mat.opacity).toBeLessThan(OPACITY.valid.body);
+    }
+    view.setHover(hoverAt(false, 8));
+    for (const m of colour()) expect((m.material as THREE.MeshLambertMaterial).color.getHex()).toBe(GHOST_INVALID);
+  });
+
   it('is fainter than the ghost, and never touches the locked ghost', () => {
     const { view, root } = setup();
     view.setHover(hoverAt(false));
@@ -231,6 +285,34 @@ describe('checkMark (the ✓ as a tap target)', () => {
     const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
     expect(mark!.center.equals(sprite.position)).toBe(true); // where the ✓ is drawn
     expect(mark!.size).toBeLessThanOrEqual((sprite.material as THREE.PointsMaterial).size);
+  });
+
+  it('draws its ring and glyph just under the standard bloom threshold: crisp, and still white on the disc', () => {
+    const ink = new THREE.Color(MARK_INK); // linear, as the bloom pass measures it
+    const luminance = 0.299 * ink.r + 0.587 * ink.g + 0.114 * ink.b;
+    expect(luminance).toBeLessThan(BLOOM.threshold);
+    expect(luminance).toBeGreaterThan(0.75);
+  });
+
+  it('turns darker while the mouse is on it, and back after; the ✗ never changes', () => {
+    const { view, root } = setup();
+    const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
+    const map = () => (sprite.material as THREE.PointsMaterial).map;
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const normal = map();
+    view.setCheckHover(true);
+    const hovered = map();
+    expect(hovered).not.toBe(normal);
+    view.sync(state(game, { x: 5, z: 6, rotation: 0, valid: true })); // a sync keeps the hover look
+    expect(map()).toBe(hovered);
+    view.sync(state(game, { x: 5, z: 6, rotation: 0, valid: false }));
+    const cross = map();
+    expect(cross).not.toBe(hovered);
+    expect(cross).not.toBe(normal);
+    view.setCheckHover(false);
+    expect(map()).toBe(cross);
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    expect(map()).toBe(normal);
   });
 
   it('the ✗ (invalid ghost), no ghost, a hidden ghost (screenshot) and a finished round have none', () => {
