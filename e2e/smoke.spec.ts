@@ -123,7 +123,17 @@ test('gallery shows every item of the theme with its Thai name, and no game', as
 test('?gallery=floors shows every floor tile with its Thai name, and no game', async ({ page }) => {
   await page.goto('/?gallery=floors');
   await expect(page.locator('.gallery-label').first()).toBeVisible();
-  expect((await page.locator('.gallery-label strong').allTextContents()).sort()).toEqual(FLOOR_TILES.map((t) => t.name).sort());
+  // The gallery is paged (6 tiles a page): walk every page with ▶ and collect the names.
+  const names: string[] = [];
+  const next = page.locator('.gallery-next');
+  for (;;) {
+    names.push(...(await page.locator('.gallery-label strong').allTextContents()));
+    if (await next.isDisabled()) break;
+    const before = await page.locator('.gallery-page').textContent();
+    await next.click();
+    await expect(page.locator('.gallery-page')).not.toHaveText(before!);
+  }
+  expect(names.sort()).toEqual(FLOOR_TILES.map((t) => t.name).sort());
   await expect(page.getByRole('button', { name: T.place })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length)).toBe(0);
 });

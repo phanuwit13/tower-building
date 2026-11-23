@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { CDPSession, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { FLOOR_GROUPS, FLOOR_TILES } from '../src/floors';
-import { rectCells, type FloorRect } from '../src/game/floors';
+import { paintRect, rectCells, type FloorRect } from '../src/game/floors';
 import { demoFullGame } from '../src/game/demo';
 import { placeCurrent } from '../src/game/game';
 import { buildOccupancy, nearestFreeSpot } from '../src/game/grid';
@@ -142,7 +142,10 @@ test('after the round has finished, [พื้น] is there once the end screen 
   await mouseDrag(page, cellOnScreen(page, RECT.x0, RECT.z0), cellOnScreen(page, RECT.x1, RECT.z1));
   await expect(page.locator('.floor-count')).toHaveText(floorCountLabel(12));
   await page.mouse.up();
-  expect(await savedFloors(page)).toEqual({ [firstTile.id]: rectCells(RECT) });
+  // The demo is already floored: the drag replaces the rectangle's tiles, the rest stays.
+  const expected: Record<string, number[]> = {};
+  paintRect(finished.floors, RECT, firstTile.id).forEach((id, i) => { if (id) (expected[id] ??= []).push(i); });
+  expect(await savedFloors(page)).toEqual(expected);
   const saved = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)!).state as GameState, SAVE_KEY);
   expect(saved.status).toBe('finished');
   expect(saved.placements).toEqual(finished.placements);

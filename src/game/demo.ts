@@ -1,7 +1,8 @@
 import { draw } from './bag';
 import { canPlace, rotatedFootprint } from './grid';
 import { nextRandom } from './rng';
-import { emptyFloors } from './floors';
+import { FLOOR_TILES } from '../floors';
+import { emptyFloors, paintRect } from './floors';
 import { GRID_SIZE, type Catalog, type GameState, type Placement, type Rotation, type SceneSettings } from './types';
 
 /**
@@ -10,8 +11,46 @@ import { GRID_SIZE, type Catalog, type GameState, type Placement, type Rotation,
  * border or neighbours, as a tidy player packs; an item that fits nowhere is skipped, so the
  * small ones fill the last gaps and the map ends 100 % full. The last placement is held back as
  * the current item: the round is still playing, and placing it is the final, heaviest rebuild.
+ * The floors cover the whole map with every tile (see demoFloors).
  * Pure and seeded: the same seed gives the same city.
  */
+const PLAZA_W = 4;
+const PLAZA_D = 3;
+
+/**
+ * The demo's floors: the whole map in plazas (4 x 3 blocks), each block one tile, dealt from a
+ * seeded shuffle of the registry so every tile shows at least once; then a cross of one-cell
+ * paths over them. Uses its own rng, so the items' placements do not depend on it.
+ */
+export function demoFloors(seed: number): (string | null)[] {
+  const ids = FLOOR_TILES.map((t) => t.id);
+  let rng = (seed ^ 0x9e3779b9) >>> 0;
+  const random = (): number => {
+    const r = nextRandom(rng);
+    rng = r.state;
+    return r.value;
+  };
+  const deck = [...ids];
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  let floors = emptyFloors();
+  let n = 0;
+  for (let z = 0; z < GRID_SIZE; z += PLAZA_D) {
+    for (let x = 0; x < GRID_SIZE; x += PLAZA_W) {
+      const id = n < deck.length ? deck[n] : ids[Math.floor(random() * ids.length)];
+      n++;
+      floors = paintRect(floors, { x0: x, z0: z, x1: x + PLAZA_W - 1, z1: z + PLAZA_D - 1 }, id);
+    }
+  }
+  const pathA = ids[Math.floor(random() * ids.length)];
+  const pathB = ids[Math.floor(random() * ids.length)];
+  floors = paintRect(floors, { x0: 0, z0: 9, x1: GRID_SIZE - 1, z1: 9 }, pathA);
+  floors = paintRect(floors, { x0: 9, z0: 0, x1: 9, z1: GRID_SIZE - 1 }, pathB);
+  return floors;
+}
+
 export function demoFullGame(catalog: Catalog, settings: SceneSettings, seed: number): GameState {
   const occ = new Uint8Array(GRID_SIZE * GRID_SIZE);
   const placements: Placement[] = [];
@@ -80,6 +119,6 @@ export function demoFullGame(catalog: Catalog, settings: SceneSettings, seed: nu
     next,
     status: 'playing',
     nextUid: last.uid,
-    floors: emptyFloors(),
+    floors: demoFloors(seed),
   };
 }
