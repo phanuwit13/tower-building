@@ -30,6 +30,11 @@ export const item: ItemModel = {
       kit.box([0.05, 0.02, 0.1], [-0.04, Y + 0.3, -0.02], 'terracotta'),
       kit.box([0.05, 0.02, 0.1], [-0.15, Y + 0.27, -0.02], 'terracotta'),
     ];
+    // a little lantern beside the mat
+    parts.push(
+      kit.cylinder(0.06, 0.07, 0.05, [-0.2, 0.025, -0.39], 'charcoal', { segments: 8 }),
+      kit.sphere(0.09, [-0.2, 0.13, -0.39], 'sunYellow', { detail: 0, glow: true }),
+    );
     // the tail curls round the front-left side
     const tail: [number, number, number][] = [[-0.3, 0.07, 0.1], [-0.25, 0.06, 0.22], [-0.12, 0.055, 0.27], [0.03, 0.055, 0.26], [0.14, 0.055, 0.2]];
     tail.forEach((p, i) => parts.push(kit.sphere(0.055 - (i === 4 ? 0.01 : 0), [p[0], Y + p[1], p[2]], i === 4 ? 'terracotta' : 'orange', { detail: 0 })));

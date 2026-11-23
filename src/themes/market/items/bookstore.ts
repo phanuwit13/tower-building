@@ -1,5 +1,5 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit } from '../../../models/kit';
+import type { Part } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
 import { door, glassWindow } from '../../../models/parts';
 
@@ -13,17 +13,6 @@ const FRONT = CX + W / 2;
 const SIGN_X = 0.5;
 const SIGN_Y = TOP + 0.06 + 0.375; // board centre
 const SPINES: PaletteColor[] = ['red', 'sunYellow', 'blue', 'leaf', 'pink', 'orange', 'purple'];
-
-/** A thin rectangle outline in the y–z plane (a neon stroke), facing +x. */
-function outline(kit: StyleKit, x: number, y: number, z: number, w: number, h: number, t: number, color: PaletteColor): Part[] {
-  const glow = { glow: true } as const;
-  return [
-    kit.box([t, t, w], [x, y + h / 2, z], color, glow),
-    kit.box([t, t, w], [x, y - h / 2, z], color, glow),
-    kit.box([t, h + t, t], [x, y, z - w / 2], color, glow),
-    kit.box([t, h + t, t], [x, y, z + w / 2], color, glow),
-  ];
-}
 
 /** ร้านหนังสือ: a bookshop with spine racks out front and an open-book neon. */
 export const item: ItemModel = {
@@ -44,11 +33,11 @@ export const item: ItemModel = {
       // sign board on the roof
       kit.box([0.08, 0.75, 1.4], [SIGN_X, SIGN_Y, 0], 'navy'),
       kit.box([0.06, 0.1, 0.5], [SIGN_X - 0.02, TOP + 0.11, 0], 'stoneDark'),
-      // the open book: two pages and a ribbon
-      ...outline(kit, SIGN_X + 0.05, SIGN_Y, -0.27, 0.44, 0.38, 0.04, 'purple'),
-      ...outline(kit, SIGN_X + 0.05, SIGN_Y, 0.27, 0.44, 0.38, 0.04, 'purple'),
-      kit.box([0.04, 0.2, 0.04], [SIGN_X + 0.05, SIGN_Y - 0.28, 0.0], 'pink', { glow: true }),
-      kit.sphere(0.05, [SIGN_X + 0.05, SIGN_Y + 0.28, 0], 'sunYellow', { detail: 0, glow: true }),
+      // the open book: two solid pages splayed in a V, a base bar and a bookmark
+      kit.box([0.05, 0.36, 0.34], [SIGN_X + 0.05, SIGN_Y + 0.02, -0.2], 'purple', { glow: true, rotate: [-0.22, 0, 0] }),
+      kit.box([0.05, 0.36, 0.34], [SIGN_X + 0.05, SIGN_Y + 0.02, 0.2], 'purple', { glow: true, rotate: [0.22, 0, 0] }),
+      kit.box([0.05, 0.06, 0.8], [SIGN_X + 0.05, SIGN_Y - 0.22, 0], 'pink', { glow: true }),
+      kit.sphere(0.05, [SIGN_X + 0.05, SIGN_Y + 0.3, 0], 'sunYellow', { detail: 0, glow: true }),
     ];
     for (const z of [-0.9, 0.9]) {
       parts.push(

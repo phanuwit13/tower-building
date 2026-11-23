@@ -40,9 +40,9 @@ export const item: ItemModel = {
       // the neon: a navy board on the roof, a green ring with a plus inside
       kit.box([0.08, 0.8, 0.8], [SIGN_X, SIGN_Y, 0], 'navy'),
       kit.box([0.06, 0.1, 0.4], [SIGN_X - 0.02, TOP + 0.11, 0], 'stoneDark'),
-      kit.torus(0.3, 0.03, [SIGN_X + 0.05, SIGN_Y, 0], 'leaf', { rotate: [0, Math.PI / 2, 0], radialSegments: 4, tubularSegments: 16, glow: true }),
-      kit.box([0.04, 0.34, 0.09], [SIGN_X + 0.05, SIGN_Y, 0], 'leaf', { glow: true }),
-      kit.box([0.04, 0.09, 0.34], [SIGN_X + 0.05, SIGN_Y, 0], 'leaf', { glow: true }),
+      kit.torus(0.3, 0.04, [SIGN_X + 0.05, SIGN_Y, 0], 'teal', { rotate: [0, Math.PI / 2, 0], radialSegments: 4, tubularSegments: 16, glow: true }),
+      kit.box([0.05, 0.38, 0.11], [SIGN_X + 0.05, SIGN_Y, 0], 'lime', { glow: true }),
+      kit.box([0.05, 0.11, 0.38], [SIGN_X + 0.05, SIGN_Y, 0], 'lime', { glow: true }),
     ];
     for (const z of [-L / 2, L / 2]) {
       parts.push(...glassWindow(kit, { at: [CX, 0.6, z], facing: z > 0 ? 'z+' : 'z-', w: 0.9, h: 0.4 }));

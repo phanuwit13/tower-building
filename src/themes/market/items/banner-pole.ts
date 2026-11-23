@@ -25,11 +25,13 @@ export const item: ItemModel = {
       kit.sphere(0.11, [POLE_X, 2.3, 0], 'lampWarm', { glow: true, light: 'breathe' }),
       // top arm the banner hangs from
       kit.box([0.9, 0.035, 0.035], [0, BANNER_Y + BANNER_H / 2 + 0.02, 0], 'navy'),
-      kit.sphere(0.04, [0.45, BANNER_Y + BANNER_H / 2 + 0.02, 0], 'sunYellow', { detail: 0 }),
+      kit.sphere(0.05, [0.45, BANNER_Y + BANNER_H / 2 + 0.02, 0], 'sunYellow', { detail: 0, glow: true, light: 'breathe' }),
     ];
     STRIPS.forEach((c, i) => {
       const x = POLE_X + 0.05 + STRIP_W / 2 + i * STRIP_W;
       parts.push(kit.box([STRIP_W, BANNER_H, 0.02], [x, BANNER_Y, 0], c, { motion: WAVE }));
+      // lit edges: a glowing strip along the bottom of each stripe
+      parts.push(kit.box([STRIP_W, 0.05, 0.03], [x, BANNER_Y - BANNER_H / 2 + 0.025, 0], c, { motion: WAVE, glow: true }));
       // a pale diamond in each stripe
       parts.push(kit.box([STRIP_W * 0.6, 0.2, 0.03], [x, BANNER_Y, 0], 'white', { motion: WAVE, rotate: [0, 0, Math.PI / 4], scale: [0.8, 0.8, 1] }));
     });

@@ -38,20 +38,23 @@ export const item: ItemModel = {
       // the giant pencil on the roof: hex body, wooden tip with a lead, ferrule and eraser; two chocks
       kit.cylinder(0.12, 0.12, 1.1, [PENCIL_X, PENCIL_Y, -0.18], 'sunYellow', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
       kit.cone(0.12, 0.28, [PENCIL_X, PENCIL_Y, 0.51], 'sand', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
-      kit.cone(0.04, 0.09, [PENCIL_X, PENCIL_Y, 0.69], 'charcoal', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
       kit.cylinder(0.125, 0.125, 0.1, [PENCIL_X, PENCIL_Y, -0.78], 'chrome', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
-      kit.cylinder(0.115, 0.115, 0.12, [PENCIL_X, PENCIL_Y, -0.89], 'pink', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
       kit.box([0.1, 0.06, 0.05], [PENCIL_X, TOP + 0.09, -0.5], 'woodDark'),
       kit.box([0.1, 0.06, 0.05], [PENCIL_X, TOP + 0.09, 0.3], 'woodDark'),
       // the neon board on the roof front
-      kit.box([0.08, 0.76, 0.9], [SIGN_X, SIGN_Y, 0], 'navy'),
+      kit.box([0.08, 0.8, 0.95], [SIGN_X, SIGN_Y, 0], 'navy'),
       kit.box([0.06, 0.1, 0.5], [SIGN_X - 0.02, TOP + 0.11, 0], 'stoneDark'),
       // neon pencil: body, tip and eraser along the lean
-      kit.cylinder(0.055, 0.055, 0.46, at(0), 'orange', { segments: 6, rotate: [lean, 0, 0], glow: true }),
-      kit.cone(0.055, 0.14, at(0.3), 'sunYellow', { segments: 6, rotate: [lean, 0, 0], glow: true }),
-      kit.cylinder(0.055, 0.055, 0.09, at(-0.27), 'pink', { segments: 6, rotate: [lean, 0, 0], glow: true }),
-      kit.sphere(0.035, [nx, SIGN_Y + 0.28, -0.32], 'sunYellow', { detail: 0, glow: true }),
-      kit.sphere(0.035, [nx, SIGN_Y - 0.28, 0.3], 'purple', { detail: 0, glow: true }),
+      kit.cylinder(0.095, 0.095, 0.5, at(0), 'orange', { segments: 6, rotate: [lean, 0, 0], glow: true }),
+      kit.cone(0.095, 0.2, at(0.35), 'sunYellow', { segments: 6, rotate: [lean, 0, 0], glow: true }),
+      kit.cylinder(0.095, 0.095, 0.12, at(-0.31), 'pink', { segments: 6, rotate: [lean, 0, 0], glow: true }),
+      // the giant roof pencil is lit too: glowing stripes along it, a lit lead and eraser
+      kit.box([0.04, 0.035, 1.1], [PENCIL_X, PENCIL_Y + 0.115, -0.18], 'sunYellow', { glow: true }),
+      kit.box([0.035, 0.1, 1.1], [PENCIL_X + 0.1, PENCIL_Y, -0.18], 'orange', { glow: true }),
+      kit.cone(0.04, 0.09, [PENCIL_X, PENCIL_Y, 0.69], 'red', { segments: 6, rotate: [Math.PI / 2, 0, 0], glow: true }),
+      kit.cylinder(0.115, 0.115, 0.12, [PENCIL_X, PENCIL_Y, -0.89], 'pink', { segments: 6, rotate: [Math.PI / 2, 0, 0], glow: true }),
+      kit.sphere(0.05, [nx, SIGN_Y + 0.3, -0.34], 'sunYellow', { detail: 0, glow: true }),
+      kit.sphere(0.05, [nx, SIGN_Y - 0.3, 0.34], 'purple', { detail: 0, glow: true }),
     ];
     // colourful notebook racks out front, a window above each
     parts.push(

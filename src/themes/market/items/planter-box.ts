@@ -27,6 +27,11 @@ export const item: ItemModel = {
       // a slat line along the front (+x)
       kit.box([0.02, 0.03, BOX.d - 0.1], [BOX.w / 2 + 0.01, BOX.y0 + 0.14, 0], 'woodDark'),
     ];
+    // fairy lights along the front rim
+    const LIGHTS: PaletteColor[] = ['pink', 'sunYellow', 'skyBlue', 'lime'];
+    for (let i = 0; i < 9; i++) {
+      parts.push(kit.sphere(0.04, [BOX.w / 2 + 0.04, SOIL_Y + 0.03, -0.8 + i * 0.2], LIGHTS[i % 4], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: 9 } }));
+    }
     const n = FLOWERS.length;
     for (let i = 0; i < n; i++) {
       const z = -0.78 + (i * 1.56) / (n - 1);
