@@ -38,7 +38,7 @@ export const item: ItemModel = {
       kit.box([0.23, 0.03, 0.17], [-0.15, DECK + 0.17, -0.45], 'brass'),
       // mast, crow's nest ring and top knob
       kit.cylinder(MAST.r, MAST.r + 0.01, MAST.top - DECK, [MAST.x, (MAST.top + DECK) / 2, 0.1], 'woodDark', { segments: 8 }),
-      kit.cylinder(0.15, 0.12, 0.1, [MAST.x, 1.2, 0.1], 'wood', { segments: 8 }),
+      kit.cylinder(0.15, 0.12, 0.1, [MAST.x, 1.1, 0.1], 'wood', { segments: 8 }),
       kit.sphere(0.05, [MAST.x, MAST.top + 0.04, 0.1], 'sunYellow', { detail: 0 }),
       // helm
       kit.cylinder(0.03, 0.03, 0.18, [0.0, DECK + 0.09, -0.58], 'woodDark', { segments: 6 }),

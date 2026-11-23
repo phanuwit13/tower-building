@@ -22,7 +22,7 @@ export const item: ItemModel = {
     const mid = (SKI.z0 + SKI.z1) / 2;
     const parts: Part[] = [
       kit.box([0.96, RIM, 1.96], [0, RIM / 2, 0], 'sand'),
-      kit.box([0.88, WATER_TOP - RIM, DOCK.z0 * -1 + DOCK.z1 - 0.01], [0, (WATER_TOP + RIM) / 2, (DOCK.z1 + 0.94) / 2], 'navy', { motion: SEA }),
+      kit.box([0.88, WATER_TOP - RIM, 0.94 - DOCK.z1], [0, (WATER_TOP + RIM) / 2, (DOCK.z1 + 0.94) / 2], 'navy', { motion: SEA }),
       // wooden dock with a mooring post
       kit.box([0.9, DOCK.h - RIM, DOCK.z1 - DOCK.z0], [0, (DOCK.h + RIM) / 2, (DOCK.z0 + DOCK.z1) / 2], 'wood'),
       kit.cylinder(0.05, 0.05, 0.22, [-0.3, DOCK.h + 0.11, -0.62], 'woodDark', { segments: 6 }),
