@@ -123,9 +123,10 @@ button:disabled { opacity: 0.45; cursor: default; }
 .floor-tools { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: none; }
 .floor-tool { background: var(--chip); padding: 6px 14px; white-space: nowrap; }
 .floor-swatches { display: flex; gap: 8px; flex: 1; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 4px 4px 6px; }
-.floor-swatch { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 96px; padding: 6px 4px; border-radius: 16px; background: var(--chip); scroll-snap-align: start; }
+.floor-swatch { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; width: 96px; padding: 6px 4px; border-radius: 16px; background: var(--chip); scroll-snap-align: start; }
 .floor-swatch img { width: 64px; height: 64px; object-fit: contain; pointer-events: none; }
-.floor-swatch span { font-size: 13px; line-height: 1.25; text-align: center; }
+/* Every label keeps room for two lines (centred), so a long Thai name never moves the picture or the drawer */
+.floor-swatch span { display: flex; align-items: center; justify-content: center; min-height: 2.5em; font-size: 13px; line-height: 1.25; text-align: center; }
 .floor-eraser { background: var(--chip); }
 .floor-done { background: var(--accent); color: var(--accent-ink); min-width: 96px; }
 .floor-drawer [aria-pressed='true']:not(.floor-swatch) { background: var(--selected); color: #fff; }
