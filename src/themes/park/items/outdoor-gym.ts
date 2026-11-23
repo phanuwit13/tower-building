@@ -4,7 +4,7 @@ import { rod } from '../../../models/parts';
 
 const BASE = 0.04;
 
-/** ลานออกกำลังกาย: bright outdoor exercise machines on a blue rubber floor. */
+/** ลานออกกำลังกาย: bright outdoor exercise machines on a teal rubber floor. */
 export const item: ItemModel = {
   id: 'outdoor-gym',
   name: 'ลานออกกำลังกาย',
@@ -64,8 +64,8 @@ export const item: ItemModel = {
     );
     // a bench along the +x side (z = -0.35..0.4 gap)
     parts.push(
-      kit.box([0.2, 0.05, 0.5], [0.75, BASE + 0.3, 0.9], 'wood'),
-      kit.box([0.04, 0.26, 0.4], [0.75, BASE + 0.14, 0.9], 'charcoal'),
+      kit.box([0.2, 0.05, 0.5], [0.75, BASE + 0.245, 0.9], 'wood')  /* seat top at the shared 0.31 */,
+      kit.box([0.04, 0.22, 0.4], [0.75, BASE + 0.11, 0.9], 'charcoal'),
     );
     return kit.finish(parts);
   },
