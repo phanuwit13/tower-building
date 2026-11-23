@@ -96,7 +96,7 @@ export const item: ItemModel = {
       );
     }
     // hay bale by the barn door, with two darker straw bands
-    const HAY: Vec3 = [-0.02, SAND_H + 0.09, -0.78];
+    const HAY: Vec3 = [0.08, SAND_H + 0.09, -0.78];
     parts.push(
       kit.box([0.3, 0.18, 0.2], HAY, 'sunYellow'),
       kit.box([0.03, 0.185, 0.205], [HAY[0] - 0.07, HAY[1], HAY[2]], 'brass'),

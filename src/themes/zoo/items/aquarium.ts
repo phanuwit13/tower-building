@@ -37,7 +37,7 @@ export const item: ItemModel = {
       const mx = (x0 + x1) / 2;
       const mz = (z0 + z1) / 2;
       parts.push(
-        kit.box([GLASS.t, GLASS.h, len * 0.96], [mx, GLASS.bottom + GLASS.h / 2, mz], 'skyBlue', { rotate: [0, yaw, 0], glow: 'windowWarm', light: 'window' }),
+        kit.box([GLASS.t, GLASS.h, len * 0.96], [mx, GLASS.bottom + GLASS.h / 2, mz], 'skyBlue', { rotate: [0, yaw, 0], glow: 'skyBlue', light: 'window' }),
         kit.box([GLASS.t + 0.03, 0.06, len + 0.02], [mx, BASE.h + 0.03, mz], 'white', { rotate: [0, yaw, 0] }), // plinth
         kit.box([GLASS.t + 0.03, 0.06, len + 0.02], [mx, GLASS.bottom + GLASS.h + 0.03, mz], 'white', { rotate: [0, yaw, 0] }), // lintel
         kit.cylinder(0.03, 0.03, GLASS.h + 0.1, [x0, BASE.h + (GLASS.h + 0.1) / 2 + 0.01, z0], 'white', { segments: 6 }), // mullion
