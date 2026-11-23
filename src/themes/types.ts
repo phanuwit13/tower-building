@@ -12,6 +12,12 @@ export interface ThemeDef {
    * and dawn are never changed.
    */
   nightGlow?: number;
+  /**
+   * An indoor theme (the café): the map is a room's floor. Low walls with windows and a glass door
+   * stand round it, just outside the grid (src/render/room.ts); the land round it is a pavement
+   * whatever the floor; rain falls only outside the walls and the floor never looks wet.
+   */
+  indoor?: boolean;
 }
 
 /** The range a theme's `nightGlow` may take: 1 is the standard night, 2 the brightest city night. */

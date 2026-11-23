@@ -18,11 +18,20 @@ export const GROUND_COLORS: Record<GroundId, number> = {
   moon: 0xd2c8e8,
 };
 
+/**
+ * The pavement round an indoor theme's room (ThemeDef.indoor): a light warm grey of its own, the same
+ * whatever floor is inside, and at least CIE76 dE 12 from every ground and palette colour
+ * (ground.test.ts), so the floor never seems to run on outside the walls.
+ */
+export const PAVEMENT_COLOR = 0xd2cabd;
+
 const WET = 0.85;
 const SURROUND = 0.78; // the land around the map is darker so the play area reads at a glance
 const SLAB = 0.25; // the map is a low slab: its top is y = 0, its sides give a diorama edge
 const GRID_OPACITY = 0.25; // a faint line: the ground darkened by 25 %
 const GRID_HALF_WIDTH = 0.015; // world units
+const JOINT_OPACITY = 0.12; // the pavement's slab joints: fainter than the map's grid
+const JOINT_HALF_WIDTH = 0.012;
 /**
  * The surround melts into the horizon colour between these distances from the map centre. Past
  * `end` it is pure horizon colour, the same as the sky dome behind it, so the plane can stop there.
@@ -36,7 +45,12 @@ function scaleHex(hex: number, k: number): number {
   return ch(16) | ch(8) | ch(0);
 }
 
-export function createGround(stage: Stage): { setGround(g: GroundId, wet: boolean): void } {
+/**
+ * The map slab and the land round it. `setGround(g, wet, indoor)`: the map shows ground `g`; rain
+ * (`wet`) darkens it and the surround. With `indoor` (the café) the surround is a pavement with slab
+ * joints instead, darkened in rain, and the map (the room's floor) is never wet.
+ */
+export function createGround(stage: Stage): { setGround(g: GroundId, wet: boolean, indoor?: boolean): void } {
   const mapMaterial = new THREE.MeshLambertMaterial();
   const map = new THREE.Mesh(new THREE.BoxGeometry(GRID_SIZE, SLAB, GRID_SIZE), mapMaterial);
   map.position.set(GRID_SIZE / 2, -SLAB / 2, GRID_SIZE / 2);
@@ -61,13 +75,26 @@ export function createGround(stage: Stage): { setGround(g: GroundId, wet: boolea
   };
 
   const surroundMaterial = new THREE.MeshLambertMaterial();
+  const paving = { value: 0 }; // 1: an indoor theme's pavement, with slab joints
   // Fade the surround into the fog (horizon) colour by distance from the map, so the map sits in a
-  // soft vignette at every zoom level without fogging the map itself.
+  // soft vignette at every zoom level without fogging the map itself. A pavement gets faint slab
+  // joints on a 1-unit grid, drawn like the map's grid lines and faded out in the distance (where a
+  // slab is only a few pixels across), so they never shimmer.
   surroundMaterial.onBeforeCompile = (s) => {
+    s.uniforms.uPaving = paving;
     s.vertexShader = 'varying vec2 vGroundXZ;\n' + s.vertexShader.replace(
       '#include <fog_vertex>',
       '#include <fog_vertex>\nvGroundXZ = ( modelMatrix * vec4( transformed, 1.0 ) ).xz;');
-    s.fragmentShader = 'varying vec2 vGroundXZ;\n' + s.fragmentShader.replace(
+    s.fragmentShader = 'uniform float uPaving;\nvarying vec2 vGroundXZ;\n' + s.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      if ( uPaving > 0.5 ) {
+        vec2 toJoint = abs( fract( vGroundXZ + 0.5 ) - 0.5 );
+        vec2 aa = fwidth( vGroundXZ );
+        vec2 onJoint = 1.0 - smoothstep( vec2( ${JOINT_HALF_WIDTH} ) - aa, vec2( ${JOINT_HALF_WIDTH} ) + aa, toJoint );
+        float jointFade = 1.0 - smoothstep( 0.05, 0.2, max( aa.x, aa.y ) );
+        diffuseColor.rgb *= 1.0 - ${JOINT_OPACITY.toFixed(2)} * jointFade * max( onJoint.x, onJoint.y );
+      }`).replace(
       '#include <fog_fragment>',
       `#include <fog_fragment>
       #ifdef USE_FOG
@@ -85,10 +112,12 @@ export function createGround(stage: Stage): { setGround(g: GroundId, wet: boolea
   stage.scene.add(map, surround);
 
   return {
-    setGround(g, wet) {
-      const hex = wet ? scaleHex(GROUND_COLORS[g], WET) : GROUND_COLORS[g];
+    setGround(g, wet, indoor = false) {
+      const hex = wet && !indoor ? scaleHex(GROUND_COLORS[g], WET) : GROUND_COLORS[g];
       mapMaterial.color.setHex(hex);
-      surroundMaterial.color.setHex(scaleHex(hex, SURROUND));
+      const pavement = wet ? scaleHex(PAVEMENT_COLOR, WET) : PAVEMENT_COLOR;
+      surroundMaterial.color.setHex(indoor ? pavement : scaleHex(hex, SURROUND));
+      paving.value = indoor ? 1 : 0;
     },
   };
 }

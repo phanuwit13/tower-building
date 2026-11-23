@@ -6,6 +6,7 @@ import { amusement } from '../src/themes/amusement';
 import { zoo } from '../src/themes/zoo';
 import { beach } from '../src/themes/beach';
 import { market } from '../src/themes/market';
+import { cafe } from '../src/themes/cafe';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -239,6 +240,29 @@ test('the demo of ย่านการค้า is lit with its night glow; ano
   await page.goto('/?demo=full&theme=beach');
   await expect(page.getByTestId('current-name')).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
+});
+
+test('theme select offers ร้านคาเฟ่: its round starts indoors with a café item; another theme is outdoors, and the café city is kept', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false'); // the theme select backdrop
+  await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(cafe.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(placed(1))).toBeVisible();
+  // another theme: outdoors again
+  await page.getByRole('button', { name: T.home }).click();
+  await page.getByRole('button', { name: 'ชายหาดทะเล' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+  // back to the café: its city, indoors
+  await page.getByRole('button', { name: T.home }).click();
+  await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {

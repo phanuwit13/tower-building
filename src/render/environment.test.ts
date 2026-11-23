@@ -520,6 +520,57 @@ describe('createEnvironment', () => {
     getStyleKit().setGlowStrength(0);
   });
 
+  /** The rain's vertex shader patch and its uniforms, compiled against three's line shader. */
+  const rainOf = (stage: Stage) => {
+    const lines = stage.scene.children.find((c): c is THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> => c instanceof THREE.LineSegments)!;
+    const shader = { uniforms: {} as Record<string, { value: unknown }>, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+    lines.material.onBeforeCompile(shader as never, null as never);
+    return { lines, shader, dry: () => shader.uniforms.uDry.value as THREE.Vector4 };
+  };
+
+  it('indoors (the café) rain falls only outside the room: drops over the walls and the floor are dropped in the shader', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const { lines, shader, dry } = rainOf(stage);
+    const rain = { weather: 'rain', time: 'day', ground: 'wood' } as const;
+    env.apply(rain, 'pretty', 1.5, true);
+    expect(lines.visible).toBe(true);
+    // the dry rectangle (min x, min z, max x, max z) covers the room, walls included: -0.2 ... 20.2
+    const r = dry();
+    expect(r.x).toBeLessThanOrEqual(-0.2);
+    expect(r.y).toBeLessThanOrEqual(-0.2);
+    expect(r.z).toBeGreaterThanOrEqual(GRID_SIZE + 0.2);
+    expect(r.w).toBeGreaterThanOrEqual(GRID_SIZE + 0.2);
+    expect(r.x).toBeGreaterThan(-0.5); // ... and no more: rain still falls round it
+    expect(r.z).toBeLessThan(GRID_SIZE + 0.5);
+    expect(shader.vertexShader).toContain('uniform vec4 uDry');
+    expect(shader.vertexShader).toMatch(/position\.xz.*uDry/);
+    // still drops outside: the rain box reaches past the room on every side
+    const pos = lines.geometry.attributes.position;
+    let outside = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      if (x < r.x || x > r.z || z < r.y || z > r.w) outside++;
+    }
+    expect(outside).toBeGreaterThan(pos.count * 0.3);
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('outdoors rain has no dry area, and leaving an indoor theme takes it away', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const { dry } = rainOf(stage);
+    const rain = { weather: 'rain', time: 'day', ground: 'grass' } as const;
+    const empty = () => { const r = dry(); return r.x >= r.z || r.y >= r.w; };
+    env.apply(rain, 'smooth');
+    expect(empty()).toBe(true);
+    env.apply(rain, 'smooth', 1.5, true);
+    expect(empty()).toBe(false);
+    env.apply(rain, 'smooth', 1, false);
+    expect(empty()).toBe(true);
+    getStyleKit().setGlowStrength(0);
+  });
+
   it('drives the moonlight on water: full on a clear night, faint at dusk, none by day or in rain', () => {
     const stage = fakeStage();
     const env = createEnvironment(stage, getStyleKit());
