@@ -34,7 +34,7 @@ export const item: ItemModel = {
       // a warm lit floor just inside the doorway
       kit.box([1.1, 0.012, 0.8], [0.3, PAD.h + 0.006, 0], 'sunYellow', { glow: true }),
       // orange doorway arch frame
-      kit.torus(1, 0.07, [HALL.x1 + 0.04, arcY, 0], 'orange', { glow: 'sunYellow', arc: Math.PI, rotate: [0, Math.PI / 2, 0], scale: [(HALL.halfW + 0.08) / 1, RISE / 1, 1], radialSegments: 4, tubularSegments: 12 }),
+      kit.torus(1, 0.07, [HALL.x1 + 0.04, arcY, 0], 'orange', { glow: 'orange', arc: Math.PI, rotate: [0, Math.PI / 2, 0], scale: [(HALL.halfW + 0.08) / 1, RISE / 1, 1], radialSegments: 4, tubularSegments: 12 }),
       kit.box([0.14, WALL_TOP, 0.14], [HALL.x1 + 0.04, WALL_TOP / 2, HALL.halfW + 0.02], 'orange'),
       kit.box([0.14, WALL_TOP, 0.14], [HALL.x1 + 0.04, WALL_TOP / 2, -HALL.halfW - 0.02], 'orange'),
     ];

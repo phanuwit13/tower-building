@@ -19,7 +19,7 @@ export const item: ItemModel = {
       kit.box([0.02, 0.05, 1.2], [HULL.w / 2 + 0.005, HULL.y + 0.01, -0.1], 'sunYellow'), // side stripes
       kit.box([0.02, 0.05, 1.2], [-HULL.w / 2 - 0.005, HULL.y + 0.01, -0.1], 'sunYellow'),
       // deck: low windscreen, a seat (empty) and a small cargo box at the back
-      kit.box([0.5, 0.18, 0.04], [0, top + 0.09, 0.35], 'skyBlue', { rotate: [-0.4, 0, 0], glow: 'sunYellow', light: 'window' }),
+      kit.box([0.5, 0.18, 0.04], [0, top + 0.09, 0.35], 'skyBlue', { rotate: [-0.4, 0, 0], glow: 'teal', light: 'window' }),
       kit.box([0.34, 0.07, 0.26], [0, top + 0.035, 0.0], 'white'),
       kit.box([0.34, 0.2, 0.06], [0, top + 0.1, -0.15], 'white'),
       kit.box([0.4, 0.16, 0.34], [0, top + 0.08, -0.55], 'teal'),
