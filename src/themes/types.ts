@@ -1,7 +1,7 @@
 import type { Catalog, GroundId, ItemSpec } from '../game/types';
 import type { ItemModel } from '../models/contract';
 
-export type ThemeId = 'school' | 'amusement' | 'cafe' | 'village' | 'hospital' | 'zoo' | 'beach' | 'space' | 'park' | 'market';
+export type ThemeId = 'school' | 'amusement' | 'cafe' | 'village' | 'hospital' | 'zoo' | 'beach' | 'space' | 'park' | 'market' | 'tokyo';
 export interface ThemeDef {
   id: ThemeId; name: string; emoji: string; defaultGround: GroundId; items: readonly ItemModel[];
   /**
