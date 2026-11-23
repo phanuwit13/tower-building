@@ -82,6 +82,7 @@ export const ICONS = {
     'M10 8h.01', 'M12 12h.01', 'M14 8h.01', 'M16 12h.01', 'M18 8h.01', 'M6 8h.01', 'M7 16h10', 'M8 12h.01',
     'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
   ],
+  chevronDown: ['m6 9 6 6 6-6'],
   more: ['M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0', 'M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0', 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0'], // ellipsis (Feather)
   home: ['M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', 'M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'], // house
 } as const satisfies Record<string, readonly string[]>;

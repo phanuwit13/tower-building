@@ -110,36 +110,45 @@ test('⋯ restart and clear both ask first: Cancel keeps the city, OK acts', asy
   await expect(page.getByText(T.pickTheme)).toBeVisible();
 });
 
-test('⌨️ and ? open the shortcuts panel; ✕, Esc and an outside tap close it; the game rests while it is open', async ({ page }) => {
+test('the shortcuts list stays on the right while playing; its header, ⌨️ and ? fold it; the game keys work beside it; the choice is remembered', async ({ page }) => {
   await startSchool(page);
-  const panel = page.getByRole('dialog', { name: T.shortcuts.title });
-  await expect(panel).toBeHidden();
-  await tool(page, T.toolbar.shortcuts).click();
-  await expect(panel).toBeVisible();
-  for (const key of ['Enter', 'Space', 'R', 'Q', 'E', 'Esc']) await expect(panel.locator('kbd', { hasText: new RegExp(`^${key}$`) })).toBeVisible();
+  const panel = page.getByRole('complementary', { name: T.shortcuts.title });
+  const list = panel.locator('.sc-list');
+  const head = panel.getByRole('button', { name: T.shortcuts.title });
+  await expect(list).toBeVisible();
+  await expect(head).toHaveAttribute('aria-expanded', 'true');
+  for (const key of ['Enter', 'Space', 'R', 'Q', 'E', 'Esc', '?']) await expect(panel.locator('kbd', { hasText: new RegExp(`^${key.replace('?', '\\?')}$`) })).toBeVisible();
   for (const does of ['วาง', 'หมุนของ', 'เลื่อน', 'หมุนกล้อง', 'ซูม']) await expect(panel.getByText(does, { exact: true })).toBeVisible();
-  await page.keyboard.press('ArrowRight'); // nothing reaches the game
-  await page.keyboard.press('Enter');
-  await page.keyboard.press(' ');
-  await page.keyboard.press('Escape');
-  await expect(panel).toBeHidden();
-  await expect(page.getByText(placed(0))).toBeVisible();
-
-  await page.keyboard.press('?');
-  await expect(panel).toBeVisible();
-  await panel.getByRole('button', { name: T.close }).click();
-  await expect(panel).toBeHidden();
-  await page.keyboard.press('?');
-  await expect(panel).toBeVisible();
-  await page.mouse.click(5, 5); // the backdrop
-  await expect(panel).toBeHidden();
-  // and the game's keys work again right after
+  // it never takes the keyboard: the game's keys go straight past it, Esc included
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(page.getByText(placed(1))).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(list).toBeVisible();
+
+  await head.click();
+  await expect(list).toBeHidden();
+  await expect(head).toBeVisible(); // folded down to its header
+  await expect(head).toHaveAttribute('aria-expanded', 'false');
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true); // Space still reaches the game
+  await page.keyboard.press('?');
+  await expect(list).toBeVisible();
+  await tool(page, T.toolbar.shortcuts).click();
+  await expect(list).toBeHidden();
+
+  await page.reload();
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await expect(head).toBeVisible();
+  await expect(list).toBeHidden(); // still folded on the next visit
+  await page.keyboard.press('?');
+  await expect(list).toBeVisible();
+
+  await page.getByRole('button', { name: T.home }).click();
+  await expect(page.getByText(T.pickTheme)).toBeVisible();
+  await expect(panel).toBeHidden(); // not on theme select
 });
 
-test('a mouse-opened popover or panel closed with Esc leaves Space free to place; a destructive confirm starts on ยกเลิก', async ({ page }) => {
+test('a mouse-opened popover closed with Esc, or ⌨️ clicked, leaves Space free to place; a destructive confirm starts on ยกเลิก', async ({ page }) => {
   await startSchool(page);
   await page.keyboard.press('ArrowRight'); // a ghost
   const focusIsPage = () => page.evaluate(() => document.activeElement === document.body);
@@ -148,8 +157,7 @@ test('a mouse-opened popover or panel closed with Esc leaves Space free to place
   await expect(page.locator('.tb-pop-ground')).toBeHidden();
   expect(await focusIsPage()).toBe(true);
   await tool(page, T.toolbar.shortcuts).click();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: T.shortcuts.title })).toBeHidden();
+  await expect(page.locator('.sc-list')).toBeHidden();
   expect(await focusIsPage()).toBe(true);
   await page.keyboard.press(' ');
   await expect(page.getByText(placed(1))).toBeVisible();
@@ -244,9 +252,9 @@ test('keyboard users still activate a focused button with Enter and Space', asyn
   await expect(tool(page, T.ground.title)).toBeFocused(); // back where they were
 });
 
-// The toolbar around the camera controls and the HUD: a laptop, an iPad (landscape), a tablet held upright.
+// The toolbar and the shortcuts list around the camera controls and the HUD: a laptop, a short laptop window (the list moves left of the camera controls), an iPad (landscape), a tablet held upright.
 const OUT = '.superpowers/sdd/2026-11-24-hud-controls/shots/task2';
-for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 768, height: 1024 }]) {
+for (const viewport of [{ width: 1280, height: 720 }, { width: 1366, height: 657 }, { width: 1024, height: 768 }, { width: 768, height: 1024 }]) {
   test.describe(`${viewport.width} x ${viewport.height}`, () => {
     test.use({ viewport });
 
@@ -276,7 +284,26 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 768
       }
     });
 
-    test('the ground popover and the shortcuts panel fit on screen; screenshots of the HUD and both', async ({ page }) => {
+    test('the shortcuts list, open or folded, is on screen and overlaps neither the toolbar, the HUD nor the camera controls', async ({ page }) => {
+      await startSchool(page);
+      const rects = (sel: string) => page.locator(sel).evaluateAll((els) => els
+        .filter((e) => !e.closest('[hidden]'))
+        .map((e) => { const r = e.getBoundingClientRect(); return { name: e.getAttribute('aria-label') ?? e.textContent ?? e.className, x: r.x, y: r.y, w: r.width, h: r.height }; }));
+      for (const state of ['open', 'folded']) {
+        const [p] = await rects('.shortcuts');
+        expect(p, state).toBeDefined();
+        expect(p.x >= 0 && p.y >= 0 && p.x + p.w <= viewport.width && p.y + p.h <= viewport.height, `${state}: off screen`).toBe(true);
+        const others = await rects('.toolbar .tb-btn, .hud .card:not(.card-next), .hud .card-mini, .hud .hud-placed, .hud .hud-hint, .hud button, .cam-controls button, .cam-slider-box');
+        expect(others.length).toBeGreaterThan(15);
+        for (const o of others) {
+          const apart = p.x >= o.x + o.w || p.x + p.w <= o.x || p.y >= o.y + o.h || p.y + p.h <= o.y;
+          expect(apart, `${state}: the shortcuts list overlaps ${o.name}`).toBe(true);
+        }
+        await page.locator('.sc-head').click();
+      }
+    });
+
+    test('the ground popover fits on screen; screenshots of the HUD with the shortcuts list, the popover and the folded list', async ({ page }) => {
       await startSchool(page);
       await page.waitForTimeout(500);
       await page.screenshot({ path: `${OUT}/${viewport.width}x${viewport.height}-hud.png` });
@@ -291,9 +318,8 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1024, height: 768
       await page.screenshot({ path: `${OUT}/${viewport.width}x${viewport.height}-popover.png` });
       await page.keyboard.press('Escape');
       await page.keyboard.press('?');
-      const panel = page.getByRole('dialog', { name: T.shortcuts.title });
-      await expect(panel).toBeVisible();
-      await page.screenshot({ path: `${OUT}/${viewport.width}x${viewport.height}-shortcuts.png` });
+      await expect(page.locator('.sc-list')).toBeHidden();
+      await page.screenshot({ path: `${OUT}/${viewport.width}x${viewport.height}-shortcuts-folded.png` });
     });
   });
 }

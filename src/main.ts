@@ -102,7 +102,7 @@ function boot(app: HTMLElement): void {
   let dialogOpen = false;
   // Mouse hover preview: the faint item under the cursor (never changes controller state).
   let hoverTile: { tx: number; tz: number } | null = null;
-  const blocked = (): boolean => dialogOpen || toolbar.isOpen() || shortcuts.isOpen() || endScreen.isVisible();
+  const blocked = (): boolean => dialogOpen || toolbar.isOpen() || endScreen.isVisible();
   const refreshHover = (): void => {
     const s = controller.getState();
     const catalog = s.game ? getCatalog(s.game.themeId) : undefined;
@@ -118,7 +118,7 @@ function boot(app: HTMLElement): void {
     checkMark: () => cityView.checkMark(),
     rotateMark: (camera) => cityView.rotateMark(camera),
     onMarkHover: (mark) => cityView.setMarkHover(mark),
-    // a toolbar popover, the shortcuts panel, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
+    // a toolbar popover, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them (the shortcuts list never does)
     isBlocked: blocked,
   });
   const thumbnailer = createThumbnailer(kit);
@@ -200,15 +200,15 @@ function boot(app: HTMLElement): void {
     onGround: (ground) => controller.setSettings({ ground }),
     onQuality: (q) => controller.setQuality(q, 'user'),
     onScreenshot: () => void screenshot(),
-    onShortcuts: () => shortcuts.open(),
+    onShortcuts: () => shortcuts.toggle(),
     onRestart: () => void restart(),
     onClear: () => void clear(),
     onOpenChange: refreshHover,
   });
-  // Made after attachInput: on Esc the map's key handler sees the panel still open, then the panel closes.
+  // The key list on the right edge: on screen while a city is open; ⌨️, its header and ? fold it away and back.
   const shortcuts = createShortcutsPanel(app, {
-    canOpen: () => !dialogOpen && !endScreen.isVisible(),
-    onOpenChange: (open) => { if (open) toolbar.closePopovers(); refreshHover(); },
+    canToggle: () => !dialogOpen && !endScreen.isVisible(),
+    store,
   });
 
   let viewing = false; // player chose "ดูเมือง": keep the end dialog hidden until the next round
@@ -295,6 +295,7 @@ function boot(app: HTMLElement): void {
     });
     toolbar.update({ settings: game?.settings ?? BACKDROP, quality: s.quality });
     toolbar.setVisible(s.screen !== 'theme-select');
+    shortcuts.setVisible(s.screen !== 'theme-select');
     // The floor drawer has its own camera tool (✋) and covers the bottom right: the camera controls step aside.
     cameraControls.update({ visible: s.screen !== 'theme-select' && !floorOpen(s) });
 
