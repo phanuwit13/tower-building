@@ -54,12 +54,18 @@ export const item: ItemModel = {
     const bx = ROOF.x;
     const by = ridge + 0.12 + 0.15;
     parts.push(
-      kit.box([0.05, 0.3, 0.7], [bx, by, -0.2], 'navy'),
-      kit.box([0.02, 0.18, 0.2], [bx + 0.035, by, -0.31], 'blue', { glow: true, rotate: [-0.25, 0, 0] }),
-      kit.box([0.02, 0.18, 0.2], [bx + 0.035, by, -0.09], 'blue', { glow: true, rotate: [0.25, 0, 0] }),
+      kit.box([0.05, 0.4, 0.9], [bx, by + 0.05, -0.2], 'navy'),
+      kit.box([0.045, 0.26, 0.3], [bx + 0.045, by + 0.05, -0.37], 'blue', { glow: true, rotate: [-0.25, 0, 0] }),
+      kit.box([0.045, 0.26, 0.3], [bx + 0.045, by + 0.05, -0.03], 'blue', { glow: true, rotate: [0.25, 0, 0] }),
       kit.cylinder(0.02, 0.02, 0.4, [bx, ridge + 0.2, 0.6], 'charcoal', { segments: 6 }),
       kit.sphere(0.08, [bx, ridge + 0.46, 0.6], 'lampWarm', { glow: true, light: 'breathe' }),
     );
+    // bulbs along the front roof edge, in three colours
+    const EDGE: PaletteColor[] = ['orange', 'pink', 'sunYellow'];
+    const BULBS = 10;
+    for (let i = 0; i < BULBS; i++) {
+      parts.push(kit.sphere(0.04, [ROOF.x + ROOF.w / 2 - 0.02, ROOF.y - 0.01, -0.72 + (1.44 * i) / (BULBS - 1)], EDGE[i % EDGE.length], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: BULBS } }));
+    }
     return kit.finish(parts);
   },
 };

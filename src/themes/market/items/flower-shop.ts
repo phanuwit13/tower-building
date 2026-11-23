@@ -10,7 +10,7 @@ const SHOP = { x0: -0.95, x1: -0.1, z: 0.9, top: 0.95 };
 const AWNING = { tilt: 0.3, y: 0.72, stripes: 6 };
 const BUCKET = { h: 0.2, r: 0.1 };
 const FLOWERS: PaletteColor[] = ['red', 'sunYellow', 'pink', 'purple', 'orange', 'white'];
-const BOARD = { x: -0.3, y: 1.45, w: 0.9, h: 0.5, d: 0.06 };
+const BOARD = { x: -0.3, y: 1.5, w: 1.1, h: 0.7, d: 0.06 };
 const SWAY_AMOUNT = 0.12;
 
 /** ร้านดอกไม้: a flower shop with swaying flower buckets and a flower neon. */
@@ -72,11 +72,14 @@ export const item: ItemModel = {
     parts.push(kit.box([BOARD.d, BOARD.h, BOARD.w], [BOARD.x, BOARD.y, 0], 'navy'));
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      parts.push(kit.sphere(0.075, [nx, BOARD.y + 0.02 + Math.sin(a) * 0.14, Math.cos(a) * 0.14], 'purple', { detail: 0, scale: [0.35, 1, 1], glow: true }));
+      parts.push(kit.sphere(0.115, [nx, BOARD.y + 0.06 + Math.sin(a) * 0.2, Math.cos(a) * 0.2], 'purple', { detail: 0, scale: [0.35, 1, 1], glow: true }));
     }
     parts.push(
-      kit.sphere(0.06, [nx, BOARD.y + 0.02, 0], 'sunYellow', { detail: 0, scale: [0.4, 1, 1], glow: true }),
-      kit.box([0.02, 0.04, 0.5], [nx, BOARD.y - 0.2, 0], 'lime', { glow: true }),
+      kit.sphere(0.1, [nx, BOARD.y + 0.06, 0], 'sunYellow', { detail: 0, scale: [0.4, 1, 1], glow: true }),
+      kit.box([0.04, 0.05, 0.6], [nx, BOARD.y - 0.26, 0], 'lime', { glow: true }),
+      // light strips: along the roof edge and the awning's front edge
+      kit.box([0.03, 0.05, SHOP.z * 2 - 0.1], [SHOP.x1 - 0.035, SHOP.top + 0.035, 0], 'purple', { glow: true }),
+      kit.box([0.03, 0.03, SHOP.z * 2 - 0.1], [SHOP.x1 + 0.37, 0.65, 0], 'pink', { glow: true }),
     );
     return kit.finish(parts);
   },

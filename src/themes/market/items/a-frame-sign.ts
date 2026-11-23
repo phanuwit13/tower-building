@@ -48,6 +48,11 @@ export const item: ItemModel = {
       cyl(0.07, 0.07, 0.06, -0.04, 0, 0.065, 'pink'),
       chalk([0.03, 0.03, 0.03], 0.01, 0, 0.065, 'red', true),
     );
+    // a string of coloured bulbs along the top cap
+    const bulbs: Array<'orange' | 'pink' | 'sunYellow'> = ['orange', 'pink', 'sunYellow', 'pink', 'orange'];
+    bulbs.forEach((color, i) => {
+      parts.push(kit.sphere(0.04, [0, BOARD.h + 0.075, -0.2 + 0.1 * i], color, { detail: 0, glow: true, light: 'chase', chase: { index: i, count: bulbs.length } }));
+    });
     return kit.finish(parts);
   },
 };

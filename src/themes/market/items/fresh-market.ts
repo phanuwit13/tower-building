@@ -18,7 +18,8 @@ const TABLE = { w: 0.5, h: 0.28, d: 0.8 };
 const GOODS: Array<{ color: PaletteColor; fish?: boolean }> = [
   { color: 'red' }, { color: 'leaf' }, { color: 'sunYellow' }, { color: 'chrome', fish: true }, { color: 'orange' }, { color: 'purple' },
 ];
-const SIGN = { x: 0, y: 1.98, z: 0.35, w: 1.1, h: 0.46, d: 0.06 };
+const SIGN = { x: 0, y: 2.05, z: 0.2, w: 1.5, h: 0.7, d: 0.06 };
+const FRONT_BULBS: PaletteColor[] = ['red', 'sunYellow', 'lime', 'orange'];
 
 /** ตลาดสด: an open market hall with fruit, veg and fish stalls and hanging bulbs. */
 export const item: ItemModel = {
@@ -71,16 +72,23 @@ export const item: ItemModel = {
     // rooftop sign: a navy board with a neon orange citrus (a ring, a segment cross and a leaf)
     const ridge = EAVE_Y + RISE;
     const boardBottom = SIGN.y - SIGN.h / 2;
-    for (const dz of [-0.4, 0.4]) {
+    for (const dz of [-0.6, 0.6]) {
       parts.push(kit.cylinder(0.03, 0.03, boardBottom - ridge + 0.05, [0, (ridge + boardBottom) / 2 - 0.02, SIGN.z + dz], 'woodDark', { segments: 4 }));
     }
+    const nx = SIGN.x + SIGN.d / 2 + 0.04;
     parts.push(
       kit.box([SIGN.d, SIGN.h, SIGN.w], [SIGN.x, SIGN.y, SIGN.z], 'navy'),
-      kit.torus(0.16, 0.025, [SIGN.x + 0.05, SIGN.y, SIGN.z], 'orange', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
-      kit.box([0.02, 0.28, 0.03], [SIGN.x + 0.05, SIGN.y, SIGN.z], 'orange', { glow: true }),
-      kit.box([0.02, 0.03, 0.28], [SIGN.x + 0.05, SIGN.y, SIGN.z], 'orange', { glow: true }),
-      kit.sphere(0.06, [SIGN.x + 0.05, SIGN.y + 0.22, SIGN.z + 0.1], 'lime', { detail: 0, scale: [0.4, 0.8, 1.4], glow: true }),
+      kit.torus(0.25, 0.045, [nx, SIGN.y, SIGN.z], 'orange', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
+      kit.box([0.05, 0.46, 0.05], [nx, SIGN.y, SIGN.z], 'orange', { glow: true }),
+      kit.box([0.05, 0.05, 0.46], [nx, SIGN.y, SIGN.z], 'orange', { glow: true }),
+      kit.sphere(0.1, [nx, SIGN.y + 0.3, SIGN.z + 0.18], 'lime', { detail: 0, scale: [0.4, 0.8, 1.4], glow: true }),
     );
+    // bulbs along the front roof edge, where the camera sees them
+    const EDGE_BULBS = 12;
+    for (let i = 0; i < EDGE_BULBS; i++) {
+      const z = -1.35 + (2.7 * i) / (EDGE_BULBS - 1);
+      parts.push(kit.sphere(0.045, [0.94, EAVE_Y - 0.07, z], FRONT_BULBS[i % FRONT_BULBS.length], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: EDGE_BULBS } }));
+    }
     return kit.finish(parts);
   },
 };

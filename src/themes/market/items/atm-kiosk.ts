@@ -37,19 +37,21 @@ export const item: ItemModel = {
         kit.box([0.02, 0.04, 0.1], [MACHINE.x + MACHINE.w / 2 + 0.015, top - 0.46, z + 0.15], 'sunYellow'),
       );
     }
-    // rooftop fascia with a neon coin between two neon cards
+    // rooftop fascia (dark board) with a big neon coin between two neon cards, and a strip along the roof edge
     const fx = 0.42;
-    const fy = ROOF_Y + 0.04 + 0.15;
-    const nx = fx + 0.045;
+    const fh = 0.56;
+    const fy = ROOF_Y + 0.04 + fh / 2;
+    const nx = fx + 0.04;
     parts.push(
-      kit.box([0.04, 0.3, 1.6], [fx, fy, 0], 'navy'),
-      kit.torus(0.1, 0.02, [nx, fy, 0], 'teal', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
-      kit.cylinder(0.04, 0.04, 0.02, [nx, fy, 0], 'teal', { segments: 8, rotate: [0, 0, Math.PI / 2], glow: true }),
+      kit.box([0.04, fh, 1.8], [fx, fy, 0], 'charcoal'),
+      kit.torus(0.18, 0.04, [nx, fy, 0], 'teal', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
+      kit.cylinder(0.07, 0.07, 0.05, [nx, fy, 0], 'teal', { segments: 8, rotate: [0, 0, Math.PI / 2], glow: true }),
+      kit.box([0.03, 0.04, 1.9], [0.48, ROOF_Y, 0], 'teal', { glow: true }),
     );
-    for (const z of [-0.5, 0.5]) {
+    for (const z of [-0.62, 0.62]) {
       parts.push(
-        kit.box([0.02, 0.1, 0.2], [nx - 0.01, fy, z], 'teal', { glow: true }),
-        kit.box([0.025, 0.03, 0.2], [nx - 0.005, fy + 0.02, z], 'navy'),
+        kit.box([0.05, 0.2, 0.34], [nx, fy, z], 'purple', { glow: true }),
+        kit.box([0.06, 0.05, 0.34], [nx + 0.005, fy + 0.04, z], 'charcoal'),
       );
     }
     return kit.finish(parts);

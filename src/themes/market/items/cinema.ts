@@ -50,6 +50,11 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [BODY.x0, 0.9, -0.5], facing: 'x-', w: 0.5, h: 0.3 }),
       ...glassWindow(kit, { at: [BODY.x0, 0.9, 0.5], facing: 'x-', w: 0.5, h: 0.3 }),
     ];
+    // coloured light strips along the facade: roof edge (purple) and foot (teal)
+    parts.push(
+      kit.box([0.03, 0.06, BODY.z * 2 - 0.1], [BODY.x1 + 0.03, BODY.top - 0.06, 0], 'purple', { glow: true }),
+      kit.box([0.03, 0.05, BODY.z * 2 - 0.1], [BODY.x1 + 0.03, BASE_H + 0.1, 0], 'teal', { glow: true }),
+    );
     // chase run round the fascia rectangle (front face), travelling around once
     const fy0 = MARQUEE.y + 0.01;
     const fy1 = MARQUEE.y + 0.03 + MARQUEE.fasciaH - 0.02;
