@@ -14,13 +14,13 @@ export const item: ItemModel = {
   footprint: { w: 1, d: 1 },
   build: (kit) => {
     const parts: Part[] = [
-      kit.cylinder(0.46, 0.46, PIT, [0, PIT / 2, 0], 'stoneDark', { segments: 12 }),
-      kit.box([0.5, 0.44, 0.5], [0, PIT + 0.22, 0], 'glassBlue', { rotate: [0, 0.2, 0] }),
-      kit.box([0.5, 0.34, 0.5], [0, PIT + 0.17, 0], 'skyBlue', { rotate: [0, 0.2 + Math.PI / 4, 0] }),
+      kit.cylinder(0.46, 0.46, PIT, [0, PIT / 2, 0], 'navy', { segments: 12 }),
+      kit.box([0.5, 0.44, 0.5], [0, PIT + 0.22, 0], 'skyBlue', { rotate: [0, 0.2, 0] }),
+      kit.box([0.5, 0.34, 0.5], [0, PIT + 0.17, 0], 'blue', { rotate: [0, 0.2 + Math.PI / 4, 0] }),
       kit.box([0.3, 0.03, 0.3], [0, PIT + 0.455, 0], 'white', { rotate: [0, 0.2, 0] }),
       kit.box([0.06, 0.2, 0.06], [0.14, PIT + 0.3, 0.255], 'white', { rotate: [0, 0.2, 0] }),
-      kit.cone(0.07, 0.2, [0.3, PIT + 0.1, 0.1], 'glassBlue', { segments: 6 }),
-      kit.cone(0.06, 0.16, [-0.32, PIT + 0.08, -0.12], 'skyBlue', { segments: 6 }),
+      kit.cone(0.07, 0.2, [0.3, PIT + 0.1, 0.1], 'skyBlue', { segments: 6 }),
+      kit.cone(0.06, 0.16, [-0.32, PIT + 0.08, -0.12], 'blue', { segments: 6 }),
     ];
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + 0.2;

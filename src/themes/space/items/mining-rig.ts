@@ -9,7 +9,7 @@ const PAD_TOP = 0.1;
 const RIG = { x: -0.2, z: -0.55 };
 const LEG = 0.32; // legs at +-LEG from the rig axis
 const TOP = 1.4; // top of the legs
-const SPIN: MotionOpts = { kind: 'spin', pivot: [RIG.x, 0, RIG.z], axis: [0, 1, 0], speed: 0.8 };
+const SPIN: MotionOpts = { kind: 'spin', pivot: [RIG.x, 0, RIG.z], axis: [0, 1, 0], speed: 0.5 };
 const ICO = 0.851;
 const PILE: { x: number; y: number; z: number; r: number; color: PaletteColor }[] = [
   { x: 0.4, y: 0, z: 0.85, r: 0.16, color: 'purple' },
@@ -53,9 +53,10 @@ export const item: ItemModel = {
     // the drill: everything below turns with the same pivot
     parts.push(
       kit.cylinder(0.05, 0.05, 0.85, [RIG.x, 0.975, RIG.z], 'chrome', { segments: 8, motion: SPIN }),
-      kit.box([0.22, 0.05, 0.05], [RIG.x, 1.2, RIG.z], 'sunYellow', { motion: SPIN }),
-      kit.box([0.05, 0.05, 0.22], [RIG.x, 1.0, RIG.z], 'orange', { motion: SPIN }),
-      kit.box([0.22, 0.05, 0.05], [RIG.x, 0.8, RIG.z], 'sunYellow', { motion: SPIN }),
+      // paddles below the plate, off-centre so the turn reads; clear of the legs (inner face 0.28 from the axis)
+      kit.box([0.44, 0.05, 0.12], [RIG.x, 1.25, RIG.z], 'red', { motion: SPIN }),
+      kit.box([0.12, 0.05, 0.3], [RIG.x, 1.1, RIG.z + 0.1], 'sunYellow', { motion: SPIN }),
+      kit.box([0.3, 0.05, 0.12], [RIG.x + 0.1, 0.95, RIG.z], 'pink', { motion: SPIN }),
       kit.cylinder(0.16, 0, 0.42, [RIG.x, 0.34, RIG.z], 'orange', { segments: 6, motion: SPIN }),
       kit.cylinder(0.16, 0, 0.42, [RIG.x, 0.34, RIG.z], 'sunYellow', { segments: 6, rotate: [0, Math.PI / 6, 0], motion: SPIN }),
     );
