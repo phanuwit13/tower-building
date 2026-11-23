@@ -4,12 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AppState } from '../app/controller';
 import { demoFullGame } from '../game/demo';
 import { newGame, placeCurrent } from '../game/game';
-import { buildOccupancy, canPlace } from '../game/grid';
+import { buildOccupancy, canPlace, rotatedFootprint } from '../game/grid';
 import type { GameState } from '../game/types';
 import { getStyleKit } from '../models/kit';
 import { getCatalog, getTheme } from '../themes/registry';
 import { CHUNKS_PER_SIDE } from './batch';
-import { createCityView, GHOST_INVALID, HOVER_OPACITY, MARK_INK, OPACITY, rotateMarkAt } from './city';
+import { createCityView, GHOST_INVALID, HOVER_OPACITY, MARK_INK, OPACITY, rotateMarkAt, STEADY_TURN_TILES } from './city';
 import { BLOOM, type Stage } from './stage';
 
 const kit = getStyleKit();
@@ -285,6 +285,57 @@ describe('checkMark (the ✓ as a tap target)', () => {
     const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
     expect(mark!.center.equals(sprite.position)).toBe(true); // where the ✓ is drawn
     expect(mark!.size).toBeLessThanOrEqual((sprite.material as THREE.PointsMaterial).size);
+  });
+
+  it('stays put while a non-square ghost turns again and again (the rotate button never slips away); a move recentres it', () => {
+    const { view } = setup();
+    const id = catalog.order.find((i) => { const f = catalog.items[i].footprint; return f.w * f.d === 6; })!;
+    const g0: GameState = { ...newGame(catalog, settings, 3), current: id };
+    const fp = catalog.items[id].footprint;
+    type G = NonNullable<AppState['ghost']>;
+    // The controller's turn (controller.ts rotateGhost): the pivot tile stays, the corner moves.
+    const turn = (p: G): G => {
+      const old = rotatedFootprint(fp, p.rotation);
+      const px = p.x + Math.floor((old.w - 1) / 2);
+      const pz = p.z + Math.floor((old.d - 1) / 2);
+      const r = ((p.rotation + 1) % 4) as G['rotation'];
+      const nw = rotatedFootprint(fp, r);
+      return { x: px - Math.floor((nw.w - 1) / 2), z: pz - Math.floor((nw.d - 1) / 2), rotation: r, valid: true };
+    };
+    const centre = (p: G) => { const { w, d } = rotatedFootprint(fp, p.rotation); return { x: p.x + w / 2, z: p.z + d / 2 }; };
+    let p: G = { x: 6, z: 6, rotation: 0, valid: true };
+    view.sync(state(g0, p));
+    const at = view.checkMark()!.center.clone();
+    let shifted = 0;
+    for (let i = 0; i < 4; i++) {
+      p = turn(p);
+      const c = centre(p);
+      if (Math.hypot(c.x - at.x, c.z - at.z) > 0.1) shifted++;
+      expect(Math.hypot(c.x - at.x, c.z - at.z)).toBeLessThanOrEqual(STEADY_TURN_TILES);
+      view.sync(state(g0, p));
+      expect(view.checkMark()!.center.equals(at)).toBe(true);
+    }
+    expect(shifted).toBeGreaterThan(0); // the item's centre really moves on a turn
+    p = turn(p);
+    view.sync(state(g0, p));
+    view.sync(state({ ...g0 }, p)); // another state change, same ghost: still put
+    expect(view.checkMark()!.center.equals(at)).toBe(true);
+    p = { ...p, x: p.x + 1 }; // moved: back over the centre
+    view.sync(state(g0, p));
+    const c = centre(p);
+    expect(view.checkMark()!.center.x).toBeCloseTo(c.x);
+    expect(view.checkMark()!.center.z).toBeCloseTo(c.z);
+  });
+
+  it('a turn that lands far away (pushed in at the map edge) recentres instead', () => {
+    const { view } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const before = view.checkMark()!.center.clone();
+    view.sync(state(game, { x: 7, z: 6, rotation: 1, valid: true }));
+    const { w, d } = rotatedFootprint(fp, 1);
+    expect(view.checkMark()!.center.x).toBeCloseTo(7 + w / 2);
+    expect(view.checkMark()!.center.z).toBeCloseTo(6 + d / 2);
+    expect(view.checkMark()!.center.equals(before)).toBe(false);
   });
 
   it('a rotate button floats beside it, over a placeable and a blocked ghost alike; none without a ghost', () => {

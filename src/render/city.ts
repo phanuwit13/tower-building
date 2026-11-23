@@ -76,6 +76,13 @@ const MARK_SIZE = 2.4;
 const ROT_SIZE = 2;
 export const ROT_COLOR = 0x2f6fde;
 export const ROT_HOVER = 0x1b4aa6;
+/**
+ * Turning a non-square item swaps its sides, so its centre shifts (up to about 0.7 tile round the
+ * controller's pivot tile). A turn whose centre stays within this many tiles of the ✓ leaves the ✓
+ * and the rotate button where they are: clicking the rotate button again and again, it never slips
+ * out from under the mouse. Any move puts them back over the item's centre.
+ */
+export const STEADY_TURN_TILES = 1;
 /** Centre to centre, ✓ to rotate button, in Points size units: the two radii plus a small gap. */
 const ROT_OFFSET = ((MARK_SIZE + ROT_SIZE) * MARK_DISC) / 2 + 0.3;
 /** Icon scale on the marker canvas: the 24-unit icon grid drawn 60 px wide inside the 116 px disc. */
@@ -278,6 +285,7 @@ export function createCityView(
   let hoverWanted = false;
 
   let wanted = false; // the game state wants a ghost on screen
+  let lastGhost: { key: string; x: number; z: number; rotation: number } | null = null; // where the ✓ was last placed for
   let valid = false; // ...and it can be placed where it is (the ✓, not the ✗)
   let suppressed = false; // ...but a capture asked to hide it
   let markHover: GhostMark | null = null; // the mouse is on the ✓ or the rotate button
@@ -369,6 +377,7 @@ export function createCityView(
     const item = game && s.screen === 'playing' ? getTheme(game.themeId)?.items.find((i) => i.id === game.current) : undefined;
     if (!g || !game || !item) {
       wanted = false;
+      lastGhost = null;
       applyVisibility();
       return;
     }
@@ -387,7 +396,18 @@ export function createCityView(
     if (ghostModel) ghostModel.rotation.y = -g.rotation * (Math.PI / 2);
     footFill.scale.set(w, 1, d);
     footLine.scale.set(w, 1, d);
-    sprite.position.set(g.x + w / 2, top + 0.7, g.z + d / 2);
+    // The ✓ (and the rotate button beside it) over the item's centre, except: unchanged ghost (any
+    // other state change) or a turn on the spot (see STEADY_TURN_TILES): they stay where they are.
+    const key = `${game.themeId}:${item.id}`;
+    const cx = g.x + w / 2;
+    const cz = g.z + d / 2;
+    const last = lastGhost;
+    const same = last !== null && last.key === key;
+    const unchanged = same && last.x === g.x && last.z === g.z && last.rotation === g.rotation;
+    const turned = same && last.rotation !== g.rotation
+      && Math.hypot(cx - sprite.position.x, cz - sprite.position.z) <= STEADY_TURN_TILES;
+    if (!unchanged && !turned) sprite.position.set(cx, top + 0.7, cz);
+    lastGhost = { key, x: g.x, z: g.z, rotation: g.rotation };
     box.set(new THREE.Vector3(g.x, 0, g.z), new THREE.Vector3(g.x + w, top, g.z + d));
     wanted = true;
     applyVisibility();
