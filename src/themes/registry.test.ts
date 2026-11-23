@@ -19,7 +19,7 @@ function docItems(): DocItem[] {
 }
 
 describe('registry', () => {
-  // Builds every item of every theme (six themes, ~350 items): past the default 5 s when every worker is busy.
+  // Builds every item of every theme (seven themes, ~410 items): past the default 5 s when every worker is busy.
   it('every theme passes validation', () => {
     const kit = getStyleKit();
     for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 50 })).toEqual([]);
@@ -56,7 +56,7 @@ describe('registry', () => {
 
 describe('nightGlow', () => {
   it('the shopping district and the café are registered with their bright nights; the other themes keep the standard one', () => {
-    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe']);
+    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village']);
     expect(getTheme('market')!.nightGlow).toBe(1.5);
     expect(getTheme('cafe')!.nightGlow).toBeGreaterThan(1);
     for (const t of THEMES.filter((x) => x.id !== 'market' && x.id !== 'cafe')) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);

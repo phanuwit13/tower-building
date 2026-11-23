@@ -7,6 +7,7 @@ import { zoo } from '../src/themes/zoo';
 import { beach } from '../src/themes/beach';
 import { market } from '../src/themes/market';
 import { cafe } from '../src/themes/cafe';
+import { village } from '../src/themes/village';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -108,6 +109,7 @@ test('booting removes a fallback message that is already showing', async ({ page
 });
 
 test('gallery shows every item of the theme with its Thai name, and no game', async ({ page }) => {
+  test.setTimeout(60_000); // software WebGL draws every page of 50 items slowly: about 30 s, right at the default
   await page.goto('/?gallery=school');
   await expect(page.getByRole('heading', { name: /โรงเรียน/ })).toBeVisible();
   // every item exactly once, over as many pages as the theme needs
@@ -263,6 +265,16 @@ test('theme select offers ร้านคาเฟ่: its round starts indoors 
   await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
   await expect(page.getByText(placed(1))).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+});
+
+test('theme select offers หมู่บ้าน and its round starts with a village item, outdoors with the standard night', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'หมู่บ้าน' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(village.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {

@@ -4,10 +4,11 @@ import { beach } from './beach';
 import { cafe } from './cafe';
 import { market } from './market';
 import { school } from './school';
+import { village } from './village';
 import { zoo } from './zoo';
 import { toCatalog, type ThemeDef } from './types';
 
-export const THEMES: readonly ThemeDef[] = [school, amusement, zoo, beach, market, cafe];
+export const THEMES: readonly ThemeDef[] = [school, amusement, zoo, beach, market, cafe, village];
 
 export function getTheme(id: string): ThemeDef | undefined {
   return THEMES.find((t) => t.id === id);
