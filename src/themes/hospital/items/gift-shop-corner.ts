@@ -83,7 +83,7 @@ export const item: ItemModel = {
     parts.push(kit.cylinder(0.09, 0.1, 0.12, [-0.3, 0.06, 0.7], 'charcoal', { segments: 8 }));
     const balloons: Array<[PaletteColor, Vec3]> = [
       ['red', [-0.4, 1.35, 0.6]],
-      ['sunYellow', [-0.22, 1.45, 0.7]],
+      ['sunYellow', [-0.22, 1.38, 0.7]],
       ['skyBlue', [-0.34, 1.3, 0.78]],
       ['pink', [-0.18, 1.25, 0.58]],
     ];
