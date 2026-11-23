@@ -69,7 +69,7 @@ function boot(app: HTMLElement): void {
   const demo = parseDemoParam(location.search);
   const schoolCatalog = getCatalog(school.id);
   const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
-  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality });
+  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality, isFloorTile: () => false });
   let tier = controller.getState().quality;
   let appliedKey = '';
 

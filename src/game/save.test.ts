@@ -1,3 +1,4 @@
+import { emptyFloors } from './floors';
 import { describe, expect, it } from 'vitest';
 import { newGame, placeCurrent } from './game';
 import {
@@ -62,7 +63,7 @@ describe('round trip', () => {
   it('stores the versioned shape', () => {
     const store = memStore();
     saveGame(store, playingState());
-    expect(JSON.parse(store.map.get(SAVE_KEY)!).v).toBe(1);
+    expect(JSON.parse(store.map.get(SAVE_KEY)!).v).toBe(2);
   });
 });
 
@@ -83,7 +84,7 @@ describe('loadGame returns null', () => {
   });
   it('on a different version', () => {
     const store = memStore();
-    store.setItem(SAVE_KEY, JSON.stringify({ v: 2, state: playingState() }));
+    store.setItem(SAVE_KEY, JSON.stringify({ v: 3, state: playingState() }));
     expect(loadGame(store, getCatalog)).toBeNull();
   });
   it('on unknown theme', () => expect(loadWith((s) => { s.themeId = 'zzz'; })).toBeNull());
@@ -175,6 +176,7 @@ describe('loadGame with a map-size change', () => {
     const state: GameState = {
       themeId: 't', settings, placements, bag: ['b'], rng: 5,
       current: 'c', next: 'a', status: 'playing', nextUid: 3,
+      floors: emptyFloors(),
     };
     const store = memStore();
     saveGame(store, state);
@@ -193,9 +195,48 @@ describe('loadGame status re-check', () => {
     const state: GameState = {
       themeId: 't', settings, placements, bag: ['b'], rng: 5,
       current: 'd', next: 'a', status: 'playing', nextUid: uid,
+      floors: emptyFloors(),
     };
     const store = memStore();
     saveGame(store, state);
     expect(loadGame(store, getCatalog)).toEqual({ ...state, status: 'finished' });
+  });
+});
+
+describe('floors in saves', () => {
+  const isTile = (id: string) => id === 'tile';
+  const withFloors = (mutate: (s: any) => void, v = 2): GameState | null => {
+    const store = memStore();
+    const s: any = JSON.parse(JSON.stringify(playingState()));
+    mutate(s);
+    store.setItem(SAVE_KEY, JSON.stringify({ v, state: s }));
+    return loadGame(store, getCatalog, isTile);
+  };
+  it('v1 save loads with all floors null', () => {
+    const g = withFloors((s) => { delete s.floors; }, 1);
+    expect(g).not.toBeNull();
+    expect(g!.floors).toEqual(emptyFloors());
+  });
+  it('v2 round-trips floors', () => {
+    const store = memStore();
+    const s = playingState();
+    s.floors[7] = 'tile';
+    saveGame(store, s);
+    expect(loadGame(store, getCatalog, isTile)).toEqual(s);
+  });
+  it('unknown tile id nulls only that cell', () => {
+    const g = withFloors((s) => { s.floors[3] = 'tile'; s.floors[4] = 'nope'; s.floors[5] = 42; });
+    expect(g!.floors[3]).toBe('tile');
+    expect(g!.floors[4]).toBeNull();
+    expect(g!.floors[5]).toBeNull();
+    expect(g!.placements).toHaveLength(3);
+  });
+  it('wrong-length or wrong-type floors reset to empty, city kept', () => {
+    for (const bad of [['tile'], 'x', {}, null]) {
+      const g = withFloors((s) => { s.floors = bad; });
+      expect(g).not.toBeNull();
+      expect(g!.floors).toEqual(emptyFloors());
+      expect(g!.placements).toHaveLength(3);
+    }
   });
 });

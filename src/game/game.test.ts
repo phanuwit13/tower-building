@@ -1,3 +1,4 @@
+import { emptyFloors } from './floors';
 import { describe, expect, it } from 'vitest';
 import { newGame, placeCurrent, restartGame, withSettings } from './game';
 import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
@@ -53,6 +54,7 @@ describe('placeCurrent', () => {
     const state: GameState = {
       themeId: 't', settings, placements, bag: ['b'], rng: 5,
       current: 'a', next: 'd', status: 'playing', nextUid: uid,
+      floors: emptyFloors(),
     };
     const n = placeCurrent(state, catalog, 0, GRID_SIZE - 2, 0)!;
     expect(n).not.toBeNull();

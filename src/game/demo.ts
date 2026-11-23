@@ -1,6 +1,7 @@
 import { draw } from './bag';
 import { canPlace, rotatedFootprint } from './grid';
 import { nextRandom } from './rng';
+import { emptyFloors } from './floors';
 import { GRID_SIZE, type Catalog, type GameState, type Placement, type Rotation, type SceneSettings } from './types';
 
 /**
@@ -79,5 +80,6 @@ export function demoFullGame(catalog: Catalog, settings: SceneSettings, seed: nu
     next,
     status: 'playing',
     nextUid: last.uid,
+    floors: emptyFloors(),
   };
 }

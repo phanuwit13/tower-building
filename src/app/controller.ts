@@ -1,4 +1,5 @@
 import { buildOccupancy, canPlace, clampPosition, nearestFreeSpot, rotatedFootprint } from '../game/grid';
+import { paintRect, type FloorRect } from '../game/floors';
 import { placementAtTile } from './hover';
 import { newGame, placeCurrent, restartGame, withSettings } from '../game/game';
 import {
@@ -14,10 +15,15 @@ export interface AppState {
   /** Rotation the next tap/hover uses while there is no locked ghost; follows the ghost when it rotates. */
   rotation: Rotation;
   quality: QualityTier; saveFailed: boolean; // saveFailed is sticky once true
+  floor: FloorUiState;
+}
+export interface FloorUiState {
+  open: boolean; pick: string | 'eraser'; tool: 'paint' | 'camera'; preview: FloorRect | null;
 }
 export interface ControllerDeps {
   store: KeyValueStore; getTheme(id: string): ThemeDef | undefined; getCatalog(id: string): Catalog | undefined;
   seed(): number; detectQuality(): QualityTier;
+  isFloorTile(id: string): boolean;
 }
 export interface Controller {
   getState(): AppState; subscribe(fn: (s: AppState) => void): () => void;
@@ -25,6 +31,9 @@ export interface Controller {
   tapTile(tx: number, tz: number): void; dragGhostTo(tx: number, tz: number): void;
   moveGhost(dx: number, dz: number): void; rotateGhost(): void; place(): boolean;
   setSettings(patch: Partial<SceneSettings>): void; setQuality(q: QualityTier, source: 'user' | 'auto'): void;
+  openFloors(): void; closeFloors(): void; pickFloor(id: string | 'eraser'): void;
+  setFloorTool(t: FloorUiState['tool']): void;
+  previewFloors(r: FloorRect | null): void; paintFloors(r: FloorRect): void;
   restart(): void; clearAll(): void; // callers confirm first
 }
 
@@ -33,7 +42,7 @@ const screenOf = (g: GameState | null): AppState['screen'] =>
 
 export function createController(deps: ControllerDeps): Controller {
   const { store } = deps;
-  const initialGame = loadGame(store, deps.getCatalog);
+  const initialGame = loadGame(store, deps.getCatalog, deps.isFloorTile);
   let state: AppState = {
     screen: screenOf(initialGame),
     game: initialGame,
@@ -41,6 +50,7 @@ export function createController(deps: ControllerDeps): Controller {
     rotation: 0,
     quality: loadQuality(store) ?? deps.detectQuality(),
     saveFailed: false,
+    floor: { open: false, pick: 'eraser', tool: 'paint', preview: null },
   };
   const listeners = new Set<(s: AppState) => void>();
 
@@ -154,6 +164,32 @@ export function createController(deps: ControllerDeps): Controller {
     setQuality(q) {
       const ok = saveQuality(store, q);
       emit({ ...state, quality: q, saveFailed: state.saveFailed || !ok });
+    },
+    openFloors() {
+      emit({ ...state, floor: { ...state.floor, open: true } });
+    },
+    closeFloors() {
+      emit({ ...state, floor: { ...state.floor, open: false, tool: 'paint', preview: null } });
+    },
+    pickFloor(id) {
+      emit({ ...state, floor: { ...state.floor, pick: id, tool: 'paint' } });
+    },
+    setFloorTool(t) {
+      emit({ ...state, floor: { ...state.floor, tool: t, preview: null } });
+    },
+    previewFloors(r) {
+      emit({ ...state, floor: { ...state.floor, preview: r } });
+    },
+    paintFloors(r) {
+      const game = state.game;
+      if (!game) return;
+      const { pick } = state.floor;
+      const floors = paintRect(game.floors, r, pick === 'eraser' ? null : pick);
+      const ok = saveGame(store, { ...game, floors });
+      emit({
+        ...state, game: { ...game, floors }, saveFailed: state.saveFailed || !ok,
+        floor: { ...state.floor, preview: null },
+      });
     },
     restart() {
       if (!state.game) return;
