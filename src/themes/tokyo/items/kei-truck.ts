@@ -5,7 +5,7 @@ import { glassWindow } from '../../../models/parts';
 // A tiny white pickup (nobody driving): cab at +z, a flat bed with two crates of vegetables.
 const R = 0.11;
 const W = 0.62;
-const CAB = { z0: 0.42, z1: 0.9, y0: 0.2, h: 0.36 };
+const CAB = { z0: 0.42, z1: 0.9, y0: 0.2, h: 0.2 };
 
 /** รถกระบะเล็ก: a tiny white pickup with crates of vegetables. */
 export const item: ItemModel = {
@@ -20,7 +20,7 @@ export const item: ItemModel = {
       kit.box([W, CAB.h, CAB.z1 - CAB.z0], [0, CAB.y0 + CAB.h / 2, cz], 'white'),
     ];
     parts.push(
-      kit.box([W + 0.02, 0.05, CAB.z1 - CAB.z0 + 0.02], [0, 0.26, cz], 'teal'),
+      kit.box([W + 0.02, 0.05, CAB.z1 - CAB.z0 + 0.02], [0, 0.225, cz], 'teal'),
       kit.box([W + 0.02, 0.04, 0.5], [0, CAB.y0 + CAB.h + 0.02, cz], 'stone'),
       // flat bed with low sides
       kit.box([W, 0.05, 1.3], [0, 0.275, -0.25], 'stone'),
@@ -31,9 +31,9 @@ export const item: ItemModel = {
       kit.sphere(0.04, [-0.2, 0.28, CAB.z1 + 0.025], 'lampWarm', { detail: 0, glow: true }),
       kit.sphere(0.04, [0.2, 0.28, CAB.z1 + 0.025], 'lampWarm', { detail: 0, glow: true }),
       kit.box([0.1, 0.05, 0.03], [0, 0.26, -0.905], 'red', { glow: 'red' }),
-      ...glassWindow(kit, { at: [0, 0.45, CAB.z1], facing: 'z+', w: 0.44, h: 0.14, panes: 2 }),
-      ...glassWindow(kit, { at: [W / 2, 0.45, cz], facing: 'x+', w: 0.3, h: 0.14, panes: 1 }),
-      ...glassWindow(kit, { at: [-W / 2, 0.45, cz], facing: 'x-', w: 0.3, h: 0.14, panes: 1 }),
+      ...glassWindow(kit, { at: [0, 0.32, CAB.z1], facing: 'z+', w: 0.44, h: 0.08, panes: 2 }),
+      ...glassWindow(kit, { at: [W / 2, 0.32, cz], facing: 'x+', w: 0.3, h: 0.08, panes: 1 }),
+      ...glassWindow(kit, { at: [-W / 2, 0.32, cz], facing: 'x-', w: 0.3, h: 0.08, panes: 1 }),
     );
     // crates of vegetables
     const crate = (z: number, veg: 'orange' | 'leaf' | 'red') => {
@@ -41,7 +41,7 @@ export const item: ItemModel = {
       parts.push(kit.box([0.46, 0.03, 0.44], [0, 0.46, z], 'woodDark'));
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        parts.push(kit.sphere(0.065, [0.11 * Math.cos(a) * (i % 2 ? 1 : 0.6), 0.5, z + 0.1 * Math.sin(a) * (i % 2 ? 1 : 0.6)], veg, { detail: 0 }));
+        parts.push(kit.sphere(0.05, [0.11 * Math.cos(a) * (i % 2 ? 1 : 0.6), 0.495, z + 0.1 * Math.sin(a) * (i % 2 ? 1 : 0.6)], veg, { detail: 0 }));
       }
     };
     crate(-0.05, 'orange');

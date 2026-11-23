@@ -14,33 +14,36 @@ export const item: ItemModel = {
   footprint: { w: 2, d: 3 },
   build: (kit) => {
     const parts: Part[] = [
-      kit.box([DECK.w, 0.14, 2.96], [0, DECK.top - 0.07, 0], 'stone'),
-      kit.box([DECK.w - 0.2, 0.05, 2.96], [0, 0.46, 0], 'stoneDark'),
-      kit.box([0.06, 0.1, 2.96], [DECK.w / 2 - 0.03, DECK.top + 0.05, 0], 'white'),
-      kit.box([0.06, 0.1, 2.96], [-DECK.w / 2 + 0.03, DECK.top + 0.05, 0], 'white'),
-      // rails
-      kit.box([0.03, 0.03, 2.9], [-0.15, DECK.top + 0.015, 0], 'chrome'),
-      kit.box([0.03, 0.03, 2.9], [0.15, DECK.top + 0.015, 0], 'chrome'),
+      // grey viaduct: dark deck, lighter parapets, charcoal track bed
+      kit.box([DECK.w, 0.14, 2.96], [0, DECK.top - 0.07, 0], 'stoneDark'),
+      kit.box([DECK.w - 0.2, 0.05, 2.96], [0, 0.46, 0], 'charcoal'),
+      kit.box([0.06, 0.1, 2.96], [DECK.w / 2 - 0.03, DECK.top + 0.05, 0], 'stone'),
+      kit.box([0.06, 0.1, 2.96], [-DECK.w / 2 + 0.03, DECK.top + 0.05, 0], 'stone'),
+      kit.box([0.5, 0.02, 2.9], [0, DECK.top + 0.01, 0], 'charcoal'),
+      kit.box([0.03, 0.03, 2.9], [-0.15, DECK.top + 0.035, 0], 'chrome'),
+      kit.box([0.03, 0.03, 2.9], [0.15, DECK.top + 0.035, 0], 'chrome'),
       // blue neon strip along the deck sides
       kit.box([0.02, 0.04, 2.7], [DECK.w / 2 + 0.01, 0.58, 0], 'blue', { glow: 'blue' }),
       kit.box([0.02, 0.04, 2.7], [-DECK.w / 2 - 0.01, 0.58, 0], 'blue', { glow: 'blue' }),
-      // train body, stripe and roof
-      kit.box([0.46, 2 * HALF_H, 2.0], [0, TRAIN_Y, -0.1], 'white'),
-      kit.box([0.48, 0.05, 2.0], [0, TRAIN_Y - 0.05, -0.1], 'blue'),
-      kit.box([0.3, 0.03, 1.9], [0, TRAIN_Y + HALF_H + 0.015, -0.1], 'stone'),
-      kit.box([0.34, 0.06, 0.24], [0, DECK.top + 0.1, -0.8], 'charcoal'),
-      kit.box([0.34, 0.06, 0.24], [0, DECK.top + 0.1, 0.6], 'charcoal'),
-      // the long nose and a short tail
-      kit.sphere(0.23, [0, TRAIN_Y, 0.9], 'white', { scale: [1, 0.74, 2.5] }),
-      kit.sphere(0.235, [0, TRAIN_Y - 0.07, 0.9], 'blue', { scale: [0.98, 0.16, 2.5] }),
-      kit.sphere(0.12, [0, TRAIN_Y + 0.05, 1.05], 'navy', { scale: [0.95, 0.5, 1.5] }),
-      kit.sphere(0.23, [0, TRAIN_Y, -1.1], 'white', { scale: [1, 0.74, 1.1] }),
-      kit.sphere(0.04, [-0.1, TRAIN_Y - 0.1, 1.38], 'lampWarm', { detail: 0, glow: true }),
-      kit.sphere(0.04, [0.1, TRAIN_Y - 0.1, 1.38], 'lampWarm', { detail: 0, glow: true }),
+      // white train: body, blue stripe, blue roof line
+      kit.box([0.46, 2 * HALF_H, 1.85], [0, TRAIN_Y, -0.275], 'white'),
+      kit.box([0.48, 0.05, 1.85], [0, TRAIN_Y - 0.05, -0.275], 'blue'),
+      kit.box([0.1, 0.02, 1.85], [0, TRAIN_Y + HALF_H + 0.01, -0.275], 'blue'),
+      kit.box([0.34, 0.06, 0.24], [0, DECK.top + 0.06, -0.9], 'charcoal'),
+      kit.box([0.34, 0.06, 0.24], [0, DECK.top + 0.06, 0.4], 'charcoal'),
+      // long tapering duck-bill nose at +z, blue lower stripe and tip
+      kit.sphere(0.23, [0, TRAIN_Y, 0.65], 'white', { scale: [1, 0.74, 2.6] }),
+      kit.sphere(0.235, [0, TRAIN_Y - 0.07, 0.65], 'blue', { scale: [0.98, 0.16, 2.6] }),
+      kit.sphere(0.1, [0, TRAIN_Y - 0.05, 1.2], 'white', { scale: [1.5, 0.4, 2.4] }),
+      kit.sphere(0.06, [0, TRAIN_Y - 0.06, 1.36], 'blue', { scale: [1.5, 0.5, 1.5] }),
+      kit.sphere(0.12, [0, TRAIN_Y + 0.05, 0.85], 'navy', { scale: [0.95, 0.5, 1.5] }),
+      kit.sphere(0.23, [0, TRAIN_Y, -1.2], 'white', { scale: [1, 0.74, 1.1] }),
+      kit.sphere(0.03, [-0.08, TRAIN_Y - 0.06, 1.3], 'lampWarm', { detail: 0, glow: true }),
+      kit.sphere(0.03, [0.08, TRAIN_Y - 0.06, 1.3], 'lampWarm', { detail: 0, glow: true }),
     ];
     // lit windows down both sides
     for (let i = 0; i < 7; i++) {
-      const z = -0.95 + i * 0.28;
+      const z = -1.0 + i * 0.27;
       for (const s of [1, -1]) {
         parts.push(kit.box([0.02, 0.09, 0.16], [s * 0.239, TRAIN_Y + 0.05, z], 'skyBlue', { glow: 'windowWarm', light: 'window' }));
       }

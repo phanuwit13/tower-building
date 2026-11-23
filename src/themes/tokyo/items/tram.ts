@@ -32,9 +32,9 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [0, 0.42, HALF_L], facing: 'z+', w: 0.34, h: 0.18, panes: 2 }),
       ...glassWindow(kit, { at: [0, 0.42, -HALF_L], facing: 'z-', w: 0.34, h: 0.18, panes: 2 }),
       // pantograph on the roof
-      rod(kit, [0, ROOF_Y + 0.09, -0.3], [-0.0, ROOF_Y + 0.3, -0.1], 0.015, 'chrome', { segments: 4 }),
-      rod(kit, [0, ROOF_Y + 0.09, 0.1], [0, ROOF_Y + 0.3, -0.1], 0.015, 'chrome', { segments: 4 }),
-      kit.box([0.3, 0.025, 0.04], [0, ROOF_Y + 0.31, -0.1], 'charcoal'),
+      rod(kit, [0, ROOF_Y + 0.09, -0.3], [0, ROOF_Y + 0.19, -0.1], 0.015, 'chrome', { segments: 4 }),
+      rod(kit, [0, ROOF_Y + 0.09, 0.1], [0, ROOF_Y + 0.19, -0.1], 0.015, 'chrome', { segments: 4 }),
+      kit.box([0.3, 0.025, 0.04], [0, ROOF_Y + 0.2, -0.1], 'charcoal'),
     ];
     for (const z of [-0.5, 0, 0.5]) {
       parts.push(...glassWindow(kit, { at: [HALF_W, 0.42, z], facing: 'x+', w: 0.28, h: 0.18, panes: 1, frame: 'leafDark' }));
