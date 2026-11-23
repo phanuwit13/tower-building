@@ -23,7 +23,7 @@ function bear(kit: Parameters<ItemModel['build']>[0], cx: number, cz: number, s:
     parts.push(
       kit.sphere(0.09 * s, [cx + 0.2 * s, y0 + 0.07 * s, cz + sz * 0.13 * s], 'white', { detail: 0, scale: [1, 1.2, 1] }), // front paws
       kit.sphere(0.09 * s, [cx - 0.2 * s, y0 + 0.07 * s, cz + sz * 0.13 * s], 'white', { detail: 0, scale: [1, 1.2, 1] }), // back paws
-      kit.sphere(0.06 * s, [head[0] - 0.05 * s, head[1] + 0.15 * s, cz + sz * 0.12 * s], 'white', { detail: 0 }), // ears
+      kit.sphere(0.05 * s, [head[0] - 0.04 * s, head[1] + 0.1 * s, cz + sz * 0.14 * s], 'white', { detail: 0 }), // ears
       kit.sphere(0.028 * s, [head[0] + 0.14 * s, head[1] + 0.05 * s, cz + sz * 0.07 * s], 'charcoal', { detail: 0 }), // big eyes
     );
   }

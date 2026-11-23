@@ -49,8 +49,8 @@ export const item: ItemModel = {
       rod(kit, FORK, [0, 1.45, 0.62], 0.05, 'sand'),
       rod(kit, FORK, [0, 1.4, -0.7], 0.05, 'sand'),
       kit.sphere(0.1, FORK, 'sand', { detail: 0 }),
-      ...koala(kit, 0.2, GROUND_H + 0.4, TRUNK.z, 1),
-      ...koala(kit, 0.02, FORK[1] + 0.16, TRUNK.z, 0.9),
+      ...koala(kit, 0.26, GROUND_H + 0.45, TRUNK.z, 1.4),
+      ...koala(kit, 0.04, FORK[1] + 0.18, TRUNK.z, 1.26),
     ];
     for (const [x, y, z, r, color] of LEAVES) parts.push(kit.sphere(r, [x, y, z], color, { motion: SWAY }));
     // two tufts on the grass

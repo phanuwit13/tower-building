@@ -4,7 +4,6 @@ import type { MotionOpts } from '../../../models/motion';
 
 // A long stone trough (along z) with a hand pump at the +z end, spout over the water.
 const TROUGH = { w: 0.5, l: 1.4, z: -0.2, h: 0.2, rim: 0.1, wall: 0.06 };
-const RIM_TOP = TROUGH.h + TROUGH.rim;
 const WATER_TOP = 0.235;
 const WATER: MotionOpts = { kind: 'water', water: 'pond' };
 const PUMP = { z: 0.74, h: 0.62 };
@@ -40,7 +39,6 @@ export const item: ItemModel = {
       kit.cone(0.05, 0.16, [-0.3, 0.08, TROUGH.z - 0.7], 'leaf', { segments: 5 }),
       kit.cone(0.04, 0.12, [-0.2, 0.06, TROUGH.z - 0.72], 'lime', { segments: 5 }),
     ];
-    void RIM_TOP;
     return kit.finish(parts);
   },
 };
