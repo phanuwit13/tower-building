@@ -2,6 +2,7 @@ import { test as plain } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { T } from '../src/ui/strings';
 import { school } from '../src/themes/school';
+import { FLOOR_TILES } from '../src/floors';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
 
@@ -117,6 +118,14 @@ test('gallery shows every item of the theme with its Thai name, and no game', as
   await expect(page.getByRole('button', { name: T.restart })).toHaveCount(0);
   await expect(page.getByRole('button', { name: T.clear })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length)).toBe(0); // the gallery saves nothing
+});
+
+test('?gallery=floors shows every floor tile with its Thai name, and no game', async ({ page }) => {
+  await page.goto('/?gallery=floors');
+  await expect(page.locator('.gallery-label').first()).toBeVisible();
+  expect((await page.locator('.gallery-label strong').allTextContents()).sort()).toEqual(FLOOR_TILES.map((t) => t.name).sort());
+  await expect(page.getByRole('button', { name: T.place })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.length)).toBe(0);
 });
 
 test('gallery &item= shows one item with its label and budget, and unknown ids fall back', async ({ page }) => {

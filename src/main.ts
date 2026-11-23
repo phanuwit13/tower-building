@@ -19,6 +19,9 @@ import { createGround } from './render/ground';
 import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
 import { loadBatch, parseBatchParam } from './render/batchGallery';
+import { attachFloorGallery } from './render/floorGallery';
+import { createFloorLayer } from './render/floors';
+import { isFloorTile } from './floors';
 import { school } from './themes/school';
 import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
@@ -69,7 +72,7 @@ function boot(app: HTMLElement): void {
   const demo = parseDemoParam(location.search);
   const schoolCatalog = getCatalog(school.id);
   const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
-  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality, isFloorTile: () => false });
+  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality, isFloorTile });
   let tier = controller.getState().quality;
   let appliedKey = '';
 
@@ -77,6 +80,9 @@ function boot(app: HTMLElement): void {
   const stage = createStage(app, tier);
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
+  const floorCount = el('div', { class: 'floor-count' });
+  document.body.append(floorCount);
+  const floorLayer = createFloorLayer(stage, kit, floorCount);
   const cityView = createCityView(stage, kit, getTheme);
   let dialogOpen = false;
   // Mouse hover preview: the faint item under the cursor (never changes controller state).
@@ -200,6 +206,7 @@ function boot(app: HTMLElement): void {
   let saveNoticeShown = false;
   const render = (s: AppState): void => {
     applyScene(s);
+    floorLayer.sync(s);
     cityView.sync(s);
     refreshHover();
 
@@ -251,18 +258,32 @@ function boot(app: HTMLElement): void {
  * An unknown theme id starts the normal game.
  */
 function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
+  bootGalleryStage(app, theme.defaultGround, (stage, kit) => {
+    attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
+  }, devNote);
+}
+
+/** `?gallery=floors`: every floor tile as a 3 x 3 patch with its Thai name; lighting and tier from the settings panel. */
+function bootFloorGallery(app: HTMLElement): void {
+  bootGalleryStage(app, 'grass', (stage, kit) => { attachFloorGallery(stage, kit); });
+}
+
+/** The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch. */
+function bootGalleryStage(
+  app: HTMLElement, ground: SceneSettings['ground'], attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
+): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
-  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: theme.defaultGround };
+  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground };
   const kit = getStyleKit();
   const stage = createStage(app, quality);
-  const ground = createGround(stage);
+  const groundLayer = createGround(stage);
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
-  attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
+  attach(stage, kit);
 
   const apply = (): void => {
     environment.apply(scene, quality);
-    ground.setGround(scene.ground, scene.weather === 'rain');
+    groundLayer.setGround(scene.ground, scene.weather === 'rain');
   };
   const openSettings = (): void => settings.open({ settings: scene, quality });
   const change = (patch: Partial<SceneSettings>): void => {
@@ -304,6 +325,7 @@ if (app) {
     const gallery = galleryTheme === null ? undefined : getTheme(galleryTheme);
     const batch = import.meta.env.DEV ? parseBatchParam(galleryTheme) : null;
     if (!hasWebGL2()) showFatal(app);
+    else if (galleryTheme === 'floors') bootFloorGallery(app);
     else if (batch !== null) bootBatchGallery(app, batch);
     else if (gallery) bootGallery(app, gallery);
     else boot(app);

@@ -35,3 +35,4 @@ export const T = {
 export const placedLabel = (n: number): string => `วางแล้ว ${n} ชิ้น`;
 export const summaryLabel = (s: FillStats): string => `วางไป ${s.items} ชิ้น · ใช้พื้นที่ ${s.percent}%`;
 export const sizeLabel = (fp: Footprint): string => `${fp.w}×${fp.d} ช่อง`;
+export const floorCountLabel = (n: number): string => `${n} ช่อง`;

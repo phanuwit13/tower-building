@@ -107,5 +107,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .gallery-label strong { font-size: 14px; font-weight: 600; }
 .gallery-label span { font-size: 10px; opacity: 0.7; }
 
+/* Floor painting: the "n ช่อง" count over the rectangle being dragged */
+.floor-count { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; padding: 2px 10px; border-radius: 12px; background: rgb(255 255 255 / 0.92); font-size: 14px; font-weight: 600; white-space: nowrap; }
+
 /* Dev-only batch gallery message (?gallery=batch-<n>) */
 .gallery-dev-note { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 5; margin: 0; padding: 8px 16px; border-radius: 12px; background: rgb(255 255 255 / 0.92); font-size: 16px; }
