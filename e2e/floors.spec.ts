@@ -276,3 +276,21 @@ test.describe('touch (iPad 1024 x 768)', () => {
     expect(painted).not.toContain(7 * GRID_SIZE + 7);
   });
 });
+
+test('floor drawer: the same height in every group, every swatch the same size (labels on two lines do not shift the layout)', async ({ page }) => {
+  await startSchool(page);
+  await floorsButton(page).click();
+  const drawer = drawerOf(page);
+  const sizes: string[] = [];
+  for (const g of FLOOR_GROUPS) {
+    const tab = drawer.getByRole('button', { name: g.name, exact: true });
+    if (!(await tab.isVisible())) continue;
+    await tab.click();
+    const box = await drawer.boundingBox();
+    const swatches = await drawer.locator('.floor-swatch').evaluateAll((els) =>
+      els.map((e) => { const r = e.getBoundingClientRect(); const img = e.querySelector('img')!.getBoundingClientRect(); return `${Math.round(r.height)}/${Math.round(img.top - r.top)}`; }));
+    expect(new Set(swatches).size, `${g.name}: ${swatches.join(' ')}`).toBe(1);
+    sizes.push(`${Math.round(box!.height)}|${swatches[0]}`);
+  }
+  expect(new Set(sizes).size, sizes.join(' ')).toBe(1);
+});
