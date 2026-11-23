@@ -9,7 +9,7 @@ const POLE_Z = 0.88;
 const POLE_H = 1.32;
 const LINE_Y = 1.2;
 const CLOTH_T = 0.02;
-const WAVE = 0.4;
+const WAVE = 0.25;
 
 /** A garment is a row of strips along z, hanging from the line; they all wave about the garment's own pivot. */
 function hang(kit: StyleKit, z0: number, strips: Array<{ w: number; h: number; color: PaletteColor; top?: number }>, speed: number): Part[] {
@@ -63,7 +63,7 @@ export const item: ItemModel = {
     );
     // A long striped sarong in purple, sun yellow and red.
     const stripe: PaletteColor[] = ['purple', 'sunYellow', 'red', 'sunYellow', 'purple', 'orange'];
-    parts.push(...hang(kit, -0.02, stripe.map((color) => ({ w: 0.085, h: 0.6, color })), 6.3));
+    parts.push(...hang(kit, 0.03, stripe.map((color) => ({ w: 0.085, h: 0.6, color })), 6.3));
     // A small green towel and a yellow cloth.
     parts.push(
       ...hang(kit, 0.55, [

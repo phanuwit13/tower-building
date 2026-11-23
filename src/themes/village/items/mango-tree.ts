@@ -15,18 +15,14 @@ const CROWN: Array<[number, number, number, number, PaletteColor]> = [
   [0.05, 1.0, -0.15, 0.27, 'leaf'],
   [0, 1.48, 0, 0.22, 'lime'],
 ];
-/** Mangoes: [x, y, z, colour] on or just under the crown. */
-const MANGOES: Array<[number, number, number, PaletteColor]> = [
-  [0.3, 0.88, 0.2, 'sunYellow'],
-  [0.12, 0.9, 0.38, 'orange'],
-  [-0.15, 0.85, 0.3, 'sunYellow'],
-  [0.36, 1.02, -0.05, 'lime'],
-  [-0.3, 0.95, -0.1, 'sunYellow'],
-  [0.1, 0.84, -0.3, 'orange'],
-  [0.28, 1.22, 0.2, 'sunYellow'],
-  [-0.05, 1.3, 0.3, 'lime'],
+/** Mangoes hang on the outside of the crown, most of them on the camera side (+x+z): [azimuth, y, colour]. */
+const MANGOES: Array<[number, number, PaletteColor]> = [
+  [-0.9, 0.95, 'sunYellow'], [-0.5, 0.88, 'orange'], [-0.1, 0.96, 'sunYellow'], [-0.7, 1.18, 'orange'],
+  [-0.3, 1.2, 'sunYellow'], [0.3, 0.95, 'sunYellow'], [0.1, 1.15, 'orange'], [-1.3, 1.05, 'sunYellow'],
+  [0.7, 1.05, 'orange'], [-1.6, 0.9, 'lime'], [1.4, 1.0, 'sunYellow'], [-2.2, 1.0, 'orange'],
 ];
-
+const MANGO_R = 0.09;
+const MANGO_RING = 0.37; // how far from the trunk axis the mangoes hang
 /** ต้นมะม่วง: a round mango tree with yellow mangoes. */
 export const item: ItemModel = {
   id: 'mango-tree',
@@ -39,7 +35,7 @@ export const item: ItemModel = {
       kit.cylinder(0.07, 0.1, TRUNK_TOP - 0.1, [0, 0.1 + (TRUNK_TOP - 0.1) / 2, 0], 'wood', { segments: 8 }),
     ];
     for (const [x, y, z, r, color] of CROWN) parts.push(kit.sphere(r, [x, y, z], color, { motion: SWAY }));
-    for (const [x, y, z, color] of MANGOES) parts.push(kit.sphere(0.06, [x, y, z], color, { detail: 0, scale: [1, 1.25, 1], motion: SWAY }));
+    for (const [a, y, color] of MANGOES) parts.push(kit.sphere(MANGO_R, [MANGO_RING * Math.cos(a), y, -MANGO_RING * Math.sin(a)], color, { detail: 0, scale: [1, 1.25, 1], motion: SWAY }));
     return kit.finish(parts);
   },
 };
