@@ -9,11 +9,11 @@ const BASE = { r: 0.96, h: 0.06 }; // still stone footing
 const DECK = { r: 0.9, h: 0.08 };
 const PAINT = { r: 0.84, h: 0.02 };
 const DECK_TOP = BASE.h + DECK.h + PAINT.h;
-const ROOF_Y = 1.38; // underside of the roof
+const ROOF_Y = 1.55; // underside of the roof
 const SKIRT = { r: 0.94, h: 0.08 };
 const ROOF = { r: 0.94, h: 0.5 };
 const COLUMN_R = 0.13;
-const HORSE_RAD = 0.62;
+const HORSE_RAD = 0.7;
 const HORSE_COLORS: PaletteColor[] = ['white', 'pink', 'sunYellow', 'mint', 'orange', 'lime'];
 const BULBS = 12;
 const SPIN: MotionOpts = { kind: 'spin', pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0.4 };
@@ -38,7 +38,7 @@ export const item: ItemModel = {
     ];
     for (let index = 0; index < BULBS; index++) {
       const a = (index / BULBS) * Math.PI * 2;
-      parts.push(kit.sphere(0.045, [0.9 * Math.cos(a), ROOF_Y + SKIRT.h / 2 - 0.01, -0.9 * Math.sin(a)], 'lampWarm',
+      parts.push(kit.sphere(0.045, [0.94 * Math.cos(a), ROOF_Y + SKIRT.h / 2, -0.94 * Math.sin(a)], 'lampWarm',
         { detail: 0, glow: true, light: 'chase', chase: { index, count: BULBS }, motion: SPIN }));
     }
     HORSE_COLORS.forEach((color, i) => {

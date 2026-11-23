@@ -66,7 +66,7 @@ export const item: ItemModel = {
         rod(kit, [-RIM_X, py, pz], [RIM_X, py, pz], 0.015, 'stoneDark', { segments: 4 }),
         kit.cylinder(0.012, 0.012, CABIN.hang, [0, py - CABIN.hang / 2, pz], 'stoneDark', { segments: 4 }),
         kit.box([CABIN.w, CABIN.h, CABIN.d], [0, cy, pz], color),
-        kit.cone(0.17, 0.1, [0, cy + CABIN.h / 2 + 0.05, pz], 'white', { segments: 6 }),
+        kit.cone(0.1, 0.1, [0, cy + CABIN.h / 2 + 0.05, pz], 'white', { segments: 6 }),
       );
     });
     return kit.finish(parts);

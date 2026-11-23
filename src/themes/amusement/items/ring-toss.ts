@@ -5,11 +5,11 @@ import type { PaletteColor } from '../../../models/palette';
 // A fair-ground stall, counter on the +x side: rows of bottles on a shelf behind the counter, a few
 // rings on the bottles and on the counter, a striped awning and a short row of blinking bulbs.
 const BASE = { w: 0.92, h: 0.04, d: 1.8 };
-const COUNTER = { x: 0.24, w: 0.4, h: 0.4, d: 1.5 };
-const SHELF = { x: -0.14, w: 0.34, h: 0.12, d: 1.3 };
-const BACK = { x: -0.4, t: 0.06, h: 1.0, d: 1.6 };
-const POST_Y = 1.0;
-const AWN = { tilt: 0.2, w: 0.78, t: 0.05, y: 1.06 };
+const COUNTER = { x: 0.24, w: 0.4, h: 0.3, d: 1.5 };
+const SHELF = { x: -0.14, w: 0.34, h: 0.22, d: 1.3 };
+const BACK = { x: -0.4, t: 0.06, h: 1.15, d: 1.6 };
+const POST_Y = 1.15;
+const AWN = { tilt: 0.12, w: 0.78, t: 0.05, y: 1.2 };
 const BOTTLE_COLORS: PaletteColor[] = ['leaf', 'sunYellow', 'pink', 'skyBlue'];
 
 /** เกมโยนห่วง: a ring-toss stall with bottles, rings, a striped awning and blinking bulbs. */
