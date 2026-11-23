@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { createHud, type HudView } from './hud';
+import { createHud, tapHint, type HudView } from './hud';
 import { T } from './strings';
 
 const view = (o: Partial<HudView> = {}): HudView => ({
@@ -154,5 +154,14 @@ describe('hud', () => {
     expect(nameWrites).not.toHaveBeenCalled();
     hud.update(view({ current: { ...card, thumb: 'data:image/png;base64,BBBB' } }));
     expect(img.getAttribute('src')).toBe('data:image/png;base64,BBBB');
+  });
+});
+
+describe('tapHint ("แตะพื้นเพื่อเลือกที่วาง")', () => {
+  it('shows while playing with nothing picked yet, until an item has ever been placed in this browser', () => {
+    expect(tapHint({ playing: true, ghost: false, placedEver: false })).toBe(T.hintTap);
+    expect(tapHint({ playing: true, ghost: true, placedEver: false })).toBeNull(); // a spot is picked
+    expect(tapHint({ playing: false, ghost: false, placedEver: false })).toBeNull(); // theme select, a finished round
+    expect(tapHint({ playing: true, ghost: false, placedEver: true })).toBeNull(); // never again after the first item
   });
 });

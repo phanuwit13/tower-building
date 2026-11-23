@@ -22,17 +22,25 @@ const MARK_INVALID = 0xc4162f;
 const HOVER_OPACITY = { valid: { body: 0.3, fill: 0.2 }, invalid: { body: 0.4, fill: 0.4 } } as const;
 const OPACITY = { valid: { body: 0.6, fill: 0.45 }, invalid: { body: 0.75, fill: 0.7 } } as const;
 
+/** The ✓/✗ texture: a disc of radius MARK_R px with a MARK_LINE px white ring, on a MARK_PX square. */
+const MARK_PX = 128;
+const MARK_R = 58;
+const MARK_LINE = 8;
+/** The drawn disc's diameter (ring included) as a share of the marker's square. */
+const MARK_DISC = (2 * MARK_R + MARK_LINE) / MARK_PX;
+const MARK_SIZE = 2.4;
+
 function markTexture(glyph: string, color: number): THREE.CanvasTexture {
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = c.height = MARK_PX;
   const g = c.getContext('2d');
   if (g) {
     g.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
     g.beginPath();
-    g.arc(64, 64, 58, 0, Math.PI * 2);
+    g.arc(MARK_PX / 2, MARK_PX / 2, MARK_R, 0, Math.PI * 2);
     g.fill();
     g.strokeStyle = '#ffffff';
-    g.lineWidth = 8;
+    g.lineWidth = MARK_LINE;
     g.stroke();
     g.fillStyle = '#ffffff';
     g.font = 'bold 76px sans-serif';
@@ -45,10 +53,18 @@ function markTexture(glyph: string, color: number): THREE.CanvasTexture {
   return tex;
 }
 
+/**
+ * Where the ✓ is drawn: a camera-facing disc at `center` (world). `size` is its diameter in
+ * PointsMaterial size units: on screen it is size × (canvas height / 2) / depth px across.
+ */
+export interface CheckMark { center: THREE.Vector3; size: number }
+
 export interface CityView {
   sync(s: AppState): void;
   /** World box (footprint x item height) of the visible ghost, for hit-testing; null when none is shown. */
   ghostBox(): THREE.Box3 | null;
+  /** The ✓ over a valid ghost, as a tap target; null when none is shown (no ghost, the ✗, hidden for a screenshot). */
+  checkMark(): CheckMark | null;
   /**
    * The faint mouse-hover preview of `itemId` at `p` (no marker, no shadow); null hides it.
    * Independent of the locked ghost; hidden too while a capture asked to hide the ghost.
@@ -99,7 +115,7 @@ export function createCityView(
   const noTex = markTexture('✗', MARK_INVALID);
   // A one-vertex Points billboard rather than a Sprite: GTAOPass hides Points but renders Sprites as dark quads.
   const spriteMat = new THREE.PointsMaterial({
-    map: okTex, size: 2.4, sizeAttenuation: true, depthTest: false, depthWrite: false, transparent: true,
+    map: okTex, size: MARK_SIZE, sizeAttenuation: true, depthTest: false, depthWrite: false, transparent: true,
   });
 
   const ghost = new THREE.Group();
@@ -148,6 +164,7 @@ export function createCityView(
   let hoverWanted = false;
 
   let wanted = false; // the game state wants a ghost on screen
+  let valid = false; // ...and it can be placed where it is (the ✓, not the ✗)
   let suppressed = false; // ...but a capture asked to hide it
   const box = new THREE.Box3();
   const applyVisibility = (): void => {
@@ -241,6 +258,7 @@ export function createCityView(
       return;
     }
     const top = setGhostModel(game.themeId, item.id);
+    valid = g.valid;
     const color = g.valid ? GHOST_VALID : GHOST_INVALID;
     const opacity = g.valid ? OPACITY.valid : OPACITY.invalid;
     ghostMat.color.setHex(color);
@@ -307,6 +325,7 @@ export function createCityView(
     sync,
     setHover,
     ghostBox: () => (wanted ? box.clone() : null),
+    checkMark: () => (wanted && valid && !suppressed ? { center: sprite.position.clone(), size: MARK_SIZE * MARK_DISC } : null),
     setGhostVisible(v) {
       suppressed = !v;
       applyVisibility();

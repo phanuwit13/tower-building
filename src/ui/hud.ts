@@ -18,6 +18,14 @@ export interface HudHandlers {
   onHome(): void;
 }
 
+/**
+ * Pure: the "tap the ground" hint, while playing with no spot picked yet. It teaches the first
+ * placement, so once any item has ever been placed in this browser (`placedEver`) it never shows again.
+ */
+export function tapHint(v: { playing: boolean; ghost: boolean; placedEver: boolean }): string | null {
+  return v.playing && !v.ghost && !v.placedEver ? T.hintTap : null;
+}
+
 function cardView(label: string, cls: string, testId?: string) {
   const thumb = el('img', { class: 'card-thumb', attrs: { alt: '' } });
   const name = el('div', { class: 'card-name', attrs: testId ? { 'data-testid': testId } : {} });

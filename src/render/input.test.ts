@@ -2,8 +2,12 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppState, Controller, FloorUiState } from '../app/controller';
-import { attachInput, pressAction, rayHitsBox, screenArrowToGrid, strokeOnRelease } from './input';
-import type { Stage } from './stage';
+import type { CheckMark } from './city';
+import {
+  attachInput, CHECK_MIN_RADIUS_PX, hitsCheckMark, pressAction, rayHitsBox, screenArrowToGrid, shortcutKey, strokeOnRelease,
+  type InputOptions,
+} from './input';
+import { TURN_STEP, ZOOM_STEP, type Stage } from './stage';
 
 describe('screenArrowToGrid', () => {
   const Q = Math.PI / 2;
@@ -47,7 +51,7 @@ describe('rayHitsBox', () => {
   });
 });
 
-function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } | null) => void) {
+function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } | null) => void, extra: InputOptions = {}) {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0, toJSON() {} });
@@ -67,7 +71,8 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
     addEventListener(_t: string, fn: () => void) { this.listeners.add(fn); },
     removeEventListener(_t: string, fn: () => void) { this.listeners.delete(fn); },
   };
-  const stage = { canvas, camera, controls } as unknown as Stage;
+  const rig = { turn: vi.fn(), zoomBy: vi.fn() };
+  const stage = { canvas, camera, controls, rig } as unknown as Stage;
   const floor: FloorUiState = { open: false, pick: 'wood-light', tool: 'paint', preview: null };
   const state = { screen: 'playing', game: null, ghost: null, floor } as unknown as AppState;
   const c = {
@@ -79,8 +84,8 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
   } as unknown as Controller & {
     previewFloors: ReturnType<typeof vi.fn>; paintFloors: ReturnType<typeof vi.fn>; closeFloors: ReturnType<typeof vi.fn>; tapTile: ReturnType<typeof vi.fn>;
   };
-  const dispose = attachInput(stage, c, { isBlocked: blocked, onHover });
-  return { canvas, camera, controls, c, floor, dispose };
+  const dispose = attachInput(stage, c, { isBlocked: blocked, onHover, ...extra });
+  return { canvas, camera, controls, c, floor, state, rig, dispose };
 }
 
 describe('attachInput keyboard', () => {
@@ -527,5 +532,234 @@ describe('attachInput floor mode', () => {
     expect(c.rotateGhost).not.toHaveBeenCalled();
     expect(c.place).not.toHaveBeenCalled();
     dispose();
+  });
+});
+
+describe('shortcutKey', () => {
+  const k = (key: string, code = '') => shortcutKey({ key, code });
+  it('names letters in lower case and leaves other keys as they are', () => {
+    expect(k('Q', 'KeyQ')).toBe('q');
+    expect(k('e', 'KeyE')).toBe('e');
+    expect(k('+', 'Equal')).toBe('+');
+    expect(k('Enter', 'Enter')).toBe('Enter');
+    expect(k(' ', 'Space')).toBe(' ');
+    expect(k('ArrowUp', 'ArrowUp')).toBe('ArrowUp');
+  });
+  it('a Thai layout (ๆ on Q, ช on =, ข on -) still names the key under the finger', () => {
+    expect(k('ๆ', 'KeyQ')).toBe('q');
+    expect(k('ำ', 'KeyE')).toBe('e');
+    expect(k('พ', 'KeyR')).toBe('r');
+    expect(k('ช', 'Equal')).toBe('=');
+    expect(k('ข', 'Minus')).toBe('-');
+  });
+  it('a Latin layout keeps the typed letter (AZERTY: the A key is KeyQ but types a)', () => {
+    expect(k('a', 'KeyQ')).toBe('a');
+  });
+});
+
+describe('attachInput camera keys', () => {
+  const press = (key: string, init: KeyboardEventInit = {}, target: EventTarget = document) =>
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }));
+
+  it('Q / E turn the view 45 degrees, + = / - zoom by a step', () => {
+    const { rig, dispose } = setup(() => false);
+    press('q');
+    press('E');
+    expect(rig.turn.mock.calls).toEqual([[-TURN_STEP], [TURN_STEP]]);
+    press('+');
+    press('=');
+    press('-');
+    expect(rig.zoomBy.mock.calls).toEqual([[ZOOM_STEP], [ZOOM_STEP], [-ZOOM_STEP]]);
+    dispose();
+  });
+
+  it('work with a Thai layout on', () => {
+    const { rig, c, dispose } = setup(() => false);
+    press('ๆ', { code: 'KeyQ' });
+    press('ข', { code: 'Minus' });
+    press('พ', { code: 'KeyR' });
+    expect(rig.turn).toHaveBeenCalledWith(-TURN_STEP);
+    expect(rig.zoomBy).toHaveBeenCalledWith(-ZOOM_STEP);
+    expect(c.rotateGhost).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it('do nothing while an overlay owns the keyboard, with the drawer open, in a field, or with Ctrl (browser zoom)', () => {
+    let blocked = true;
+    const { rig, floor, dispose } = setup(() => blocked);
+    for (const key of ['q', 'e', '+', '-']) press(key);
+    blocked = false;
+    floor.open = true;
+    for (const key of ['q', 'e', '+', '-']) press(key);
+    floor.open = false;
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    for (const key of ['q', 'e', '+', '-']) press(key, {}, field);
+    field.remove();
+    press('+', { ctrlKey: true });
+    press('-', { metaKey: true });
+    expect(rig.turn).not.toHaveBeenCalled();
+    expect(rig.zoomBy).not.toHaveBeenCalled();
+    dispose();
+  });
+});
+
+describe('hitsCheckMark', () => {
+  const camera = new THREE.PerspectiveCamera(40, 800 / 600, 0.1, 100);
+  camera.position.set(16, 13, 16);
+  camera.lookAt(5, 0, 5);
+  camera.updateMatrixWorld(true);
+  const W = 800;
+  const H = 600;
+  const screenOf = (p: THREE.Vector3) => {
+    const v = p.clone().project(camera);
+    return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H };
+  };
+  const mark = (size: number, at = new THREE.Vector3(5, 2, 5)): CheckMark => ({ center: at, size });
+  const depth = (p: THREE.Vector3) => -p.clone().applyMatrix4(camera.matrixWorldInverse).z;
+
+  it('hits on the ✓ and misses well beside it', () => {
+    const m = mark(2.3);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x, c.y, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x + 80, c.y, m, camera, W, H)).toBe(false);
+    expect(hitsCheckMark(c.x, c.y - 80, m, camera, W, H)).toBe(false);
+  });
+
+  it('a ✓ drawn small (zoomed out) still takes a 48 px finger', () => {
+    const m = mark(0.5);
+    const drawnRadius = (m.size * H) / 4 / depth(m.center);
+    expect(drawnRadius).toBeLessThan(CHECK_MIN_RADIUS_PX);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x + CHECK_MIN_RADIUS_PX - 1, c.y, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x + CHECK_MIN_RADIUS_PX + 2, c.y, m, camera, W, H)).toBe(false);
+  });
+
+  it('a ✓ drawn big (zoomed in) is hit across its whole disc, not beyond', () => {
+    const m = mark(8);
+    const r = (m.size * H) / 4 / depth(m.center); // the drawn disc's radius in px
+    expect(r).toBeGreaterThan(CHECK_MIN_RADIUS_PX + 10);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x, c.y + r - 1, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x, c.y + r + 2, m, camera, W, H)).toBe(false);
+  });
+
+  it('never hits a ✓ behind the camera', () => {
+    const behind = mark(2.3, new THREE.Vector3(30, 20, 30));
+    expect(hitsCheckMark(400, 300, behind, camera, W, H)).toBe(false);
+  });
+});
+
+describe('attachInput: tap the ✓ to place', () => {
+  const ptr = (type: string, id: number, x: number, y: number, extra: PointerEventInit = {}) =>
+    new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: y, button: 0, bubbles: true, ...extra });
+  /** A ✓ at the map point (5, 2, 5) and where the setup camera draws it on the 800 x 600 canvas. */
+  const withCheck = () => {
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, undefined, { checkMark: () => mark });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    return { ...s, at, hide: () => { mark = null; } };
+  };
+
+  it('one tap on the ✓ places once, and neither moves nor drags the ghost', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    canvas.dispatchEvent(ptr('pointermove', 1, at.x + 2, at.y + 1)); // a finger's wobble
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 2, at.y + 1));
+    expect(c.place).toHaveBeenCalledTimes(1);
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('works with the mouse too', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y, { pointerType: 'mouse' }));
+    window.dispatchEvent(ptr('pointerup', 1, at.x, at.y, { pointerType: 'mouse' }));
+    expect(c.place).toHaveBeenCalledTimes(1);
+    expect(c.tapTile).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('a drag that starts on the ✓ turns the camera: no place, no ghost move', () => {
+    const { canvas, controls, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    expect(controls.enabled).toBe(true); // the camera keeps the gesture
+    canvas.dispatchEvent(ptr('pointermove', 1, at.x + 120, at.y));
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 120, at.y));
+    expect(c.place).not.toHaveBeenCalled();
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('the ✓ wins over the ghost body under it: a press there never starts a ghost drag', () => {
+    const catalogOf = (() => ({ items: { box: { footprint: { w: 2, d: 2 } } } })) as unknown as InputOptions['catalogOf'];
+    const ghostBox = () => new THREE.Box3(new THREE.Vector3(4, 0, 4), new THREE.Vector3(6, 3, 6)); // the ✓ point is inside
+    const onGhostBody = (checkMark: InputOptions['checkMark']) => {
+      const s = setup(() => false, undefined, { catalogOf, ghostBox, checkMark });
+      Object.assign(s.state, { game: { themeId: 'school', current: 'box' }, ghost: { x: 4, z: 4, rotation: 0, valid: true } });
+      const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+      const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+      s.canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+      const ghostDrag = !s.controls.enabled;
+      window.dispatchEvent(ptr('pointerup', 1, at.x, at.y));
+      s.dispose();
+      return { ghostDrag, c: s.c };
+    };
+    const without = onGhostBody(() => null); // no ✓ there: the press grabs the ghost
+    expect(without.ghostDrag).toBe(true);
+    const withCheckMark = onGhostBody(() => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }));
+    expect(withCheckMark.ghostDrag).toBe(false);
+    expect(withCheckMark.c.place).toHaveBeenCalledTimes(1);
+    expect(withCheckMark.c.dragGhostTo).not.toHaveBeenCalled();
+    expect(withCheckMark.c.tapTile).not.toHaveBeenCalled();
+  });
+
+  it('a tap away from the ✓ still moves the ghost; with the ✗ (no ✓) a tap there moves it too', () => {
+    const { canvas, c, at, hide, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x + 150, at.y + 120));
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 150, at.y + 120));
+    expect(c.tapTile).toHaveBeenCalledTimes(1);
+    hide(); // the ghost turned invalid: the ✗ is not a button
+    canvas.dispatchEvent(ptr('pointerdown', 2, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 2, at.x, at.y));
+    expect(c.tapTile).toHaveBeenCalledTimes(2);
+    expect(c.place).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('two fingers that land on the ✓ (a pinch) never place', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    canvas.dispatchEvent(ptr('pointerdown', 2, at.x + 60, at.y));
+    window.dispatchEvent(ptr('pointerup', 1, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 2, at.x + 60, at.y));
+    expect(c.place).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('a mouse over the ✓ gets the hand cursor and no hover preview; off it, the preview is back', () => {
+    const calls: Array<{ tx: number; tz: number } | null> = [];
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, (t) => calls.push(t && { ...t }), { checkMark: () => mark });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    const mv = (x: number, y: number) => s.canvas.dispatchEvent(ptr('pointermove', 1, x, y, { pointerType: 'mouse', buttons: 0 }));
+    mv(at.x + 150, at.y + 120);
+    expect(calls.at(-1)).not.toBeNull();
+    expect(s.canvas.style.cursor).toBe('');
+    mv(at.x, at.y);
+    expect(calls.at(-1)).toBeNull();
+    expect(s.canvas.style.cursor).toBe('pointer');
+    mv(at.x + 150, at.y + 120);
+    expect(calls.at(-1)).not.toBeNull();
+    expect(s.canvas.style.cursor).toBe('');
+    mv(at.x, at.y);
+    mark = null; // placed: the ✓ is gone, the camera change re-checks under the still mouse
+    s.controls.listeners.forEach((fn) => fn());
+    expect(s.canvas.style.cursor).toBe('');
+    s.dispose();
   });
 });

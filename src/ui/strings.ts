@@ -23,6 +23,13 @@ export const T = {
     open: 'พื้น', title: 'ปูพื้น', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
     eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูพื้น', camera: '✋ ขยับกล้อง',
   },
+  /** The camera controls on the right edge: the zoom slider with ＋/－, and ⟲ ⟳ under it. */
+  camera: {
+    zoom: 'ซูม', zoomIn: 'ซูมเข้า', zoomOut: 'ซูมออก',
+    turnLeft: 'หมุนกล้องไปทางซ้าย', turnRight: 'หมุนกล้องไปทางขวา',
+    /** Beside ⟲ ⟳ on a first visit, until the camera is turned once. */
+    dragHint: 'ลากเพื่อหมุนมุมกล้อง',
+  },
   /** Back to theme select: every theme keeps its own city, so nothing is lost. */
   home: '🏠 เปลี่ยนธีม',
   /** On a theme select card whose city's round is finished. */

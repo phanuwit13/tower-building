@@ -214,3 +214,44 @@ describe('setHover', () => {
     expect(root.getObjectByName('ghost')!.visible).toBe(false);
   });
 });
+
+describe('checkMark (the ✓ as a tap target)', () => {
+  const game = newGame(catalog, settings, 3);
+  const fp = catalog.items[game.current].footprint;
+
+  it('over a valid ghost: centred over its footprint, above the item, with a drawn size', () => {
+    const { view, root } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const mark = view.checkMark();
+    expect(mark).not.toBeNull();
+    expect(mark!.center.x).toBeCloseTo(4 + fp.w / 2);
+    expect(mark!.center.z).toBeCloseTo(6 + fp.d / 2);
+    expect(mark!.center.y).toBeGreaterThan(view.ghostBox()!.max.y); // floats above the item
+    expect(mark!.size).toBeGreaterThan(1);
+    const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
+    expect(mark!.center.equals(sprite.position)).toBe(true); // where the ✓ is drawn
+    expect(mark!.size).toBeLessThanOrEqual((sprite.material as THREE.PointsMaterial).size);
+  });
+
+  it('the ✗ (invalid ghost), no ghost, a hidden ghost (screenshot) and a finished round have none', () => {
+    const { view } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: false }));
+    expect(view.checkMark()).toBeNull();
+    view.sync(state(game, null));
+    expect(view.checkMark()).toBeNull();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    view.setGhostVisible(false);
+    expect(view.checkMark()).toBeNull();
+    view.setGhostVisible(true);
+    expect(view.checkMark()).not.toBeNull();
+    view.sync({ ...state(game, { x: 4, z: 6, rotation: 0, valid: true }), screen: 'finished' });
+    expect(view.checkMark()).toBeNull();
+  });
+
+  it('returns a copy: moving it does not move the ✓', () => {
+    const { view } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    view.checkMark()!.center.set(0, 0, 0);
+    expect(view.checkMark()!.center.x).toBeCloseTo(4 + fp.w / 2);
+  });
+});

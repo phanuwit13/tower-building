@@ -4,7 +4,8 @@ import type { FloorRect } from '../game/floors';
 import { rotatedFootprint } from '../game/grid';
 import { GRID_SIZE, type Catalog } from '../game/types';
 import { getCatalog } from '../themes/registry';
-import type { Stage } from './stage';
+import type { CheckMark } from './city';
+import { TURN_STEP, ZOOM_STEP, type Stage } from './stage';
 
 export const TAP_MAX_MOVE_PX = 6;
 export const TAP_MAX_MS = 400;
@@ -40,6 +41,43 @@ export function rayToTile(
 /** Does the pointer ray pass through the box (the ghost's footprint x height)? */
 export function rayHitsBox(r: THREE.Ray, box: THREE.Box3): boolean {
   return r.intersectsBox(box);
+}
+
+/** Smallest ✓ hit radius in px: a 48 px target for a finger even when the ✓ is drawn smaller (zoomed out). */
+export const CHECK_MIN_RADIUS_PX = 24;
+const markAt = new THREE.Vector3(); // reused: the ✓ is tested on every mouse move
+
+/**
+ * Pure: does the point (x, y), in px from the canvas's top-left on a `width` x `height` canvas, land
+ * on the ✓? It is drawn as a camera-facing disc `mark.size` × (height / 2) / depth px across (the
+ * PointsMaterial size attenuation); the hit area is that disc, or CHECK_MIN_RADIUS_PX if bigger.
+ */
+export function hitsCheckMark(
+  x: number, y: number, mark: CheckMark, camera: THREE.Camera, width: number, height: number,
+): boolean {
+  const v = markAt.copy(mark.center).applyMatrix4(camera.matrixWorldInverse);
+  const depth = -v.z;
+  if (!(depth > 0)) return false;
+  v.applyMatrix4(camera.projectionMatrix);
+  const radius = Math.max((mark.size * height) / 4 / depth, CHECK_MIN_RADIUS_PX);
+  return Math.hypot(x - ((v.x + 1) / 2) * width, y - ((1 - v.y) / 2) * height) <= radius;
+}
+
+/**
+ * Pure: the key as a US keyboard names it, letters in lower case. With a Thai layout on, Q types ๆ
+ * and = types ช: a non-Latin character falls back to the physical key, so the shortcuts still work.
+ */
+export function shortcutKey(e: Pick<KeyboardEvent, 'key' | 'code'>): string {
+  const { key, code } = e;
+  if (key.length !== 1) return key;
+  if (key.charCodeAt(0) > 0x7f) {
+    const letter = /^Key([A-Z])$/.exec(code ?? '');
+    if (letter) return letter[1].toLowerCase();
+    if (code === 'Equal') return '=';
+    if (code === 'Minus') return '-';
+    return key;
+  }
+  return key.toLowerCase();
 }
 
 const QUARTER = Math.PI / 2;
@@ -97,6 +135,8 @@ export interface InputOptions {
   catalogOf?: (themeId: string) => Catalog | undefined;
   /** World-space box of the visible ghost (footprint x item height), or null. */
   ghostBox?: () => THREE.Box3 | null;
+  /** The ✓ over a valid ghost (a tap on it places), or null when there is none to tap (no ghost, the ✗). */
+  checkMark?: () => CheckMark | null;
   /** True while an overlay (settings, dialog, end screen) owns the keyboard. */
   isBlocked?: () => boolean;
   /** Mouse hover: the tile under the cursor, or null when the preview should hide. Fires only on change. */
@@ -118,6 +158,12 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   const pick = (e: PointerEvent, clamp: boolean) => {
     aim(e);
     return rayToTile(ray.ray.origin, ray.ray.direction, clamp);
+  };
+
+  /** The pointer is on the ✓ (only shown over a valid ghost). */
+  const onCheck = (clientX: number, clientY: number, r: DOMRect = canvas.getBoundingClientRect()): boolean => {
+    const mark = opts.checkMark?.() ?? null;
+    return mark !== null && hitsCheckMark(clientX - r.left, clientY - r.top, mark, camera, r.width, r.height);
   };
 
   /** The press lands on the ghost: on its ground footprint, or anywhere on its body (tall items). */
@@ -155,10 +201,20 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   let lastX = 0;
   let lastY = 0;
   let overCanvas = false; // a free mouse last reported a position over the canvas
+  let cursor = '';
+  /** The hand over the ✓ tells a mouse it can be clicked. */
+  const setCursor = (v: string): void => {
+    if (v === cursor) return;
+    cursor = v;
+    canvas.style.cursor = v;
+  };
   const hideHover = (): void => setHover(-1, -1);
   const hoverAt = (x: number, y: number): void => {
-    if (opts.isBlocked?.()) { hideHover(); return; }
+    if (opts.isBlocked?.()) { setCursor(''); hideHover(); return; }
     const r = canvas.getBoundingClientRect();
+    // Over the ✓ a click places the ghost where it is: no faint preview elsewhere.
+    if (onCheck(x, y, r)) { setCursor('pointer'); hideHover(); return; }
+    setCursor('');
     ndc.set(((x - r.left) / r.width) * 2 - 1, -(((y - r.top) / r.height) * 2 - 1));
     ray.setFromCamera(ndc, camera);
     const tile = rayToTile(ray.ray.origin, ray.ray.direction, false, hoverOut);
@@ -177,7 +233,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const pointers = new Set<number>();
-  let press: { id: number; x: number; y: number; t: number; camPos: THREE.Vector3; target: THREE.Vector3 } | null = null;
+  /** The press being watched for a tap; `check`: it landed on the ✓, so a tap places instead of moving the ghost. */
+  let press: { id: number; x: number; y: number; t: number; camPos: THREE.Vector3; target: THREE.Vector3; check: boolean } | null = null;
   let dragging = false;
   let multi = false; // a second finger joined this gesture: never a tap, never a ghost drag
 
@@ -268,9 +325,10 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     }
     press = {
       id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(),
-      camPos: camera.position.clone(), target: controls.target.clone(),
+      camPos: camera.position.clone(), target: controls.target.clone(), check: onCheck(e.clientX, e.clientY),
     };
-    if (onGhost(e)) {
+    // The ✓ is a button: a press on it never grabs the ghost (a drag from it turns the camera).
+    if (!press.check && onGhost(e)) {
       dragging = true;
       controls.enabled = false;
       try { canvas.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
@@ -313,12 +371,13 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
         controls.target.copy(p.target);
         controls.update();
       }
+      if (p.check) { c.place(); return; }
       const tile = pick(e, false);
       if (tile) c.tapTile(tile.tx, tile.tz);
     }
   };
 
-  const onLeave = () => { overCanvas = false; hideHover(); };
+  const onLeave = () => { overCanvas = false; setCursor(''); hideHover(); };
 
   const onCancel = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
@@ -339,6 +398,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onBlur = () => {
     overCanvas = false;
+    setCursor('');
     hideHover();
     pointers.clear();
     cancelStroke();
@@ -368,9 +428,14 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
       e.preventDefault();
       return;
     }
-    switch (e.key) {
-      case 'r': case 'R': c.rotateGhost(); break;
+    switch (shortcutKey(e)) {
+      case 'r': c.rotateGhost(); break;
       case 'Enter': case ' ': c.place(); break;
+      // ⟲ / ⟳ and the zoom buttons' keys: Q turns like ⟲, E like ⟳; + or = zooms in, - zooms out.
+      case 'q': stage.rig.turn(-TURN_STEP); break;
+      case 'e': stage.rig.turn(TURN_STEP); break;
+      case '+': case '=': stage.rig.zoomBy(ZOOM_STEP); break;
+      case '-': case '_': stage.rig.zoomBy(-ZOOM_STEP); break;
       default: return;
     }
     e.preventDefault();
@@ -400,5 +465,6 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     document.removeEventListener('keydown', onKey);
     endDrag();
     lendCamera(false);
+    setCursor('');
   };
 }

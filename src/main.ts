@@ -9,6 +9,7 @@ import { detectTier, FpsMonitor } from './app/quality';
 import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
+import { seenHints } from './app/hints';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
 import { clampNightGlow, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
@@ -28,7 +29,8 @@ import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
 import { createThemeSelect } from './ui/themeSelect';
-import { createHud, type ItemCard } from './ui/hud';
+import { createHud, tapHint, type ItemCard } from './ui/hud';
+import { createCameraControls } from './ui/cameraControls';
 import { createFloorDrawer, drawerGroups } from './ui/floorDrawer';
 import { createSettingsPanel } from './ui/settings';
 import { button, el } from './ui/dom';
@@ -81,6 +83,8 @@ function boot(app: HTMLElement): void {
   });
   let tier = controller.getState().quality;
   let appliedKey = '';
+  // One-time hints, per browser (`?demo=full` keeps them in its memory store with the rest).
+  const seen = seenHints(store);
 
   const kit = getStyleKit();
   const stage = createStage(app, tier);
@@ -108,6 +112,7 @@ function boot(app: HTMLElement): void {
   attachInput(stage, controller, {
     onHover: (tile) => { hoverTile = tile; refreshHover(); },
     ghostBox: () => cityView.ghostBox(),
+    checkMark: () => cityView.checkMark(),
     // settings, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
     isBlocked: blocked,
   });
@@ -248,6 +253,7 @@ function boot(app: HTMLElement): void {
     },
     onHome: goHome,
   });
+  const cameraControls = createCameraControls(app, stage, seen);
 
   const card = (itemId: string, themeId: string): ItemCard | null => {
     const item = getTheme(themeId)?.items.find((i) => i.id === itemId);
@@ -267,6 +273,7 @@ function boot(app: HTMLElement): void {
 
     const game = s.game;
     const playing = s.screen === 'playing' && game !== null;
+    if (game && game.placements.length > 0) seen.mark('placed'); // the tap hint has done its job
     showDrawer(s); // before the HUD: leaving floor mode hands the focus back to [พื้น]
     syncViewShift();
     hud.update({
@@ -276,10 +283,12 @@ function boot(app: HTMLElement): void {
       placed: game?.placements.length ?? 0,
       canPlace: s.ghost?.valid === true,
       canRotate: playing,
-      hint: playing && s.ghost === null ? T.hintTap : null,
+      hint: tapHint({ playing, ghost: s.ghost !== null, placedEver: seen.has('placed') }),
       finished: s.screen === 'finished',
       floorMode: floorOpen(s),
     });
+    // The floor drawer has its own camera tool (✋) and covers the bottom right: the camera controls step aside.
+    cameraControls.update({ visible: s.screen !== 'theme-select' && !floorOpen(s) });
 
     if (s.screen !== 'finished') viewing = false;
     const catalog = game ? getCatalog(game.themeId) : undefined;
