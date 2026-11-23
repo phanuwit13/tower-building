@@ -138,13 +138,15 @@ describe('hud', () => {
     hud.update(view({ floorMode: true }));
     expect(shown(home)).toBe(true);
   });
-  it('🏠 sits top left, above the item cards (never on them)', () => {
+  it('🏠 sits top left, above the item cards (never on them), with the counter beside it', () => {
     const { root, hud } = setup();
     hud.update(view());
     const left = root.querySelector('.hud-top > .hud-left')!;
     expect(left).not.toBeNull();
     expect(left.previousElementSibling).toBeNull(); // first in the top row
-    expect([...left.children].map((c) => c.className)).toEqual(['btn-home', 'hud-cards']);
+    expect([...left.children].map((c) => c.className)).toEqual(['hud-row', 'hud-cards']);
+    // the counter does not follow the cards: hiding them (floor drawer, end screen) leaves it where it was
+    expect([...left.children[0].children].map((c) => c.className)).toEqual(['btn-home', 'hud-placed']);
   });
   it('the floor button reads as tile painting: ปูกระเบื้อง with a brush-and-tile icon', () => {
     const { root, hud } = setup();

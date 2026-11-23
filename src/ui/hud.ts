@@ -97,12 +97,15 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   const bottom = el('div', { class: 'hud-bottom' }, [floors, el('div', { class: 'hud-actions' }, [rotate, place, restart])]);
   const hud = el('div', { class: 'hud' }, [
     el('div', { class: 'hud-top' }, [
-      // 🏠 above the item cards, not beside them: a tablet held upright (768 px) has no room for both in one row
+      // 🏠 above the item cards, not beside them: a tablet held upright (768 px) has no room for both in one row.
+      // The counter sits beside 🏠, not beside the cards: it stays put when the cards hide (floor drawer, end).
       el('div', { class: 'hud-left' }, [
-        el('button', { class: 'btn-home', attrs: { type: 'button' }, onClick: h.onHome }, [lineIcon(ICONS.home), el('span', { text: T.home })]),
+        el('div', { class: 'hud-row' }, [
+          el('button', { class: 'btn-home', attrs: { type: 'button' }, onClick: h.onHome }, [lineIcon(ICONS.home), el('span', { text: T.home })]),
+          placed,
+        ]),
         cards,
       ]),
-      placed,
     ]),
     hint,
     bottom,

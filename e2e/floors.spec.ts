@@ -32,12 +32,14 @@ const drawerCover = (page: Page): Promise<number> => page.locator('.floor-drawer
 
 /**
  * Where a cell's centre is on screen while the camera is still in its starting view. With the floor
- * drawer open the view rides up by half of what the drawer covers (viewShiftPx), so that is taken off.
+ * drawer open the view rides up by half of what the drawer covers (viewShiftPx), so that is taken off,
+ * once the view has glided there (#app data-view-shift).
  */
 async function cellOnScreen(page: Page, tx: number, tz: number): Promise<{ x: number; y: number }> {
   const { width, height } = page.viewportSize()!;
   const cover = await drawerCover(page);
   const shift = cover ? viewShiftPx(cover, height) : 0;
+  await expect(page.locator('#app')).toHaveAttribute('data-view-shift', String(shift));
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, width / height, 0.5, 300);
   const centre = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
   camera.position.copy(centre).addScaledVector(CAMERA.direction, CAMERA.distance);
@@ -284,6 +286,28 @@ test.describe('touch (iPad 1024 x 768)', () => {
     expect(painted).toHaveLength(1);
     expect(painted).not.toContain(7 * GRID_SIZE + 7);
   });
+});
+
+test('opening the floor drawer leaves the counter where it was, and the view glides up instead of jumping', async ({ page }) => {
+  await startSchool(page);
+  const counter = page.locator('.hud-placed');
+  const before = (await counter.boundingBox())!;
+  // every lift the page applies, from before the click (a MutationObserver misses none, however slow the frames)
+  await page.evaluate(() => {
+    const app = document.getElementById('app')!;
+    const w = window as unknown as { lifts: number[] };
+    w.lifts = [];
+    new MutationObserver(() => w.lifts.push(Number(app.dataset.viewShift))).observe(app, { attributeFilter: ['data-view-shift'] });
+  });
+  await floorsButton(page).click();
+  await expect(drawerOf(page)).toBeVisible();
+  const end = viewShiftPx(await drawerCover(page), page.viewportSize()!.height);
+  await expect(page.locator('#app')).toHaveAttribute('data-view-shift', String(end));
+  const lifts = await page.evaluate(() => (window as unknown as { lifts: number[] }).lifts);
+  expect(lifts.at(-1)).toBe(end);
+  expect(lifts.some((v) => v > 0 && v < end)).toBe(true); // passed through on the way up
+  for (let i = 1; i < lifts.length; i++) expect(lifts[i]).toBeGreaterThanOrEqual(lifts[i - 1]);
+  expect(await counter.boundingBox()).toEqual(before);
 });
 
 test('floor drawer: a bar floating clear of the screen edges, the same size in every group, every swatch the same size (labels on two lines do not shift the layout)', async ({ page }) => {

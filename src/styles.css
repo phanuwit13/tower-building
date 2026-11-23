@@ -59,6 +59,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hud button, .hud .card { pointer-events: auto; }
 .hud-top { display: flex; align-items: flex-start; gap: 8px; }
 .hud-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.hud-row { display: flex; align-items: center; gap: 8px; }
 .btn-home { font-size: 18px; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
 .hud-cards { display: flex; gap: 8px; }
 .card { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 12px; min-width: 96px; text-align: center; }

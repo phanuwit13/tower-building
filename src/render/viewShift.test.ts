@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { applyViewShift, viewShiftPx } from './viewShift';
+import { applyViewShift, createShiftGlide, SHIFT_GLIDE_MS, viewShiftPx } from './viewShift';
 
 describe('viewShiftPx', () => {
   it('is half the drawer height', () => expect(viewShiftPx(300, 800)).toBe(150));
@@ -40,5 +40,40 @@ describe('applyViewShift', () => {
     expect(c.view?.fullWidth).toBe(1000);
     expect(c.view?.fullHeight).toBe(500);
     expect(c.view?.offsetY).toBe(100);
+  });
+});
+
+describe('createShiftGlide', () => {
+  it('glides to the target over SHIFT_GLIDE_MS instead of jumping, then holds it', () => {
+    const g = createShiftGlide();
+    g.to(80, 1000);
+    expect(g.at(1000)).toBe(0); // the drawer has only just started to slide
+    const mid = g.at(1000 + SHIFT_GLIDE_MS / 2);
+    expect(mid).toBeGreaterThan(40); // ease-out: past half way at half time
+    expect(mid).toBeLessThan(80);
+    expect(g.at(1000 + SHIFT_GLIDE_MS)).toBe(80);
+    expect(g.at(5000)).toBe(80);
+  });
+  it('turning back mid-glide starts from where the view is, not from the end', () => {
+    const g = createShiftGlide();
+    g.to(80, 0);
+    const there = g.at(SHIFT_GLIDE_MS / 2);
+    g.to(0, SHIFT_GLIDE_MS / 2);
+    expect(g.at(SHIFT_GLIDE_MS / 2)).toBe(there);
+    expect(g.at(SHIFT_GLIDE_MS * 1.5)).toBe(0);
+  });
+  it('the same target again does not restart the glide', () => {
+    const g = createShiftGlide();
+    g.to(80, 0);
+    g.at(SHIFT_GLIDE_MS / 2);
+    g.to(80, SHIFT_GLIDE_MS / 2);
+    expect(g.at(SHIFT_GLIDE_MS)).toBe(80);
+  });
+  it('instant (reduced motion) jumps straight to the target', () => {
+    const g = createShiftGlide();
+    g.to(80, 0, true);
+    expect(g.at(0)).toBe(80);
+    g.to(0, 10, true);
+    expect(g.at(10)).toBe(0);
   });
 });
