@@ -30,7 +30,7 @@ export const item: ItemModel = {
       kit.sphere(1, HIPS, 'wood', { detail: 1, scale: [0.16, 0.12, 0.16] }),
       kit.sphere(1, CHEST, 'wood', { detail: 1, scale: [0.115, 0.14, 0.115] }),
       kit.sphere(1, [CHEST[0] + 0.07, CHEST[1] - 0.02, 0], 'cream', { detail: 0, scale: [0.06, 0.11, 0.08] }),
-      kit.sphere(HEAD_R, HEAD, 'wood', { detail: 1, detail: 1, scale: [0.95, 0.9, 1.0], rotate: look }),
+      kit.sphere(HEAD_R, HEAD, 'wood', { detail: 1, scale: [0.95, 0.9, 1.0], rotate: look }),
       kit.sphere(1, onHead(0.11, -0.035, 0), 'cream', { detail: 1, scale: [0.085, 0.06, 0.075], rotate: look }), // snout
       kit.sphere(0.03, onHead(0.185, -0.012, 0), 'charcoal', { detail: 0 }), // nose
       kit.sphere(1, onHead(0.14, -0.075, 0), 'pink', { detail: 0, scale: [0.03, 0.012, 0.025], rotate: look }), // tongue
