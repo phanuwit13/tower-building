@@ -6,11 +6,11 @@ How to use it: one row = one item = one file `src/themes/cafe/items/<id>.ts`. Th
 
 ## The room (owner chose "ก", 2026-11-24)
 The café is a room seen from above: the 20 × 20 map is its floor. The room itself is built in, not items:
-- **Low walls round the whole map**, just outside the grid (they never take a cell): a solid base about knee high, glass panes above it in window frames, a **glass door** on the +x side (the side the camera sees) with an awning, a step and a mat outside.
+- **Low walls round the whole map**, just outside the grid (they never take a cell), painted as a shop front: a base about knee high (teal outside, cream inside) with a white sill, glass windows in white frames and mullions, a thick teal cap all round (the room's outline from above) with a string of warm bulbs, flower boxes under the +x and +z windows, and an open two-leaf **glass door** in a red frame on the +x side with a round coffee-cup sign by it, a step and a mat outside. (No awning: from the default camera an awning over the door hides the door, and one over the front windows hides the flower boxes.)
 - **A pavement outside** (the land round the map), whatever floor the player picks inside.
 - **Rain falls only outside** the walls; the floor inside stays dry.
 - The default floor is **wood**; floor tiles work as on every map.
-- **A bright, warm night** (`nightGlow`), like a lit café seen in the evening.
+- **A bright, warm night** (`nightGlow` 1.75), like a lit café seen in the evening.
 
 Items are furniture and things *inside* the café: no buildings, no roofs over the whole item, no outdoor street furniture.
 
