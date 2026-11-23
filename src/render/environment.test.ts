@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
 import { getStyleKit } from '../models/kit';
 import { advanceMotion, glslFloat, motionUniforms } from '../models/motion';
-import { acesFilmic, createEnvironment, envPreset, MOON } from './environment';
+import { acesFilmic, createEnvironment, envPreset, MOON, SKY_FROM } from './environment';
 import { CAMERA, type Stage } from './stage';
+import { SURROUND_FADE } from './ground';
 
 const ALL = TIME_IDS.flatMap((time) => WEATHER_IDS.map((weather) => ({ time, weather })));
 
@@ -123,21 +124,59 @@ describe('moon placement', () => {
     return cam;
   };
 
-  it('hangs near the top of the default view, halo and all on screen, clear of the corners', () => {
+  /** The default camera tilted down to the lowest angle the controls allow (stage.ts maxPolarAngle), at a given distance. */
+  const tiltedCamera = (distance: number) => {
+    const centre = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+    const flat = new THREE.Vector3(CAMERA.direction.x, 0, CAMERA.direction.z).normalize();
+    const polar = 1.25;
+    const dir = flat.multiplyScalar(Math.sin(polar)).setY(Math.cos(polar));
+    const cam = new THREE.PerspectiveCamera(CAMERA.fov, 1280 / 800, 0.1, 300);
+    cam.position.copy(centre).addScaledVector(dir, distance);
+    cam.lookAt(centre);
+    cam.updateMatrixWorld();
+    return cam;
+  };
+  const project = (cam: THREE.PerspectiveCamera, dir: THREE.Vector3) => cam.position.clone().addScaledVector(dir, MOON.distance).project(cam);
+  /** How far from the map centre the moon's line of sight meets the ground (Infinity if it never does). */
+  const landHit = (cam: THREE.PerspectiveCamera) => {
+    const [dx, dy, dz] = MOON.dir;
+    if (dy >= 0) return Infinity;
+    const t = (SURROUND_FADE.y - cam.position.y) / dy;
+    return Math.hypot(cam.position.x + dx * t - GRID_SIZE / 2, cam.position.z + dz * t - GRID_SIZE / 2);
+  };
+
+  it('is in the sky, so the steep default view (which shows no sky) does not show it', () => {
+    expect(MOON.dir[1]).toBeGreaterThan(Math.sin(-0.2)); // within about 11° of the horizon, not down in the land
+    expect(project(defaultCamera(), new THREE.Vector3(...MOON.dir)).y).toBeGreaterThan(1); // above the top of the view
+  });
+
+  it('rises over the far side of the city when the camera is tilted towards the horizon, halo and all on screen', () => {
+    for (const distance of [CAMERA.distance, CAMERA.maxDistance]) {
+      const cam = tiltedCamera(distance);
+      const dir = new THREE.Vector3(...MOON.dir);
+      const c = project(cam, dir);
+      expect(c.z, `${distance}`).toBeLessThan(1); // in front of the camera, inside the far plane
+      expect(c.y, `${distance}`).toBeGreaterThan(0.2); // the upper part of the screen, where the sky is
+      expect(Math.abs(c.x), `${distance}`).toBeLessThan(0.5); // not under the corner buttons
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+      expect(project(cam, dir.clone().addScaledVector(up, MOON.haloRadius).normalize()).y, `${distance}`).toBeLessThan(1);
+      expect(landHit(cam), `${distance}`).toBeGreaterThan(SURROUND_FADE.end); // past the land: in clear sky
+    }
+  });
+
+  it('is covered by the land when zoomed right in (its line of sight meets the map)', () => {
+    expect(landHit(tiltedCamera(CAMERA.minDistance))).toBeLessThan(SKY_FROM);
+  });
+
+  it('shows the moon and stars only over land that has melted into the sky', () => {
+    expect(SKY_FROM).toBeGreaterThan(SURROUND_FADE.start);
+    expect(SKY_FROM).toBeLessThan(SURROUND_FADE.end);
+    // the steep default view's top edge meets the ground well inside SKY_FROM: no stars over the green there
     const cam = defaultCamera();
-    const at = (dir: THREE.Vector3) => cam.position.clone().addScaledVector(dir, MOON.distance).project(cam);
-    const dir = new THREE.Vector3(...MOON.dir);
-    const c = at(dir);
-    expect(c.z).toBeLessThan(1); // in front of the camera, inside the far plane
-    expect(c.y).toBeGreaterThan(0.6);
-    expect(Math.abs(c.x)).toBeLessThan(0.5); // not under the corner buttons
-    // the halo's top and side edges stay on screen
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const edge = (v: THREE.Vector3) => at(dir.clone().addScaledVector(v, MOON.haloRadius).normalize());
-    expect(edge(up).y).toBeLessThan(1);
-    expect(Math.abs(edge(right).x)).toBeLessThan(1);
-    expect(Math.abs(edge(right.clone().negate()).x)).toBeLessThan(1);
+    const top = new THREE.Vector3(0, 1, 0.5).unproject(cam).sub(cam.position).normalize();
+    const t = (SURROUND_FADE.y - cam.position.y) / top.y;
+    const far = Math.hypot(cam.position.x + top.x * t - GRID_SIZE / 2, cam.position.z + top.z * t - GRID_SIZE / 2);
+    expect(far).toBeLessThan(SKY_FROM);
   });
 
   it('sits on the night light\'s compass line, across the map from the default camera', () => {

@@ -110,6 +110,12 @@ export function acesFilmic([r, g, b]: Vec3, exposure = 1): Vec3 {
 }
 
 const CENTER = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+/**
+ * The moon and stars belong to the sky: each shows only where its line of sight meets the ground
+ * past this distance from the map centre, where the surround has all but melted into the sky colour
+ * (its fade runs SURROUND_FADE.start → end). Over land that still reads as ground they are hidden.
+ */
+export const SKY_FROM = SURROUND_FADE.start + 0.8 * (SURROUND_FADE.end - SURROUND_FADE.start);
 const SUN_DISTANCE = 3 * GRID_SIZE;
 /** The sun's shadow camera spans the map's corners (half-diagonal 0.71 * GRID_SIZE) with a margin for tall items. */
 const SHADOW_HALF = 0.85 * GRID_SIZE;
@@ -173,12 +179,13 @@ function createSky() {
  *
  * Where: on the night light's compass line, on the far side of the map. The night light comes from
  * behind the default camera so that it lights the faces kids see; a moon on the light's own side
- * would never be in view. The default camera looks down steeply (the top of its view is 37° below
- * the horizon), so the moon hangs that low too, in the backdrop past the map's far corner, just
- * right of the top middle of the screen. Like the stars it is part of the backdrop: drawn over the
- * surround (which writes no depth), behind the map and every item.
+ * would never be in view. It hangs low in the sky just above the far land: the steep default view
+ * (its top is 37° below the horizon) shows no sky and so no moon; tilt the camera down towards the
+ * horizon and it rises over the far side of the city. Like the stars it is hidden wherever its line
+ * of sight meets the ground before the ground has melted into the sky (zoomed right in, the land
+ * covers it), and it is drawn behind the map and every item.
  */
-const MOON_ELEVATION = -0.71; // radians: about 41° below the horizon
+const MOON_ELEVATION = -0.105; // radians: about 6° below the true horizon, which is above the far land the camera sees
 const NIGHT_LIGHT = normalize(SUNNY.night.sunDir);
 const NIGHT_LIGHT_FLAT = Math.hypot(NIGHT_LIGHT[0], NIGHT_LIGHT[2]);
 export const MOON = {
@@ -208,9 +215,14 @@ function createMoon() {
     uniforms: { visibility: { value: 0 }, halo: { value: 1 }, faceGain: { value: 1 } },
     vertexShader: /* glsl */ `
       varying vec2 vQuad;
+      varying float vLand;
       void main() {
         vQuad = position.xy;
-        vec4 centre = viewMatrix * vec4( cameraPosition + vec3( ${MOON.dir.map(f).join(', ')} ) * ${f(MOON.distance)}, 1.0 );
+        // hidden where the land is still in front of it (see SKY_FROM; the stars do the same)
+        vec3 moonDir = vec3( ${MOON.dir.map(f).join(', ')} );
+        vec2 landHit = cameraPosition.xz + moonDir.xz * ( ( ${f(SURROUND_FADE.y)} - cameraPosition.y ) / moonDir.y );
+        vLand = moonDir.y < 0.0 ? smoothstep( ${f(SKY_FROM)}, ${f(SURROUND_FADE.end)}, distance( landHit, vec2( ${f(CENTER.x)}, ${f(CENTER.z)} ) ) ) : 1.0;
+        vec4 centre = viewMatrix * vec4( cameraPosition + moonDir * ${f(MOON.distance)}, 1.0 );
         centre.xy += position.xy * ${f(MOON.distance * Math.tan(MOON.haloRadius))};
         gl_Position = projectionMatrix * centre;
       }`,
@@ -219,6 +231,7 @@ function createMoon() {
       uniform float halo;
       uniform float faceGain;
       varying vec2 vQuad;
+      varying float vLand;
       float moonSpot( vec2 q, vec2 c, float r ) { return 1.0 - smoothstep( 0.4 * r, r, length( q - c ) ); }
       void main() {
         vec2 q = vQuad * ${f(ratio)}; // disc radii: the rim is at 1
@@ -232,7 +245,7 @@ function createMoon() {
         gl_FragColor = vec4( mix( vec3( 0.66, 0.68, 0.82 ) * glow, face, disc ), 1.0 );
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
-        gl_FragColor = vec4( gl_FragColor.rgb * visibility, disc * visibility );
+        gl_FragColor = vec4( gl_FragColor.rgb * visibility * vLand, disc * visibility * vLand );
       }`,
     transparent: true,
     premultipliedAlpha: true,
@@ -283,8 +296,8 @@ function createStars(): THREE.Points {
     size: 2.5, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false,
   });
   // The surround plane writes no depth, so stars can sit behind it. Fade each star by how far from
-  // the map its line of sight meets the ground: hidden over the green, showing where the ground has
-  // melted into the sky (same band as the surround's own fade).
+  // the map its line of sight meets the ground: hidden over the land, showing only where the ground
+  // has melted into the sky (SKY_FROM → the end of the surround's fade), like the moon.
   material.onBeforeCompile = (s) => {
     s.vertexShader = 'varying float vStarFade;\n' + s.vertexShader.replace(
       '#include <project_vertex>',
@@ -295,7 +308,7 @@ function createStars(): THREE.Points {
       vStarFade = 1.0 - smoothstep( ${glslFloat(Math.cos(MOON.discRadius * 1.5))}, ${glslFloat(Math.cos(MOON.discRadius * 1.1))}, moonCos );
       if ( starDir.y < 0.0 ) {
         vec2 hit = cameraPosition.xz + starDir.xz * ( ( ${SURROUND_FADE.y.toFixed(2)} - cameraPosition.y ) / starDir.y );
-        vStarFade *= smoothstep( ${SURROUND_FADE.start.toFixed(1)}, ${SURROUND_FADE.end.toFixed(1)}, distance( hit, vec2( ${CENTER.x.toFixed(1)}, ${CENTER.z.toFixed(1)} ) ) );
+        vStarFade *= smoothstep( ${glslFloat(SKY_FROM)}, ${glslFloat(SURROUND_FADE.end)}, distance( hit, vec2( ${CENTER.x.toFixed(1)}, ${CENTER.z.toFixed(1)} ) ) );
       }`);
     s.fragmentShader = 'varying float vStarFade;\n' + s.fragmentShader.replace(
       '#include <color_fragment>',
