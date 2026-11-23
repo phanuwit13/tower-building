@@ -6,7 +6,7 @@ import { hospital } from './index';
 
 describe('hospital theme', () => {
   it('is โรงพยาบาล 🏥 on a pale floor, indoors, with a bright night', () => {
-    expect(hospital).toMatchObject({ id: 'hospital', name: 'โรงพยาบาล', emoji: '🏥', defaultGround: 'snow', nightGlow: 1.5, indoor: true });
+    expect(hospital).toMatchObject({ id: 'hospital', name: 'โรงพยาบาล', emoji: '🏥', defaultGround: 'snow', nightGlow: 1.5, indoor: true, room: 'hospital' });
   });
   it('the doc lists 60 items in seven batches', () => {
     expect(HOSPITAL_DOC.rows.size).toBe(60);

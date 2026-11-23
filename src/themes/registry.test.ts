@@ -4,7 +4,8 @@ import { DEFAULT_MIX } from './mix';
 import { getStyleKit } from '../models/kit';
 import { validateTheme } from '../models/validate';
 import { THEMES, getCatalog, getTheme } from './registry';
-import { clampNightGlow } from './types';
+import { info as hospitalInfo } from './hospital/info';
+import { clampNightGlow, roomLookOf } from './types';
 
 interface DocItem { id: string; name: string; footprint: string }
 function docItems(): DocItem[] {
@@ -63,6 +64,14 @@ describe('nightGlow', () => {
   });
   it('only the café is indoors', () => {
     expect(THEMES.filter((t) => t.indoor).map((t) => t.id)).toEqual(['cafe']);
+  });
+  it('roomLookOf: the room an indoor theme shows (the café\'s when it names none); none outdoors', () => {
+    expect(roomLookOf(getTheme('cafe'))).toBe('cafe');
+    expect(roomLookOf(hospitalInfo)).toBe('hospital');
+    expect(roomLookOf({ indoor: true })).toBe('cafe');
+    for (const t of THEMES.filter((x) => !x.indoor)) expect(roomLookOf(t), t.id).toBeNull();
+    expect(roomLookOf({ indoor: false, room: 'hospital' })).toBeNull(); // a look without walls is no room
+    expect(roomLookOf(undefined)).toBeNull(); // the theme select backdrop
   });
   it('clampNightGlow holds it to 1–2 and treats missing or broken as 1', () => {
     expect([undefined, NaN, Infinity, 0, -3, 1, 1.5, 2, 5].map(clampNightGlow)).toEqual([1, 1, 1, 1, 1, 1, 1.5, 2, 2]);
