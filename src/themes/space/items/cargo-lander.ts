@@ -29,7 +29,7 @@ export const item: ItemModel = {
       kit.box([rampLen, 0.05, RAMP.w], [(RAMP.x0 + RAMP.x1) / 2, (RAMP.y0 + RAMP.y1) / 2 + 0.02, 0], 'orange', { rotate: [0, 0, -rampAng] }),
     ];
     // cockpit window on the front (+z) end, glowing at night
-    parts.push(kit.box([0.5, 0.2, 0.03], [0.0, 0.6, BODY.z / 2 + 0.015], 'skyBlue', { glow: 'windowWarm', light: 'window' }));
+    parts.push(kit.box([0.5, 0.2, 0.03], [0.0, 0.6, BODY.z / 2 + 0.015], 'skyBlue', { glow: 'sunYellow', light: 'window' }));
     // landing legs and round orange feet
     for (const sx of [-1, 1]) {
       for (const sz of [-1, 1]) {

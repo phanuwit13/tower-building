@@ -1,36 +1,37 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 
-const PAD = { r: 0.15, h: 0.05, xs: [-0.2, 0.2], zs: [-0.55, 0.55] }; // the glowing hover pads under the hull
-const HULL_Y = 0.27;
+const PAD = { r: 0.17, h: 0.05, x: 0.32, zs: [-0.55, 0.55] }; // glowing pads, sticking out past the hull sides
+const HULL = { w: 0.6, h: 0.1, l: 1.4, y: 0.26 }; // low wide hull, raised on the pads
 
-/** ยานลอยตัว: a sleek hover sled, orange hull and glass canopy, with glowing pads underneath that breathe. */
+/** ยานลอยตัว: a flat, sleek hover sled with a seat and cargo deck, raised on four glowing pads that breathe. */
 export const item: ItemModel = {
   id: 'hover-sled',
   name: 'ยานลอยตัว',
   category: 'vehicle',
   footprint: { w: 1, d: 2 },
   build: (kit) => {
+    const top = HULL.y + HULL.h / 2;
     const parts: Part[] = [
-      // streamlined hull: a long squashed egg, white belly stripe and blue nose
-      kit.sphere(1, [0, HULL_Y, 0], 'orange', { detail: 2, scale: [0.3, 0.14, 0.86] }),
-      kit.sphere(1, [0, HULL_Y - 0.06, 0], 'white', { detail: 1, scale: [0.32, 0.07, 0.8] }),
-      kit.sphere(0.12, [0, HULL_Y, 0.78], 'blue', { detail: 1, scale: [1.1, 0.9, 1.2] }),
-      // canopy, lit at night
-      kit.dome(0.2, [0, HULL_Y + 0.06, 0.3], 'skyBlue', { segments: 12, scale: [1, 0.85, 1.4], glow: 'windowWarm', light: 'window' }),
-      // tail fins
-      kit.box([0.04, 0.26, 0.3], [0, HULL_Y + 0.16, -0.75], 'blue', { rotate: [0.3, 0, 0] }),
-      kit.box([0.5, 0.04, 0.22], [0, HULL_Y + 0.04, -0.82], 'blue'),
-      // side stripes
-      kit.box([0.02, 0.04, 0.9], [0.285, HULL_Y + 0.02, -0.05], 'sunYellow'),
-      kit.box([0.02, 0.04, 0.9], [-0.285, HULL_Y + 0.02, -0.05], 'sunYellow'),
+      kit.box([HULL.w, HULL.h, HULL.l], [0, HULL.y, 0], 'orange'),
+      kit.wedge([HULL.w, HULL.h, 0.3], [0, HULL.y, 0.8], 'orange', { rotate: [0, Math.PI, 0] }), // pointed-ish nose
+      kit.box([HULL.w + 0.04, 0.04, HULL.l - 0.1], [0, HULL.y - 0.07, 0], 'blue'), // underbelly
+      kit.box([0.02, 0.05, 1.2], [HULL.w / 2 + 0.005, HULL.y + 0.01, -0.1], 'sunYellow'), // side stripes
+      kit.box([0.02, 0.05, 1.2], [-HULL.w / 2 - 0.005, HULL.y + 0.01, -0.1], 'sunYellow'),
+      // deck: low windscreen, a seat (empty) and a small cargo box at the back
+      kit.box([0.5, 0.18, 0.04], [0, top + 0.09, 0.35], 'skyBlue', { rotate: [-0.4, 0, 0], glow: 'sunYellow', light: 'window' }),
+      kit.box([0.34, 0.07, 0.26], [0, top + 0.035, 0.0], 'white'),
+      kit.box([0.34, 0.2, 0.06], [0, top + 0.1, -0.15], 'white'),
+      kit.box([0.4, 0.16, 0.34], [0, top + 0.08, -0.55], 'teal'),
+      // small fins at the back
+      kit.box([0.04, 0.2, 0.3], [0.3, top + 0.1, -0.7], 'blue', { rotate: [0.25, 0, 0] }),
+      kit.box([0.04, 0.2, 0.3], [-0.3, top + 0.1, -0.7], 'blue', { rotate: [0.25, 0, 0] }),
     ];
-    // pads: dark housings on the hull, glowing discs on the ground that breathe together
-    for (const x of PAD.xs) {
+    for (const s of [-1, 1]) {
       for (const z of PAD.zs) {
         parts.push(
-          kit.cylinder(0.07, 0.09, 0.13, [x, 0.115, z], 'charcoal', { segments: 8 }),
-          kit.cylinder(PAD.r, PAD.r, PAD.h, [x, PAD.h / 2, z], 'mint', { segments: 12, glow: true, light: 'breathe' }),
+          kit.cylinder(0.05, 0.07, HULL.y - HULL.h / 2 - PAD.h, [s * PAD.x, (HULL.y - HULL.h / 2 + PAD.h) / 2, z], 'charcoal', { segments: 8 }),
+          kit.cylinder(PAD.r, PAD.r, PAD.h, [s * PAD.x, PAD.h / 2, z], 'mint', { segments: 12, glow: true, light: 'breathe' }),
         );
       }
     }
