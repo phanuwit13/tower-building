@@ -18,8 +18,13 @@ export const T = {
     title: 'พื้น', grass: 'หญ้า', dirt: 'ดิน', concrete: 'ปูน', sand: 'ทราย', snow: 'หิมะ', wood: 'พื้นไม้', moon: 'พื้นดวงจันทร์',
   },
   quality: { title: 'คุณภาพภาพ', pretty: 'สวย', smooth: 'ลื่น' },
+  /** The floor drawer: [พื้น] opens it; groups and tiles have their own Thai names (src/floors). */
+  floor: {
+    open: 'พื้น', title: 'ปูพื้น', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
+    eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูพื้น', camera: '✋ ขยับกล้อง',
+  },
   restart: 'เริ่มใหม่',
-  confirmRestart: 'เริ่มเมืองใหม่ไหม? เมืองนี้จะหายไป',
+  confirmRestart: 'เริ่มเมืองใหม่ไหม? เมืองนี้และพื้นที่ปูไว้จะหายไป',
   confirmRestartOk: 'เริ่มใหม่',
   clear: 'เคลียร์',
   confirmClear: 'ลบทุกอย่างแล้วกลับไปเลือกธีมไหม?',

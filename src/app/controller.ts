@@ -24,6 +24,8 @@ export interface ControllerDeps {
   store: KeyValueStore; getTheme(id: string): ThemeDef | undefined; getCatalog(id: string): Catalog | undefined;
   seed(): number; detectQuality(): QualityTier;
   isFloorTile(id: string): boolean;
+  /** The tile the floor drawer starts on (the first of its first group), so kids can paint at once; else the eraser. */
+  firstFloorTile?: string;
 }
 export interface Controller {
   getState(): AppState; subscribe(fn: (s: AppState) => void): () => void;
@@ -50,7 +52,7 @@ export function createController(deps: ControllerDeps): Controller {
     rotation: 0,
     quality: loadQuality(store) ?? deps.detectQuality(),
     saveFailed: false,
-    floor: { open: false, pick: 'eraser', tool: 'paint', preview: null },
+    floor: { open: false, pick: deps.firstFloorTile ?? 'eraser', tool: 'paint', preview: null },
   };
   const listeners = new Set<(s: AppState) => void>();
 
@@ -66,6 +68,9 @@ export function createController(deps: ControllerDeps): Controller {
     const ok = saveGame(store, game);
     emit({ ...state, game, ghost, screen, rotation, saveFailed: state.saveFailed || !ok });
   }
+
+  /** The drawer shut, back on the paint tool, nothing previewed; the pick is kept for next time. */
+  const closedFloor = (): FloorUiState => ({ ...state.floor, open: false, tool: 'paint', preview: null });
 
   const sameGhost = (a: GhostState | null, b: GhostState): boolean =>
     a !== null && a.x === b.x && a.z === b.z && a.rotation === b.rotation && a.valid === b.valid;
@@ -169,7 +174,7 @@ export function createController(deps: ControllerDeps): Controller {
       emit({ ...state, floor: { ...state.floor, open: true } });
     },
     closeFloors() {
-      emit({ ...state, floor: { ...state.floor, open: false, tool: 'paint', preview: null } });
+      emit({ ...state, floor: closedFloor() });
     },
     pickFloor(id) {
       emit({ ...state, floor: { ...state.floor, pick: id, tool: 'paint' } });
@@ -192,14 +197,17 @@ export function createController(deps: ControllerDeps): Controller {
       });
     },
     restart() {
-      if (!state.game) return;
-      const catalog = deps.getCatalog(state.game.themeId);
+      const game = state.game;
+      if (!game) return;
+      const catalog = deps.getCatalog(game.themeId);
       if (!catalog) return;
-      commitGame(restartGame(state.game, catalog, deps.seed()), null, 'playing');
+      // A new city starts with the items: the drawer closes (commitGame emits this state).
+      state = { ...state, floor: closedFloor() };
+      commitGame(restartGame(game, catalog, deps.seed()), null, 'playing');
     },
     clearAll() {
       clearGame(store);
-      emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select' });
+      emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor() });
     },
   };
 }

@@ -11,3 +11,17 @@ describe('boot fallback text', () => {
     expect(T.noWebGL).toBe('เครื่องนี้เปิดเกม 3 มิติไม่ได้ ลองกดโหลดหน้าใหม่ หรือเปิดด้วย Chrome หรือ Safari รุ่นใหม่');
   });
 });
+
+describe('floor strings', () => {
+  it('the floor drawer labels, verbatim', () => {
+    expect(T.floor.open).toBe('พื้น');
+    expect(T.floor.eraser).toBe('ยางลบ');
+    expect(T.floor.done).toBe('เสร็จ');
+    expect(T.floor.paint).toBe('🖌 ปูพื้น');
+    expect(T.floor.camera).toBe('✋ ขยับกล้อง');
+  });
+  it('the restart confirm says the floor is cleared too', () => {
+    expect(T.confirmRestart).toContain('พื้น');
+    expect(T.confirmRestart).toContain('เริ่มเมืองใหม่ไหม?');
+  });
+});

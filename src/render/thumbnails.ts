@@ -30,13 +30,16 @@ function createGl(): ThumbGl {
   return { renderer, scene, camera: new THREE.PerspectiveCamera(FOV, 1, 0.1, 100) };
 }
 
+/** Anything built with the style kit: an item, or a floor tile (the drawer swatches). */
+export type Thumbnailable = Pick<ItemModel, 'build'>;
+
 /**
- * Small offscreen renderer that turns item models into transparent PNG data URLs.
- * Cached per ItemModel object (ids may repeat across themes). A WebGL init failure disables
+ * Small offscreen renderer that turns item models (and floor tiles) into transparent PNG data URLs.
+ * Cached per model object (ids may repeat across themes). A WebGL init failure disables
  * thumbnails for good; a single item that fails gets '' and is not retried, the others still work.
  */
-export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createGl): { get(item: ItemModel): string } {
-  const cache = new WeakMap<ItemModel, string>();
+export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createGl): { get(item: Thumbnailable): string } {
+  const cache = new WeakMap<Thumbnailable, string>();
   let gl: ThumbGl | null = null;
   let disabled = false;
 

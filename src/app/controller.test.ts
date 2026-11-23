@@ -306,6 +306,27 @@ describe('controller floors', () => {
     expect(c.getState().game!.floors.filter((f) => f === 't1')).toHaveLength(6);
     expect(c.getState().screen).toBe('finished');
   });
+  it('the drawer starts on the first floor tile when the app gives one (kids can paint at once)', () => {
+    const c = createController({
+      store: seeded(), getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty',
+      isFloorTile: (id) => id.startsWith('t'), firstFloorTile: 't1',
+    });
+    expect(c.getState().floor.pick).toBe('t1');
+    c.openFloors();
+    expect(c.getState().floor).toMatchObject({ open: true, pick: 't1', tool: 'paint' });
+  });
+  it('restart and clear close the drawer (a new city starts with the items)', () => {
+    const { c } = playing();
+    c.openFloors();
+    c.setFloorTool('camera');
+    c.restart();
+    expect(c.getState().floor).toMatchObject({ open: false, tool: 'paint', preview: null });
+    c.openFloors();
+    c.previewFloors(rect);
+    c.clearAll();
+    expect(c.getState().screen).toBe('theme-select');
+    expect(c.getState().floor).toMatchObject({ open: false, tool: 'paint', preview: null });
+  });
   it('restart clears floors', () => {
     const { c } = playing();
     c.pickFloor('t1');

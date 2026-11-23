@@ -7,11 +7,11 @@ const view = (o: Partial<HudView> = {}): HudView => ({
   visible: true,
   current: { name: 'บ้าน', size: '2×2 ช่อง', thumb: null },
   next: { name: 'ต้นไม้', size: '1×1 ช่อง', thumb: null },
-  placed: 0, canPlace: true, canRotate: true, hint: null, finished: false, ...o,
+  placed: 0, canPlace: true, canRotate: true, hint: null, finished: false, floorMode: false, ...o,
 });
 const setup = () => {
   const root = document.createElement('div');
-  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn(), onRestart: vi.fn() };
+  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn(), onRestart: vi.fn(), onFloors: vi.fn() };
   const hud = createHud(root, h);
   return { root, h, hud };
 };
@@ -64,6 +64,60 @@ describe('hud', () => {
     hud.update(view());
     expect(restart.hidden).toBe(true);
     expect(btn(root, T.place).hidden).toBe(false);
+  });
+  it('[พื้น] opens the floors, while playing and when finished', () => {
+    const { root, h, hud } = setup();
+    hud.update(view());
+    const floors = btn(root, T.floor.open);
+    expect(floors.hidden).toBe(false);
+    floors.click();
+    expect(h.onFloors).toHaveBeenCalledOnce();
+    hud.update(view({ finished: true, canPlace: false, canRotate: false, current: null, next: null }));
+    expect(floors.hidden).toBe(false);
+  });
+  it('floor mode hides the item cards, the hint, หมุน/วาง and [พื้น]; the counter and top tools stay', () => {
+    const { root, hud } = setup();
+    hud.update(view({ hint: T.hintTap, floorMode: true }));
+    const shown = (e: Element | null) => e !== null && !(e as HTMLElement).hidden && !(e as HTMLElement).closest('[hidden]');
+    expect(shown(root.querySelector('.card-current'))).toBe(false);
+    expect(shown(root.querySelector('.card-next'))).toBe(false);
+    expect(shown(root.querySelector('.hud-hint'))).toBe(false);
+    for (const name of [T.rotate, T.place, T.floor.open]) expect(shown(btn(root, name)), name).toBe(false);
+    expect(shown(root.querySelector('.hud-placed'))).toBe(true);
+    expect(shown(btn(root, T.settings))).toBe(true);
+    expect(shown(btn(root, T.screenshot))).toBe(true);
+    hud.update(view({ hint: T.hintTap }));
+    for (const name of [T.rotate, T.place, T.floor.open]) expect(shown(btn(root, name)), name).toBe(true);
+    expect(shown(root.querySelector('.card-current'))).toBe(true);
+    expect(shown(root.querySelector('.hud-hint'))).toBe(true);
+  });
+  it('leaving floor mode gives the focus back to [พื้น] when it was left nowhere', () => {
+    const { root, hud } = setup();
+    document.body.appendChild(root);
+    hud.update(view({ floorMode: true }));
+    (document.activeElement as HTMLElement | null)?.blur();
+    hud.update(view());
+    expect(document.activeElement).toBe(btn(root, T.floor.open));
+    // still on a drawer button that has just been hidden (เสร็จ)
+    const drawer = document.createElement('div');
+    const done = document.createElement('button');
+    drawer.appendChild(done);
+    document.body.appendChild(drawer);
+    hud.update(view({ floorMode: true }));
+    done.focus();
+    drawer.hidden = true;
+    hud.update(view());
+    expect(document.activeElement).toBe(btn(root, T.floor.open));
+    // a focus that went somewhere on purpose stays there
+    const other = document.createElement('button');
+    document.body.appendChild(other);
+    hud.update(view({ floorMode: true }));
+    other.focus();
+    hud.update(view());
+    expect(document.activeElement).toBe(other);
+    drawer.remove();
+    other.remove();
+    root.remove();
   });
   it('does not re-assign thumbnail src or text when nothing changed', () => {
     const { root, hud } = setup();

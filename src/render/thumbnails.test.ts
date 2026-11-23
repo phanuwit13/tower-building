@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getStyleKit } from '../models/kit';
 import { advanceMotion, motionUniforms } from '../models/motion';
 import type { ItemModel } from '../models/contract';
+import type { FloorTile } from '../floors/types';
 import { createThumbnailer, type ThumbGl } from './thumbnails';
 
 const kit = getStyleKit();
@@ -83,6 +84,19 @@ describe('thumbnailer', () => {
     expect(gl.scene.children).toHaveLength(0);
     expect(kit.getGlowStrength()).toBe(0.5);
     kit.setGlowStrength(0);
+  });
+
+  it('thumbnails floor tiles too (the drawer swatches), cached per tile', () => {
+    const gl = fakeGl();
+    const t = createThumbnailer(kit, () => gl);
+    const tile: FloorTile = {
+      id: 'slab', name: 'แผ่นปูน', group: 'tile',
+      build: (k) => k.finish([k.box([1, 0.02, 1], [0, 0.01, 0], 'cream')]),
+    };
+    const url = t.get(tile);
+    expect(url).toMatch(/^data:image\/png/);
+    expect(t.get(tile)).toBe(url);
+    expect(gl.renders).toBe(1);
   });
 
   it('WebGL init failure disables thumbnails and is tried only once', () => {
