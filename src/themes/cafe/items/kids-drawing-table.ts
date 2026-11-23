@@ -44,7 +44,7 @@ export const item: ItemModel = {
         return kit.box(size, [x, ly, z], c, { rotate: [0, yaw, 0] });
       };
       parts.push(p(0, SEAT_Y, 0, [0.26, 0.04, 0.26], color));
-      parts.push(p(0.12, 0.45, 0, [0.04, 0.2, 0.26], color));
+      parts.push(p(0.11, SEAT_Y + 0.02 + 0.1, 0, [0.04, 0.2, 0.26], color));
       for (const lx of [-0.1, 0.1]) for (const lz of [-0.1, 0.1]) parts.push(p(lx, SEAT_Y / 2 - 0.01, lz, [0.04, SEAT_Y - 0.02, 0.04], 'woodDark'));
     }
     return kit.finish(parts);

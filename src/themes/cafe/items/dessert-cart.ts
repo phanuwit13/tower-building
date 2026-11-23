@@ -17,22 +17,22 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [];
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      parts.push(kit.box([0.04, TOP_Y, 0.04], [sx * (W / 2 - 0.04), TOP_Y / 2 + 0.1, sz * (L / 2 - 0.04)], 'white'));
+      parts.push(kit.box([0.04, TOP_Y - 0.08, 0.04], [sx * (W / 2 - 0.04), (TOP_Y + 0.08) / 2, sz * (L / 2 - 0.04)], 'white'));
     }
     parts.push(
-      kit.box([W, 0.05, L], [0, TOP_Y + 0.1 - 0.025 + 0.025, 0], 'pink'),
+      kit.box([W, 0.05, L], [0, TOP_Y - 0.025, 0], 'pink'),
       kit.box([W - 0.04, 0.04, L - 0.04], [0, LOW_Y, 0], 'mint'),
       kit.box([0.03, 0.12, L], [W / 2 - 0.02, LOW_Y + 0.08, 0], 'mint'), // low shelf rail
-      kit.box([0.03, 0.04, L], [W / 2 + 0.0, TOP_Y + 0.1 + 0.045, 0], 'white'), // top rail (front)
-      kit.box([0.03, 0.04, L], [-W / 2, TOP_Y + 0.1 + 0.045, 0], 'white'),
-      kit.cylinder(0.02, 0.02, 0.42, [-W / 2 - 0.1, 0.9, 0], 'brass', { segments: 8, rotate: [Math.PI / 2, 0, 0] }), // push handle
+      kit.box([0.03, 0.04, L], [W / 2 + 0.0, TOP_Y + 0.02, 0], 'white'), // top rail (front)
+      kit.box([0.03, 0.04, L], [-W / 2, TOP_Y + 0.02, 0], 'white'),
+      kit.cylinder(0.02, 0.02, 0.42, [-W / 2 - 0.1, 0.82, 0], 'brass', { segments: 8, rotate: [Math.PI / 2, 0, 0] }), // push handle
     );
-    for (const sz of [-1, 1]) parts.push(kit.cylinder(0.015, 0.015, 0.14, [-W / 2 - 0.05, 0.84, sz * 0.2], 'brass', { segments: 6, rotate: [0, 0, Math.PI / 2] }));
+    for (const sz of [-1, 1]) parts.push(kit.cylinder(0.015, 0.015, 0.14, [-W / 2 - 0.05, 0.76, sz * 0.2], 'brass', { segments: 6, rotate: [0, 0, Math.PI / 2] }));
     // wheels (axle along x)
     for (const sz of [-1, 1]) for (const sx of [-1, 1]) {
-      parts.push(kit.cylinder(0.1, 0.1, 0.05, [sx * (W / 2 + 0.0), 0.1, sz * 0.5], 'charcoal', { segments: 12, rotate: [0, 0, Math.PI / 2] }));
+      parts.push(kit.cylinder(0.08, 0.08, 0.05, [sx * (W / 2 - 0.04), 0.08, sz * (L / 2 - 0.04)], 'charcoal', { segments: 12, rotate: [0, 0, Math.PI / 2] }));
     }
-    const top = TOP_Y + 0.1 + 0.025;
+    const top = TOP_Y;
     // top: a row of macarons stacked, three cupcakes, and candy jars
     for (let i = 0; i < 3; i++) {
       const z = -0.55;

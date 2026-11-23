@@ -15,14 +15,14 @@ export const item: ItemModel = {
     const parts: Part[] = [];
     // splayed legs (wide at the floor)
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const top: [number, number] = [sx * 0.18, sz * 0.18];
+      const top: [number, number] = [sx * 0.17, sz * 0.17];
       const bot: [number, number] = [sx * 0.34, sz * 0.34];
       const dx = bot[0] - top[0];
       const dz = bot[1] - top[1];
       const len = Math.hypot(dx, dz, SEAT_Y);
       const tilt = Math.acos(SEAT_Y / len);
       const cy = (len / 2) * Math.cos(tilt) + 0.035 * Math.sin(tilt);
-      parts.push(kit.cylinder(0.035, 0.035, len, [(top[0] + bot[0]) / 2, cy, (top[1] + bot[1]) / 2], 'orange', { segments: 8, rotate: aim([dx, SEAT_Y, dz]) }));
+      parts.push(kit.cylinder(0.035, 0.035, len, [(top[0] + bot[0]) / 2, cy, (top[1] + bot[1]) / 2], 'orange', { segments: 8, rotate: aim([-dx, SEAT_Y, -dz]) }));
     }
     parts.push(
       kit.box([0.7, 0.03, 0.04], [0.0, 0.2, 0.34], 'sunYellow'),
