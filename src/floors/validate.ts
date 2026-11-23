@@ -21,13 +21,20 @@ const triangles = (obj: THREE.Object3D): number => {
 /**
  * Checks a floor tile. The model checks are the items' (validateItemModel: kit materials and
  * attributes, palette colours, finite values, identity root, deterministic build, footprint 1 x 1,
- * on the ground); this adds the tile-only rules: group, no glow, tops, triangles.
+ * on the ground); this adds the tile-only rules: group, no glow, tops, triangles. A tile with several
+ * looks is checked look by look ("look n" in the message).
  */
 export function validateFloorTile(t: FloorTile, kit: StyleKit): string[] {
-  const asItem: ItemModel = { id: t.id, name: t.name, category: 'decoration', footprint: { w: 1, d: 1 }, build: t.build };
+  const asItem: ItemModel = { id: t.id, name: t.name, category: 'decoration', footprint: { w: 1, d: 1 }, build: (k) => t.build(k) };
   const errs = validateItemModel(asItem, kit).map((e) => e.replace(/^item "/, 'floor tile "'));
   const tag = `floor tile "${t.id}"`;
   if (!FLOOR_GROUPS.some((g) => g.id === t.group)) errs.push(`${tag}: unknown group "${t.group}"`);
+  const looks = t.variants ?? 1;
+  if (!Number.isInteger(looks) || looks < 1) errs.push(`${tag}: variants must be a whole number of looks, 1 or more`);
+  for (let v = 1; v < looks; v++) {
+    const look: FloorTile = { ...t, variants: 1, build: (k) => t.build(k, v) };
+    for (const e of validateFloorTile(look, kit)) errs.push(e.replace(tag, `${tag} look ${v}`));
+  }
   let obj: THREE.Object3D;
   try {
     obj = t.build(kit);

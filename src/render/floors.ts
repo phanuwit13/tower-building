@@ -16,6 +16,18 @@ export function floorChunkOf(index: number): number {
   return Math.floor(z / CHUNK_TILES) * CHUNKS_PER_SIDE + Math.floor(x / CHUNK_TILES);
 }
 
+/**
+ * Pure: which of a tile's `looks` the cell (x, z) shows. A hash of the position, so a cell keeps
+ * its look (through a reload too) while neighbours mostly differ and no row or column repeats.
+ */
+export function cellVariant(x: number, z: number, looks: number | undefined): number {
+  if (!looks || looks <= 1) return 0;
+  let h = Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(z + 1, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) % looks;
+}
+
 /** Pure: the chunks (ascending) holding a cell that differs between two floor arrays. */
 export function changedFloorChunks(prev: readonly (string | null)[], next: readonly (string | null)[]): number[] {
   if (prev === next) return [];
@@ -39,9 +51,10 @@ export interface FloorLayer {
  * The floor layer: one merged body mesh per map chunk (a full map is at most 4 draw calls, never
  * one per tile), drawn on the ground under everything. It casts no shadow (it is flat) and
  * receives the items' shadows. A change re-merges only the chunks whose cells changed; tile
- * prototypes are built once. The rectangle preview is one instanced mesh of the picked tile
- * (semi-transparent) plus an outline and a "n ช่อง" count label (`label`, a DOM element the
- * caller places in the page), or an outline only for the eraser.
+ * prototypes (one per look) are built once, and each cell shows its own look (cellVariant). The
+ * rectangle preview is one instanced mesh of the picked tile's first look (semi-transparent) plus
+ * an outline and a "n ช่อง" count label (`label`, a DOM element the caller places in the page), or
+ * an outline only for the eraser.
  */
 export function createFloorLayer(stage: Stage, kit: StyleKit, label: HTMLElement): FloorLayer {
   const root = new THREE.Group();
@@ -49,14 +62,19 @@ export function createFloorLayer(stage: Stage, kit: StyleKit, label: HTMLElement
   stage.scene.add(root);
 
   const prototypes = new Map<string, THREE.Object3D | null>();
-  const prototype = (id: string): THREE.Object3D | null => {
-    let p = prototypes.get(id);
+  /** Look `look` of tile `id` (the first when left out); null for an unknown id. */
+  const prototype = (id: string, look = 0): THREE.Object3D | null => {
+    const key = `${id}#${look}`;
+    let p = prototypes.get(key);
     if (p === undefined) {
-      p = getFloorTile(id)?.build(kit) ?? null;
-      prototypes.set(id, p);
+      p = getFloorTile(id)?.build(kit, look) ?? null;
+      prototypes.set(key, p);
     }
     return p;
   };
+  /** Tile `id` as the cell (x, z) shows it. */
+  const cellModel = (id: string, x: number, z: number): THREE.Object3D | null =>
+    prototype(id, cellVariant(x, z, getFloorTile(id)?.variants));
 
   const meshes = new Map<number, THREE.Mesh>();
   let shown: readonly (string | null)[] = EMPTY; // the layer starts empty: the first sync builds only chunks that hold tiles
@@ -68,7 +86,7 @@ export function createFloorLayer(stage: Stage, kit: StyleKit, label: HTMLElement
     for (let z = cz; z < Math.min(GRID_SIZE, cz + CHUNK_TILES); z++) {
       for (let x = cx; x < Math.min(GRID_SIZE, cx + CHUNK_TILES); x++) {
         const id = floors[z * GRID_SIZE + x];
-        const model = id ? prototype(id) : null;
+        const model = id ? cellModel(id, x, z) : null;
         if (model) items.push({ model, matrix: new THREE.Matrix4().makeTranslation(x + 0.5, 0, z + 0.5) });
       }
     }

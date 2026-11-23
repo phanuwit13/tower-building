@@ -81,6 +81,24 @@ describe('validateFloorTile', () => {
     expect(errs.join('|')).toContain('bad');
     expect(errs.join('|')).toContain('group');
   });
+  it('checks every look of a tile with several', () => {
+    const t = tile({ variants: 3, build: (k, v = 0) => k.finish([k.box([1, v === 2 ? 0.02 : 0.01, 1], [0, v === 2 ? 0.01 : 0.005, 0], 'cream')]) });
+    expect(validateFloorTile(t, kit).join('|')).toContain('look 2');
+    expect(validateFloorTile({ ...t, variants: 2 }, kit)).toEqual([]);
+  });
+  it('sand has several looks, no two alike, so a wide sand area does not repeat one pattern', () => {
+    const sand = getFloorTile('sand')!;
+    const n = sand.variants ?? 1;
+    expect(n).toBeGreaterThanOrEqual(4);
+    const shape = (v: number) => {
+      const g = sand.build(kit, v);
+      const out: number[] = [];
+      g.traverse((o) => { if ((o as THREE.Mesh).isMesh) out.push(...(o as THREE.Mesh).geometry.attributes.position.array); });
+      return out.map((x) => x.toFixed(4)).join();
+    };
+    expect(new Set(Array.from({ length: n }, (_, v) => shape(v))).size).toBe(n);
+    expect(shape(0)).toBe(shape(0)); // the same look every time
+  });
   it('water-shallow marks its surface as pond water', () => {
     const g = getFloorTile('water-shallow')!.build(kit);
     let kind = -1;
