@@ -6,7 +6,7 @@ import { aim, wallPanel } from '../../../models/parts';
 // step down at the +z end, and a coin telescope on a pedestal aimed out over the +x rail.
 const DECK = { x: 0.9, z: 1.8, h: 0.14 };
 const RAIL = { top: DECK.h + 0.44, post: 0.04, x: 0.4, z: 0.85 };
-const SCOPE = { x: 0.0, z: -0.25 };
+const SCOPE = { x: 0.05, z: -0.25 }; // beside the +x rail (x = 0.4)
 
 /** จุดชมวิว: a wooden deck with a railing and a coin telescope. */
 export const item: ItemModel = {
@@ -32,22 +32,22 @@ export const item: ItemModel = {
     }
     // a step at the +z end
     parts.push(kit.box([0.5, 0.07, 0.1], [0, 0.035, DECK.z / 2 + 0.05], 'stone'));
-    // the coin telescope: a pedestal, a coin box, a tilted tube with an eyepiece and a lens cap
+    // the coin telescope: a chunky post by the +x railing, an orange coin box, and a fat tilted tube aimed out over the rail
     const base = DECK.h + 0.02;
-    const pivot: [number, number, number] = [SCOPE.x, base + 0.55, SCOPE.z];
+    const pivot: [number, number, number] = [SCOPE.x, base + 0.62, SCOPE.z];
     const dir: [number, number, number] = [0.85, 0.5, 0.0];
     const len = Math.hypot(...dir);
     const unit = dir.map((v) => v / len) as [number, number, number];
     const mid = (s: number): [number, number, number] => [pivot[0] + unit[0] * s, pivot[1] + unit[1] * s, pivot[2] + unit[2] * s];
     parts.push(
-      kit.cylinder(0.09, 0.09, 0.03, [SCOPE.x, base - 0.005 + 0.015, SCOPE.z], 'charcoal', { segments: 8 }),
-      kit.cylinder(0.04, 0.05, 0.4, [SCOPE.x, base + 0.2, SCOPE.z], 'chrome', { segments: 8 }),
-      kit.box([0.13, 0.1, 0.13], [SCOPE.x, base + 0.45, SCOPE.z], 'sunYellow'),
-      ...wallPanel(kit, { at: [SCOPE.x + 0.065, base + 0.45, SCOPE.z], facing: 'x+', w: 0.05, h: 0.05, depth: 0.02, color: 'brass' }), // the coin slot
-      kit.sphere(0.06, pivot, 'blue', { detail: 0 }),
-      kit.cylinder(0.05, 0.06, 0.4, mid(0.17), 'blue', { segments: 8, rotate: aim(dir) }),
-      kit.cylinder(0.065, 0.065, 0.04, mid(0.4), 'navy', { segments: 8, rotate: aim(dir) }), // front lens ring
-      kit.cylinder(0.03, 0.03, 0.12, mid(-0.1), 'chrome', { segments: 8, rotate: aim(dir) }), // eyepiece
+      kit.cylinder(0.14, 0.14, 0.04, [SCOPE.x, base + 0.02, SCOPE.z], 'charcoal', { segments: 10 }),
+      kit.cylinder(0.07, 0.09, 0.4, [SCOPE.x, base + 0.24, SCOPE.z], 'sunYellow', { segments: 10 }),
+      kit.box([0.22, 0.16, 0.22], [SCOPE.x, base + 0.5, SCOPE.z], 'orange'),
+      ...wallPanel(kit, { at: [SCOPE.x + 0.11, base + 0.5, SCOPE.z], facing: 'x+', w: 0.08, h: 0.08, depth: 0.02, color: 'brass' }), // the coin slot
+      kit.sphere(0.11, pivot, 'red', { detail: 1 }),
+      kit.cylinder(0.08, 0.1, 0.44, mid(0.17), 'red', { segments: 10, rotate: aim(dir) }),
+      kit.cylinder(0.11, 0.11, 0.06, mid(0.39), 'navy', { segments: 10, rotate: aim(dir) }), // front lens ring
+      kit.cylinder(0.05, 0.05, 0.14, mid(-0.12), 'chrome', { segments: 8, rotate: aim(dir) }), // eyepiece
     );
     return kit.finish(parts);
   },

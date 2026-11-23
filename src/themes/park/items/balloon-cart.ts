@@ -17,7 +17,7 @@ const BALLOONS: Array<[number, number, number, PaletteColor]> = [
   [0.14, 1.5, 0.12, 'red'], [-0.14, 1.55, 0.3, 'blue'], [0.12, 1.62, 0.42, 'sunYellow'], [-0.12, 1.5, 0.05, 'pink'],
   [0.0, 1.85, 0.25, 'leaf'], [0.15, 1.8, 0.28, 'purple'], [-0.15, 1.8, 0.2, 'orange'], [0.0, 1.62, 0.18, 'mint'], [0.0, 1.55, 0.42, 'white'],
 ];
-const SWAY: MotionOpts = { kind: 'sway', pivot: HUB, amount: 0.06 };
+const SWAY: MotionOpts = { kind: 'sway', pivot: HUB, amount: 0.12 };
 
 /** รถขายลูกโป่ง: a push cart with a bunch of colourful balloons bobbing on strings. */
 export const item: ItemModel = {

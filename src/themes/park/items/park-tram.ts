@@ -54,7 +54,7 @@ export const item: ItemModel = {
     // a lamp at each end, and a coupling bar
     for (const s of [-1, 1]) {
       parts.push(
-        kit.sphere(0.05, [0, 0.3, s * (BODY.l / 2 + 0.03)], 'lampWarm', { detail: 0, glow: true }),
+        kit.sphere(0.07, [0, 0.3, s * (BODY.l / 2 + 0.03)], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
         kit.box([0.08, 0.03, 0.06], [0, 0.17, s * (BODY.l / 2 + 0.02)], 'charcoal'),
       );
     }
