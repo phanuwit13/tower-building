@@ -13,11 +13,24 @@ export interface ThemeDef {
    */
   nightGlow?: number;
   /**
-   * An indoor theme (the café): the map is a room's floor. Low walls with windows and a glass door
-   * stand round it, just outside the grid (src/render/room.ts); the land round it is a pavement
-   * whatever the floor; rain falls only outside the walls and the floor never looks wet.
+   * An indoor theme (the café, the hospital): the map is a room's floor. Low walls with windows and
+   * a glass door stand round it, just outside the grid (src/render/room.ts); the land round it is a
+   * pavement whatever the floor; rain falls only outside the walls and the floor never looks wet.
    */
   indoor?: boolean;
+  /**
+   * The look of an indoor theme's room (src/render/room.ts): the café's shop front (`cafe`, the
+   * default) or the hospital's clean walls, sliding glass doors and heart-and-plus sign
+   * (`hospital`). Ignored outdoors.
+   */
+  room?: RoomLook;
+}
+
+/** The looks of the room round an indoor theme's map. */
+export type RoomLook = 'cafe' | 'hospital';
+/** The room a theme shows: its own look indoors (the café's when it names none), none outdoors or with no theme. */
+export function roomLookOf(t: Pick<ThemeDef, 'indoor' | 'room'> | undefined): RoomLook | null {
+  return t?.indoor === true ? t.room ?? 'cafe' : null;
 }
 
 /** The range a theme's `nightGlow` may take: 1 is the standard night, 2 the brightest city night. */

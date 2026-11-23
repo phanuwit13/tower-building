@@ -3,13 +3,15 @@ import { amusement } from './amusement';
 import { beach } from './beach';
 import { cafe } from './cafe';
 import { market } from './market';
+import { hospital } from './hospital';
 import { park } from './park';
 import { school } from './school';
+import { space } from './space';
 import { village } from './village';
 import { zoo } from './zoo';
 import { toCatalog, type ThemeDef } from './types';
 
-export const THEMES: readonly ThemeDef[] = [school, amusement, zoo, beach, market, cafe, village, park];
+export const THEMES: readonly ThemeDef[] = [school, amusement, zoo, beach, market, cafe, village, park, hospital, space];
 
 export function getTheme(id: string): ThemeDef | undefined {
   return THEMES.find((t) => t.id === id);

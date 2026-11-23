@@ -23,6 +23,10 @@ export const VILLAGE_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3
 
 /** The Park mix (docs/game/items-park.md, 60 items); the shared 60-item footprints, checked by the same simulation. */
 export const PARK_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 10 };
+/** The Hospital mix (docs/game/items-hospital.md, 60 items); the shared 60-item footprints, checked by the same simulation. */
+export const HOSPITAL_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 10 };
+/** The Space mix (docs/game/items-space.md, 60 items); the shared 60-item footprints, checked by the same simulation. */
+export const SPACE_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 10 };
 
 /** The Tokyo mix (docs/game/items-tokyo.md, 60 items); the shared 60-item footprints, checked by the same simulation. */
 export const TOKYO_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 10 };
