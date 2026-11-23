@@ -27,10 +27,10 @@ export const item: ItemModel = {
       kit.cylinder(0.035, 0.04, 0.82, [0, 0.41, -0.42], 'woodDark', { segments: 6 }),
       kit.cylinder(0.025, 0.025, 0.84, [0, PIVOT[1], 0], 'wood', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
       // bamboo tube (moves) with nodes and a darker open mouth
-      kit.cylinder(0.06, 0.06, 2 * HALF, centre, 'leaf', { segments: 8, rotate: aim(dir), motion: SWING }),
-      kit.cylinder(0.068, 0.068, 0.035, along(centre, dir, -0.2), 'lime', { segments: 8, rotate: aim(dir), motion: SWING }),
-      kit.cylinder(0.068, 0.068, 0.035, along(centre, dir, 0.2), 'lime', { segments: 8, rotate: aim(dir), motion: SWING }),
-      kit.cylinder(0.05, 0.05, 0.03, along(centre, dir, HALF - 0.005), 'leafDark', { segments: 8, rotate: aim(dir), motion: SWING }),
+      kit.cylinder(0.075, 0.075, 2 * HALF, centre, 'leaf', { segments: 8, rotate: aim(dir), motion: SWING }),
+      kit.cylinder(0.085, 0.085, 0.035, along(centre, dir, -0.2), 'leaf', { segments: 8, rotate: aim(dir), motion: SWING }),
+      kit.cylinder(0.085, 0.085, 0.035, along(centre, dir, 0.2), 'leaf', { segments: 8, rotate: aim(dir), motion: SWING }),
+      kit.cylinder(0.062, 0.062, 0.03, along(centre, dir, HALF - 0.005), 'leafDark', { segments: 8, rotate: aim(dir), motion: SWING }),
     ];
     // a tiny bamboo clump and pebbles in the back corner
     for (const [x, z, h] of [[-0.38, 0.3, 0.7], [-0.32, 0.38, 0.55], [-0.4, 0.4, 0.62]] as Array<[number, number, number]>) {

@@ -19,7 +19,7 @@ export const item: ItemModel = {
       kit.sphere(0.17, [0.22, 0.14, 0.2], 'stone', { detail: 1, scale: [1.1, 0.75, 1] }),
       kit.sphere(0.13, [-0.2, 0.1, -0.26], 'stone', { detail: 0, scale: [1.2, 0.7, 1] }),
       // moss caps and patches
-      kit.sphere(0.2, [-0.07, 0.36, 0.0], 'leaf', { detail: 1, scale: [1, 0.4, 0.9] }),
+      kit.sphere(0.2, [-0.07, 0.43, 0.0], 'leaf', { detail: 1, scale: [1, 0.4, 0.9] }),
       kit.sphere(0.1, [0.2, 0.23, 0.18], 'lime', { detail: 0, scale: [1, 0.4, 1] }),
       kit.sphere(0.09, [0.12, 0.07, -0.2], 'leafDark', { detail: 0, scale: [1.5, 0.6, 1.2] }),
       kit.sphere(0.07, [-0.36, 0.05, 0.3], 'leaf', { detail: 0, scale: [1.5, 0.6, 1.2] }),

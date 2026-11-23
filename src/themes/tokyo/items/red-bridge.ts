@@ -15,7 +15,6 @@ export const item: ItemModel = {
   category: 'decoration',
   footprint: { w: 1, d: 2 },
   build: (kit) => {
-    const bankZ = (CANAL / 2 + 1 - CANAL / 2) / 2 + CANAL / 2 - 0.5; // centre of each bank block
     const bankLen = 1 - CANAL / 2;
     const parts: Part[] = [
       kit.box([0.98, 0.03, 1.98], [0, 0.015, 0], 'stoneDark'),
@@ -28,7 +27,6 @@ export const item: ItemModel = {
         kit.box([0.5, 0.03, 0.4], [0, BANK_TOP + 0.015, s * (CANAL / 2 + 0.3)], 'sand'), // path
       );
     }
-    void bankZ;
     const y = (t: number): number => BANK_TOP + 0.02 + ARCH.rise * Math.sin(t);
     const z = (t: number): number => ARCH.half * Math.cos(t);
     for (let i = 0; i < ARCH.n; i++) {

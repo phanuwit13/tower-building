@@ -5,7 +5,7 @@ import { gableRoof, glassWindow } from '../../../models/parts';
 // 2x3 (x by z). A temple hall with a big sweeping roof, a red roofed gate in front of it (+x) holding a giant paper lantern, a path.
 const HALL = { x: -0.3, plinth: 0.16, wallH: 0.82, w: 0.8, len: 1.9, rise: 0.85, eave: 0.16 };
 const HALL_TOP = HALL.plinth + HALL.wallH;
-const GATE = { x: 0.6, plinth: 0.1, postH: 1.0, d: 0.5, len: 1.7 };
+const GATE = { x: 0.6, plinth: 0.1, postH: 1.3, d: 0.5, len: 1.7 };
 const GATE_TOP = GATE.plinth + GATE.postH;
 
 /** วัดญี่ปุ่น: a temple hall, a red gate and a giant paper lantern. */
@@ -54,12 +54,12 @@ export const item: ItemModel = {
     }
     parts.push(...gableRoof(kit, { at: [gx, GATE_TOP + 0.08, 0], length: 1.9, width: 0.34, rise: 0.3, eave: 0.1, color: 'charcoal', ridge: 'redDark' }));
     // the giant paper lantern hangs in the opening: red glowing body, dark caps, bands and a tassel
-    const LY = 0.62;
-    const lx = gx + 0.16;
+    const LY = 0.85;
+    const lx = 0.78;
     parts.push(
-      kit.sphere(0.22, [lx, LY, 0], 'orange', { detail: 1, scale: [1, 1.25, 1], glow: true, light: 'breathe' }),
-      kit.cylinder(0.12, 0.12, 0.05, [lx, LY + 0.3, 0], 'charcoal', { segments: 8 }),
-      kit.cylinder(0.12, 0.12, 0.05, [lx, LY - 0.3, 0], 'charcoal', { segments: 8 }),
+      kit.sphere(0.2, [lx, LY, 0], 'orange', { detail: 1, scale: [1, 1.25, 1], glow: true, light: 'breathe' }),
+      kit.cylinder(0.11, 0.11, 0.05, [lx, LY + 0.3, 0], 'charcoal', { segments: 8 }),
+      kit.cylinder(0.11, 0.11, 0.05, [lx, LY - 0.3, 0], 'charcoal', { segments: 8 }),
       kit.cylinder(0.012, 0.012, GATE_TOP - (LY + 0.32), [lx, (GATE_TOP + LY + 0.32) / 2, 0], 'stoneDark', { segments: 4 }),
       kit.cylinder(0.012, 0.012, 0.1, [lx, LY - 0.38, 0], 'sunYellow', { segments: 4 }),
       kit.sphere(0.03, [lx, LY - 0.46, 0], 'sunYellow', { detail: 0 }),
