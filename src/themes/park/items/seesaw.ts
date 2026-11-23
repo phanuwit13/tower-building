@@ -5,8 +5,8 @@ import type { MotionOpts } from '../../../models/motion';
 const G = 0.03;
 const PIV = 0.42; // axle height: the plank tips about this point
 const PLANK = { w: 0.24, t: 0.08, half: 0.85 };
-const AMOUNT = 0.2; // rock in radians (about 11 degrees)
-// Lowest plank underside at a tip: PIV - half * sin(0.2) - t/2 * cos(0.2) = 0.42 - 0.169 - 0.039 = 0.212.
+const AMOUNT = 0.1; // rock in radians (about 6 degrees)
+// Lowest plank underside at a tip: PIV - half * sin(0.1) - t/2 * cos(0.1) = 0.42 - 0.085 - 0.040 = 0.295.
 // Bumper tops are at 0.15, so the low end never touches them and never nears the ground.
 const ROCK: MotionOpts = { kind: 'swing', pivot: [0, PIV, 0], axis: [1, 0, 0], amount: AMOUNT, speed: 1.6 };
 const SEAT = { z: 0.6, w: 0.28, d: 0.2, h: 0.04 };
