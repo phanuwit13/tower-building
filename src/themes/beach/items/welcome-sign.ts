@@ -35,7 +35,7 @@ export const item: ItemModel = {
       for (let k = 0; k < SUN.rays; k++) {
         const a = (k / SUN.rays) * Math.PI * 2;
         const d = SUN.r + SUN.rayLen / 2 + 0.03;
-        parts.push(kit.box([0.025, SUN.rayLen, 0.04], [x, SUN.y + Math.cos(a) * d, Math.sin(a) * d], 'orange', { rotate: [-a, 0, 0] }));
+        parts.push(kit.box([0.025, SUN.rayLen, 0.04], [x, SUN.y + Math.cos(a) * d, Math.sin(a) * d], 'orange', { rotate: [a, 0, 0] }));
       }
       for (const [z, color] of SHELLS) {
         // a little shell: a cone lying on its side pointing out, with a ball at its base

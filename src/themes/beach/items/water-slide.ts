@@ -9,7 +9,7 @@ const TOWER = { x: 0, z: -1.15, half: 0.32, deck: 1.68, post: 0.27, top: 2.3 }; 
 const STEPS = { n: 6, w: 0.1, x0: -0.87, rise: 0.28, half: 0.15 }; // step i is centred at x0 + w * i, top at rise * (i + 1)
 const TUBE_R = 0.09;
 /** Centre line of the slide tube, from the tower platform down to the pool. */
-const PATH: Vec3[] = [[0.15, 1.82, -1.15], [0.72, 1.55, -0.95], [0.78, 1.25, -0.45], [0.1, 1.0, -0.05], [-0.62, 0.78, 0.3], [-0.15, 0.55, 0.62], [0.3, 0.33, 0.85]];
+const PATH: Vec3[] = [[0.15, 1.82, -1.15], [0.72, 1.55, -0.95], [0.78, 1.25, -0.45], [0.1, 1.0, -0.05], [-0.62, 0.78, 0.3], [-0.15, 0.55, 0.62], [0.3, 0.22, 0.85]];
 const TUBE_COLORS: PaletteColor[] = ['red', 'orange', 'sunYellow', 'pink', 'red', 'orange'];
 const POOL = { w: 1.9, z0: 0.6, z1: 1.48, rim: 0.12, rimH: 0.16, waterTop: 0.12 };
 

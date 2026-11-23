@@ -30,7 +30,7 @@ export const item: ItemModel = {
       // widest stripe the board's width allows at that height
       const t = (s.y - BOARD.cy) / BOARD.half[1];
       const w = 2 * BOARD.half[2] * Math.sqrt(1 - t * t) * 0.7;
-      parts.push(kit.box([0.1, s.h, w], [0, s.y, 0], s.color));
+      parts.push(kit.box([0.086, s.h, w], [0, s.y, 0], s.color));
     }
     return kit.finish(parts);
   },

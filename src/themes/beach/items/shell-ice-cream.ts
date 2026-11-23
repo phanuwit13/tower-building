@@ -1,20 +1,14 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part } from '../../../models/kit';
-import { glassWindow } from '../../../models/parts';
+import type { Part, Vec3 } from '../../../models/kit';
+import { glassWindow, rod } from '../../../models/parts';
 
 // An ice-cream kiosk shaped like a big spiral shell: a cream kiosk body with a serving window and counter,
 // under a stack of shrinking pink/white shell whorls, topped by a cone-and-scoops sign.
 const BASE = { w: 1.84, d: 1.84, h: 0.08 };
 const BODY = { x: -0.1, w: 1.4, d: 1.4, h: 0.62 }; // kiosk walls
 const BODY_TOP = BASE.h + BODY.h;
-/** Shell whorls from the bottom: [radius, rise (dome height scale), x shift, colour]. */
-const WHORLS: Array<{ r: number; y: number; x: number; color: 'pink' | 'white' }> = [
-  { r: 0.8, y: BODY_TOP, x: -0.1, color: 'pink' },
-  { r: 0.6, y: BODY_TOP + 0.5, x: -0.14, color: 'white' },
-  { r: 0.42, y: BODY_TOP + 0.9, x: -0.17, color: 'pink' },
-  { r: 0.25, y: BODY_TOP + 1.2, x: -0.19, color: 'white' },
-];
-const DOME_SQUASH = 1.1;
+const SHELL = { r: 0.85, h: 0.45, x: -0.1, ridges: 10, ridgeR: 0.035 }; // one wide low dome with radiating ridges
+const RIDGE_T = [0, 0.45, 0.9, 1.3]; // angles up the dome along each ridge
 
 /** ร้านไอศกรีมเปลือกหอย: ice-cream kiosk shaped like a big spiral shell, cone sign on top. */
 export const item: ItemModel = {
@@ -33,19 +27,22 @@ export const item: ItemModel = {
       kit.box([0.3, 0.05, 1.0], [frontX + 0.15, BASE.h + 0.19, 0], 'wood'), // serving counter
       kit.box([0.12, 0.2, 0.12], [frontX + 0.2, BASE.h + 0.06 + 0.1 + 0.05, 0.34], 'sunYellow', { rotate: [0, 0.4, 0] }), // a cup on it
     );
-    // the shell: whorls getting smaller; a white rim ring under each (flat torus) makes the spiral ridges
-    for (const w of WHORLS) {
-      parts.push(
-        kit.dome(w.r, [w.x, w.y, 0], w.color, { segments: 12, scale: [1, DOME_SQUASH * (w.r / 0.8) + 0.1, 1] }),
-        kit.torus(w.r, 0.035, [w.x, w.y + 0.01, 0], w.color === 'pink' ? 'white' : 'pink', { radialSegments: 4, tubularSegments: 12, rotate: [Math.PI / 2, 0, 0] }),
-      );
+    // the shell: one low scallop dome, pink, with cream ridges radiating from the top and a cream rim
+    parts.push(
+      kit.dome(SHELL.r, [SHELL.x, BODY_TOP, 0], 'pink', { segments: 12, scale: [1, SHELL.h / SHELL.r, 1] }),
+      kit.torus(SHELL.r - 0.02, 0.04, [SHELL.x, BODY_TOP + 0.02, 0], 'cream', { radialSegments: 4, tubularSegments: 16, rotate: [Math.PI / 2, 0, 0] }),
+    );
+    for (let k = 0; k < SHELL.ridges; k++) {
+      const a = (k / SHELL.ridges) * Math.PI * 2;
+      const pts: Vec3[] = RIDGE_T.map((t) => [
+        SHELL.x + SHELL.r * 1.02 * Math.cos(t) * Math.cos(a), BODY_TOP + SHELL.h * 1.02 * Math.sin(t), -SHELL.r * 1.02 * Math.cos(t) * Math.sin(a),
+      ]);
+      for (let i = 1; i < pts.length; i++) parts.push(rod(kit, pts[i - 1], pts[i], SHELL.ridgeR, 'cream', { segments: 4 }));
     }
-    // sign: cone (tip down) with scoops, on a short stem so it sits on the top whorl
-    const lastWhorl = WHORLS[WHORLS.length - 1];
-    const topY = lastWhorl.y + 0.25 * (DOME_SQUASH * (lastWhorl.r / 0.8) + 0.1); // crown of the last dome
+    // sign: cone (tip down) with scoops, sitting on the crown
     const cone = { r: 0.15, h: 0.4 };
-    const cy = topY + 0.02 + cone.h / 2;
-    const cx = lastWhorl.x;
+    const cy = BODY_TOP + SHELL.h + 0.02 + cone.h / 2;
+    const cx = SHELL.x;
     parts.push(
       kit.cylinder(cone.r, 0, cone.h, [cx, cy, 0], 'sand', { segments: 8 }),
       kit.sphere(0.17, [cx, cy + cone.h / 2 + 0.08, 0], 'pink'),
