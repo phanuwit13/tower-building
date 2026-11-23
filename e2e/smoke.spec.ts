@@ -9,6 +9,7 @@ import { market } from '../src/themes/market';
 import { cafe } from '../src/themes/cafe';
 import { village } from '../src/themes/village';
 import { park } from '../src/themes/park';
+import { hospital } from '../src/themes/hospital';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -289,6 +290,20 @@ test('theme select offers สวนสาธารณะ and its round starts wi
   const name = await page.getByTestId('current-name').textContent();
   expect(park.items.map((i) => i.name)).toContain(name);
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+});
+
+test('theme select offers โรงพยาบาล: its round starts indoors in the hospital room with a hospital item', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'โรงพยาบาล' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(hospital.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'hospital');
+  // the café keeps its own room
+  await page.getByRole('button', { name: T.home }).click();
+  await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'cafe');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {

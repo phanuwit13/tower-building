@@ -20,7 +20,7 @@ function docItems(): DocItem[] {
 }
 
 describe('registry', () => {
-  // Builds every item of every theme (eight themes, ~470 items): past the default 5 s when every worker is busy.
+  // Builds every item of every theme (nine themes, ~530 items): past the default 5 s when every worker is busy.
   it('every theme passes validation', () => {
     const kit = getStyleKit();
     for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 50 })).toEqual([]);
@@ -56,14 +56,16 @@ describe('registry', () => {
 });
 
 describe('nightGlow', () => {
-  it('the shopping district and the café are registered with their bright nights; the other themes keep the standard one', () => {
-    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village', 'park']);
+  it('the shopping district, the café and the hospital are registered with their bright nights; the other themes keep the standard one', () => {
+    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village', 'park', 'hospital']);
     expect(getTheme('market')!.nightGlow).toBe(1.5);
     expect(getTheme('cafe')!.nightGlow).toBeGreaterThan(1);
-    for (const t of THEMES.filter((x) => x.id !== 'market' && x.id !== 'cafe')) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
+    expect(getTheme('hospital')!.nightGlow).toBe(1.5);
+    const bright = ['market', 'cafe', 'hospital'];
+    for (const t of THEMES.filter((x) => !bright.includes(x.id))) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
   });
-  it('only the café is indoors', () => {
-    expect(THEMES.filter((t) => t.indoor).map((t) => t.id)).toEqual(['cafe']);
+  it('the café and the hospital are indoors, each with its own room', () => {
+    expect(THEMES.filter((t) => t.indoor).map((t) => [t.id, t.room ?? 'cafe'])).toEqual([['cafe', 'cafe'], ['hospital', 'hospital']]);
   });
   it('roomLookOf: the room an indoor theme shows (the café\'s when it names none); none outdoors', () => {
     expect(roomLookOf(getTheme('cafe'))).toBe('cafe');
