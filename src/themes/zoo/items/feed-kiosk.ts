@@ -9,8 +9,8 @@ const BASE_H = 0.04;
 const W = 0.66; // wall width (x)
 const OX = -0.07; // the kiosk body sits towards the back (-x) so the counter stands out in front of the roof
 const L = 1.7; // wall length (z)
-const WALL_TOP = 0.78;
-const RISE = 0.3;
+const WALL_TOP = 0.95;
+const RISE = 0.2;
 const COUNTER = { x: 0.36, h: 0.34, w: 0.22 };
 
 /** A tied feed sack: a squashed ball with a little tuft on top. */

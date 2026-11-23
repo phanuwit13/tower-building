@@ -13,24 +13,25 @@ const POOL: MotionOpts = { kind: 'water', water: 'pool' };
 
 /** A cartoon penguin standing on `y`, turned by `yaw` about y (0 faces +x). */
 function penguin(kit: StyleKit, x: number, y: number, z: number, yaw: number): Part[] {
+  const K = 1.4; // size of the penguin
   const c = Math.cos(yaw);
   const s = Math.sin(yaw);
   /** Local (forward, side, up) to world. */
-  const at = (f: number, side: number, up: number): [number, number, number] => [x + f * c + side * s, y + up, z - f * s + side * c];
+  const at = (f: number, side: number, up: number): [number, number, number] => [x + K * (f * c + side * s), y + K * up, z + K * (-f * s + side * c)];
   const rot: [number, number, number] = [0, yaw, 0];
   return [
-    kit.sphere(0.11, at(0, 0, 0.15), 'charcoal', { scale: [0.9, 1.35, 0.9], rotate: rot }),
-    kit.sphere(0.08, at(0.045, 0, 0.14), 'white', { detail: 0, scale: [0.8, 1.45, 0.85], rotate: rot }),
-    kit.sphere(0.075, at(0.01, 0, 0.32), 'charcoal', { rotate: rot }),
-    kit.sphere(0.026, at(0.055, 0.04, 0.34), 'white', { detail: 0 }),
-    kit.sphere(0.026, at(0.055, -0.04, 0.34), 'white', { detail: 0 }),
-    kit.sphere(0.013, at(0.077, 0.04, 0.34), 'charcoal', { detail: 0 }),
-    kit.sphere(0.013, at(0.077, -0.04, 0.34), 'charcoal', { detail: 0 }),
-    kit.cone(0.025, 0.07, at(0.09, 0, 0.305), 'orange', { segments: 6, rotate: [0, yaw, -Math.PI / 2] }),
-    kit.sphere(0.04, at(0, 0.11, 0.17), 'charcoal', { detail: 0, scale: [0.5, 1.4, 0.8], rotate: [0, yaw, 0.0] }),
-    kit.sphere(0.04, at(0, -0.11, 0.17), 'charcoal', { detail: 0, scale: [0.5, 1.4, 0.8], rotate: [0, yaw, 0.0] }),
-    kit.box([0.1, 0.02, 0.05], at(0.04, 0.045, 0.01), 'orange', { rotate: rot }),
-    kit.box([0.1, 0.02, 0.05], at(0.04, -0.045, 0.01), 'orange', { rotate: rot }),
+    kit.sphere(0.11 * K, at(0, 0, 0.15), 'charcoal', { scale: [0.9, 1.35, 0.9], rotate: rot }),
+    kit.sphere(0.09 * K, at(0.06, 0, 0.14), 'white', { detail: 1, scale: [0.8, 1.45, 0.9], rotate: rot }),
+    kit.sphere(0.075 * K, at(0.01, 0, 0.32), 'charcoal', { rotate: rot }),
+    kit.sphere(0.026 * K, at(0.055, 0.04, 0.34), 'white', { detail: 0 }),
+    kit.sphere(0.026 * K, at(0.055, -0.04, 0.34), 'white', { detail: 0 }),
+    kit.sphere(0.013 * K, at(0.077, 0.04, 0.34), 'charcoal', { detail: 0 }),
+    kit.sphere(0.013 * K, at(0.077, -0.04, 0.34), 'charcoal', { detail: 0 }),
+    kit.cone(0.025 * K, 0.07 * K, at(0.09, 0, 0.305), 'orange', { segments: 6, rotate: [0, yaw, -Math.PI / 2] }),
+    kit.sphere(0.04 * K, at(0, 0.11, 0.17), 'charcoal', { detail: 0, scale: [0.5, 1.4, 0.8], rotate: [0, yaw, 0.0] }),
+    kit.sphere(0.04 * K, at(0, -0.11, 0.17), 'charcoal', { detail: 0, scale: [0.5, 1.4, 0.8], rotate: [0, yaw, 0.0] }),
+    kit.box([0.1 * K, 0.02 * K, 0.05 * K], at(0.04, 0.045, 0.01), 'orange', { rotate: rot }),
+    kit.box([0.1 * K, 0.02 * K, 0.05 * K], at(0.04, -0.045, 0.01), 'orange', { rotate: rot }),
   ];
 }
 
