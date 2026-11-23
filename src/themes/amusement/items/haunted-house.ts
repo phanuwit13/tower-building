@@ -10,18 +10,20 @@ const WALL_TOP = BASE.h + BODY.h;
 const FRONT = BODY.x + BODY.w / 2; // the +x wall
 const ROOF = { w: 1.5, h: 0.55, d: 2.3, tilt: 0.07 }; // crooked: turned a little about z
 const TURRET = { x: -0.5, z: -1.1, r: 0.3, h: 1.5 };
-const GHOST = { x: 0.7, z: 0.55 };
+const GHOST = { x: 0.68, z: 0.5 };
 
 const pumpkin = (kit: Parameters<ItemModel['build']>[0], x: number, z: number, r: number): Part[] => [
   kit.sphere(r, [x, BASE.h + r * 0.75, z], 'orange', { scale: [1, 0.78, 1] }),
   kit.cylinder(0.02, 0.025, 0.07, [x, BASE.h + r * 1.5 + 0.02, z], 'leafDark', { segments: 6 }),
 ];
 
-/** A flat cartoon bat on a wall facing +x: round body, two pointed wings, two ears. */
+/** A flat cartoon bat on a wall facing +x: round body, two pointed wings. */
 const bat = (kit: Parameters<ItemModel['build']>[0], y: number, z: number): Part[] => [
-  kit.sphere(0.045, [FRONT + 0.03, y, z], 'charcoal', { detail: 0 }),
-  kit.wedge([0.1, 0.05, 0.12], [FRONT + 0.03, y, z - 0.1], 'charcoal', { rotate: [0, Math.PI, 0] }),
-  kit.wedge([0.1, 0.05, 0.12], [FRONT + 0.03, y, z + 0.1], 'charcoal'),
+  kit.sphere(0.07, [FRONT + 0.04, y, z], 'charcoal', { detail: 0 }),
+  kit.wedge([0.16, 0.08, 0.2], [FRONT + 0.04, y, z - 0.16], 'charcoal', { rotate: [0, Math.PI, 0] }),
+  kit.wedge([0.16, 0.08, 0.2], [FRONT + 0.04, y, z + 0.16], 'charcoal'),
+  kit.sphere(0.02, [FRONT + 0.1, y + 0.01, z - 0.025], 'sunYellow', { detail: 0 }), // eyes
+  kit.sphere(0.02, [FRONT + 0.1, y + 0.01, z + 0.025], 'sunYellow', { detail: 0 }),
 ];
 
 /** บ้านผีสิง: a crooked purple house with a friendly sheet ghost. */
@@ -61,17 +63,19 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [BODY.x + 0.2, 0.6, BODY.z + BODY.d / 2], facing: 'z+', w: 0.2, h: 0.3, frame: 'navy', panes: 1 }),
       kit.box([0.03, 0.2, 0.16], [BODY.x - BODY.w / 2 - 0.015, 0.6, 0.1], 'windowWarm', { glow: true, light: 'blink' }),
     );
-    // sheet ghost: a tapering white sheet, round head, two eyes and a big smile
+    // sheet ghost (big and friendly): a tapering white sheet, round head, two eyes and a big smile
+    const G = 1.5;
+    const gy = BASE.h;
     parts.push(
-      kit.cylinder(0.13, 0.2, 0.3, [GHOST.x, BASE.h + 0.15, GHOST.z], 'white', { segments: 8 }),
-      kit.sphere(0.15, [GHOST.x, BASE.h + 0.4, GHOST.z], 'white', { detail: 1 }),
-      kit.sphere(0.025, [GHOST.x + 0.13, BASE.h + 0.44, GHOST.z - 0.06], 'charcoal', { detail: 0 }),
-      kit.sphere(0.025, [GHOST.x + 0.13, BASE.h + 0.44, GHOST.z + 0.06], 'charcoal', { detail: 0 }),
-      kit.sphere(0.04, [GHOST.x + 0.13, BASE.h + 0.35, GHOST.z], 'charcoal', { detail: 0, scale: [0.4, 0.5, 1.4] }),
-      kit.sphere(0.045, [GHOST.x, BASE.h + 0.2, GHOST.z - 0.2], 'white', { detail: 0 }), // little hands
-      kit.sphere(0.045, [GHOST.x, BASE.h + 0.2, GHOST.z + 0.2], 'white', { detail: 0 }),
+      kit.cylinder(0.13 * G, 0.2 * G, 0.3 * G, [GHOST.x, gy + 0.15 * G, GHOST.z], 'white', { segments: 8 }),
+      kit.sphere(0.15 * G, [GHOST.x, gy + 0.4 * G, GHOST.z], 'white', { detail: 1 }),
+      kit.sphere(0.03 * G, [GHOST.x + 0.13 * G, gy + 0.44 * G, GHOST.z - 0.06 * G], 'charcoal', { detail: 0 }),
+      kit.sphere(0.03 * G, [GHOST.x + 0.13 * G, gy + 0.44 * G, GHOST.z + 0.06 * G], 'charcoal', { detail: 0 }),
+      kit.sphere(0.04 * G, [GHOST.x + 0.13 * G, gy + 0.35 * G, GHOST.z], 'charcoal', { detail: 0, scale: [0.4, 0.5, 1.4] }),
+      kit.sphere(0.045 * G, [GHOST.x, gy + 0.22 * G, GHOST.z - 0.2 * G], 'white', { detail: 0 }), // little hands
+      kit.sphere(0.045 * G, [GHOST.x, gy + 0.22 * G, GHOST.z + 0.2 * G], 'white', { detail: 0 }),
     );
-    parts.push(...pumpkin(kit, 0.72, -0.85, 0.12), ...pumpkin(kit, 0.66, 1.2, 0.1), ...pumpkin(kit, -0.6, 1.3, 0.14));
+    parts.push(...pumpkin(kit, 0.72, -0.85, 0.18), ...pumpkin(kit, 0.62, 1.2, 0.15), ...pumpkin(kit, -0.6, 1.2, 0.2));
     parts.push(...bat(kit, 0.8, -0.8), ...bat(kit, 0.75, 0.3));
     return kit.finish(parts);
   },

@@ -30,11 +30,11 @@ export const item: ItemModel = {
       parts.push(
         kit.box([0.3, 0.03, 0.5], [FRONT + 0.15, BASE.h + 0.015, z], 'stoneDark'),
         ...door(kit, { at: [FRONT, BASE.h + 0.25, z], facing: 'x+', w: 0.36, h: 0.46, color, knob: 'white' }),
-        kit.cylinder(0.14, 0.14, 0.03, [FRONT + 0.015, 0.68, z], 'white', { rotate: [0, 0, Math.PI / 2], segments: 12 }),
-        kit.sphere(0.035, [FRONT + 0.045, 0.74, z], color, { detail: 0 }),
+        kit.cylinder(0.1, 0.1, 0.03, [FRONT + 0.015, 0.65, z], 'white', { rotate: [0, 0, Math.PI / 2], segments: 12 }),
+        kit.sphere(0.035, [FRONT + 0.045, 0.71, z], color, { detail: 0 }),
         skirt
-          ? kit.cone(0.065, 0.12, [FRONT + 0.045, 0.64, z], color, { segments: 8, scale: [0.5, 1, 1] })
-          : kit.box([0.03, 0.11, 0.07], [FRONT + 0.035, 0.645, z], color),
+          ? kit.cone(0.065, 0.12, [FRONT + 0.045, 0.62, z], color, { segments: 8, scale: [0.5, 1, 1] })
+          : kit.box([0.03, 0.11, 0.07], [FRONT + 0.035, 0.615, z], color),
       );
     }
     // high windows on the ends and back, a bin and a bush by the door

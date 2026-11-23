@@ -26,10 +26,10 @@ export const item: ItemModel = {
       parts.push(kit.box([BEAM, BEAM, 2 * POST.p + BEAM], [sx * POST.p, POST.top + BEAM / 2, 0], 'woodDark'));
     }
     parts.push(
-      ...gableRoof(kit, { at: [0, ROOF_TOP, 0], length: 1.94, width: 2 * POST.p + BEAM, rise: 0.5, eave: 0.06, color: 'orange', ridge: 'redDark' }),
+      ...gableRoof(kit, { at: [0, ROOF_TOP, 0], length: 1.94, width: 2 * POST.p + BEAM, rise: 0.3, eave: 0.06, color: 'orange', ridge: 'redDark' }),
       kit.box([2 * POST.p + BEAM, BEAM * 0.75, BEAM * 0.75], [0, POST.top + BEAM / 2, 0], 'woodDark'),
-      kit.cylinder(0.03, 0.03, 0.5, [0, ROOF_TOP + 0.2, 0], 'woodDark', { segments: 4 }),
-      kit.sphere(0.07, [0, ROOF_TOP + 0.55, 0], 'sunYellow', { detail: 0 }),
+      kit.cylinder(0.03, 0.03, 0.3, [0, ROOF_TOP + 0.12, 0], 'woodDark', { segments: 4 }),
+      kit.sphere(0.07, [0, ROOF_TOP + 0.4, 0], 'sunYellow', { detail: 0 }),
     );
     // stalls: a counter box, a coloured awning, a glowing window above the counter and a menu sign
     STALL_Z.forEach((z, i) => {
@@ -58,7 +58,7 @@ export const item: ItemModel = {
     // two lamps hanging from the ridge
     for (const z of [-0.45, 0.45]) {
       parts.push(
-        kit.cylinder(0.012, 0.012, 0.42, [0.2, 1.09, z], 'charcoal', { segments: 4 }), // from under the roof to the bulb
+        kit.cylinder(0.012, 0.012, 0.3, [0.2, 1.03, z], 'charcoal', { segments: 4 }), // from under the roof to the bulb
         kit.sphere(0.05, [0.2, 0.84, z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
       );
     }
