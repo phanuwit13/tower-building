@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { getStyleKit } from './kit';
+import { MOTION_ATTRIBUTES } from './motion';
 import { validateItemModel, validateTheme } from './validate';
 import type { ItemModel } from './contract';
 import type { ThemeDef } from '../themes/types';
@@ -214,6 +215,30 @@ describe('validateItemModel motion attributes', () => {
   it('rejects a body mesh missing anim, pivot or axis', () => {
     for (const name of ['anim', 'pivot', 'axis']) {
       expect(validateItemModel(moving((g) => g.deleteAttribute(name)), kit).join('|'), name).toContain('exactly');
+    }
+  });
+  it('accepts the packed storage the kit writes', () => {
+    const g = (model({ build: (k) => k.finish([k.box([0.2, 0.2, 0.2], [0, 0.1, 0], 'red', { motion: { kind: 'spin' } })]) }).build(kit).children[0] as THREE.Mesh).geometry;
+    for (const name of ['anim', 'pivot', 'axis'] as const) {
+      const f = MOTION_ATTRIBUTES[name];
+      expect(g.attributes[name].array).toBeInstanceOf(f.array);
+    }
+    expect(validateItemModel(moving(), kit)).toEqual([]);
+  });
+  it('rejects a motion attribute stored any other way (the old float layout, a wrong size, an unnormalised axis)', () => {
+    const swap = (name: string, make: (n: number) => THREE.BufferAttribute) => (g: THREE.BufferGeometry) => g.setAttribute(name, make(g.attributes.position.count));
+    const cases: Array<[string, (g: THREE.BufferGeometry) => void]> = [
+      ['anim', swap('anim', (n) => new THREE.BufferAttribute(new Float32Array(n * 4), 4))],
+      ['anim', swap('anim', (n) => new THREE.BufferAttribute(new Int16Array(n * 4), 4, true))],
+      ['pivot', swap('pivot', (n) => new THREE.BufferAttribute(new Int16Array(n * 4), 4))],
+      ['axis', swap('axis', (n) => new THREE.BufferAttribute(new Float32Array(n * 3), 3))],
+      ['axis', swap('axis', (n) => new THREE.BufferAttribute(new Int8Array(n * 4), 4, false))],
+      ['axis', swap('axis', (n) => new THREE.BufferAttribute(new Int8Array(n * 3), 3, true))],
+    ];
+    for (const [name, mutate] of cases) {
+      const errs = validateItemModel(moving(mutate), kit).join('|');
+      expect(errs, name).toContain(`"${name}" must be stored as`);
+      expect(errs, name).toContain('build parts with the kit');
     }
   });
   it('still rejects a foreign attribute', () => {

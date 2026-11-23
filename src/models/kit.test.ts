@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { getStyleKit, type PartOpts } from './kit';
-import { CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_CODE, motionUniforms } from './motion';
+import { getStyleKit, type PartOpts, type Vec3 } from './kit';
+import { ANIM_STEP, CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, motionUniforms, readMotion } from './motion';
 import { PALETTE } from './palette';
 
 const kit = getStyleKit();
@@ -245,30 +245,40 @@ describe('style kit dome', () => {
 });
 
 describe('style kit motion attributes', () => {
-  /** The distinct values of a vector attribute, as rounded arrays. */
-  const values = (g: THREE.BufferGeometry, name: string): number[][] => {
-    const a = g.attributes[name];
+  /** The distinct unpacked values (what the shader sees) of a motion attribute, as rounded arrays (anim to its step). */
+  const values = (g: THREE.BufferGeometry, name: 'anim' | 'pivot' | 'axis'): number[][] => {
     const seen = new Map<string, number[]>();
-    for (let i = 0; i < a.count; i++) {
-      const v = [a.getX(i), a.getY(i), a.getZ(i), a.itemSize > 3 ? a.getW(i) : undefined]
-        .slice(0, a.itemSize).map((x) => +(x as number).toFixed(5));
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      const v = readMotion(g, i)[name].map((x) => +x.toFixed(name === 'anim' ? 3 : 5) + 0); // + 0: no -0
       seen.set(v.join(','), v);
     }
     return [...seen.values()];
   };
+  const bytesPerVertex = (g: THREE.BufferGeometry, names = Object.keys(g.attributes)) =>
+    names.reduce((sum, k) => sum + g.attributes[k].array.BYTES_PER_ELEMENT * g.attributes[k].itemSize, 0);
 
-  it('every part carries anim (vec4), pivot and axis (vec3), one per vertex, all zero when static', () => {
+  it('every part carries anim, pivot and axis, packed, one per vertex, all zero when static', () => {
     for (const p of [kit.box([1, 1, 1], [0, 0.5, 0], 'red'), kit.sphere(0.3, [0, 1, 0], 'lampWarm', { glow: true })]) {
       const g = p.geometry;
       const n = g.attributes.position.count;
-      expect(g.attributes.anim.itemSize).toBe(4);
-      expect(g.attributes.pivot.itemSize).toBe(3);
-      expect(g.attributes.axis.itemSize).toBe(3);
-      for (const name of ['anim', 'pivot', 'axis']) {
-        expect(g.attributes[name].count).toBe(n);
-        expect(values(g, name)).toEqual([new Array(g.attributes[name].itemSize).fill(0)]);
+      for (const name of ['anim', 'pivot', 'axis'] as const) {
+        const a = g.attributes[name] as THREE.BufferAttribute;
+        const f = MOTION_ATTRIBUTES[name];
+        expect(a.array, name).toBeInstanceOf(f.array);
+        expect([a.itemSize, a.normalized], name).toEqual([f.itemSize, f.normalized]);
+        expect(a.count).toBe(n);
+        expect(Array.from(a.array).every((v) => v === 0), name).toBe(true);
       }
     }
+  });
+
+  it('a body part takes 60 bytes a vertex and a glow part 72 (motion 24 of them, was 40)', () => {
+    const body = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { motion: { kind: 'sway' } }).geometry;
+    const glow = kit.box([0.2, 0.2, 0.2], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } }).geometry;
+    expect(bytesPerVertex(body, ['anim', 'pivot', 'axis'])).toBe(24);
+    expect(bytesPerVertex(glow, ['anim', 'pivot', 'axis'])).toBe(24);
+    expect(bytesPerVertex(body)).toBe(60);
+    expect(bytesPerVertex(glow)).toBe(72);
   });
 
   it('an animated part stores its kind code, amount, speed, phase, pivot and axis on every vertex', () => {
@@ -371,7 +381,7 @@ describe('style kit materials', () => {
 
 describe('style kit light patterns', () => {
   it('default and steady lights leave anim untouched; patterns pack beside the motion code', () => {
-    const a = (p: ReturnType<typeof kit.box>) => Array.from({ length: 4 }, (_, i) => p.geometry.attributes.anim.getComponent(0, i));
+    const a = (p: ReturnType<typeof kit.box>) => readMotion(p.geometry, 0).anim;
     expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true }))).toEqual([0, 0, 0, 0]);
     expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'steady' }))).toEqual([0, 0, 0, 0]);
     expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'breathe' }))[0]).toBe(LIGHT_STRIDE * LIGHT_CODE.breathe);
@@ -380,9 +390,20 @@ describe('style kit light patterns', () => {
     expect(both[1]).toBeGreaterThan(0);
   });
   it('window panes get their own phase, repeatable per position', () => {
-    const phase = (x: number) => kit.box([1, 1, 1], [x, 1, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' }).geometry.attributes.anim.getW(0);
+    const phase = (x: number) => readMotion(kit.box([1, 1, 1], [x, 1, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' }).geometry, 0).anim[3];
     expect(phase(0)).toBe(phase(0));
     expect(phase(0)).not.toBe(phase(1.5));
+  });
+  it('a window pane keeps its hashed phase through the packing (within half a phase step), on top of the part phase', () => {
+    // kit.ts: pane = 6.2831853 * hash2(at.x * 12.9898 + at.z * 78.233, at.y * 37.719)
+    const hash2 = (a: number, b: number) => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v); };
+    for (const at of [[0, 1, 0], [0.37, 2.5, -1.2], [-1.5, 4.9, 1.5], [1.1, 0.2, 0.9]] as Vec3[]) {
+      for (const phase of [0, MOTION_LIMITS.phase, -MOTION_LIMITS.phase]) {
+        const p = kit.box([0.2, 0.2, 0.2], at, 'glassBlue', { glow: 'windowWarm', light: 'window', motion: { kind: 'swing', phase } });
+        const want = phase + 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719);
+        expect(Math.abs(readMotion(p.geometry, 0).anim[3] - want)).toBeLessThanOrEqual(ANIM_STEP[3] / 2);
+      }
+    }
   });
   it('a light on a non-glow part is an error, and a glow-moving part still counts as moving', () => {
     expect(() => kit.box([1, 1, 1], [0, 0, 0], 'wood', { light: 'blink' })).toThrow(/glow/);

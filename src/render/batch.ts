@@ -58,9 +58,11 @@ export interface KitMaterials { body: THREE.Material; glow: THREE.Material }
 /**
  * Merge items into world-space body and glow geometries, after `base` (an earlier merge, left
  * as it is) when given. Each mesh's geometry is cloned and moved into place, normals included,
- * and so are the motion attributes: `pivot` moves like a position, `axis` turns like a direction
- * (kept unit length). The prototypes' own geometry is never changed or disposed. Body and glow
- * stay apart: they have different attributes (glow adds glowColor) and materials.
+ * and so are the motion attributes: `pivot` (exact floats) moves like a position, `axis` (normalised
+ * bytes, see MOTION_ATTRIBUTES) turns like a direction: three reads it back as floats, turns it,
+ * re-normalises it and stores it as bytes again (a quarter turn keeps it exact). `anim` never changes.
+ * The prototypes' own geometry is never changed or disposed. Body and glow stay apart: they have
+ * different attributes (glow adds glowColor) and materials.
  */
 export function mergeItems(items: readonly BatchItem[], materials: KitMaterials, base?: Merged): Merged {
   const parts: Record<keyof Merged, THREE.BufferGeometry[]> = { body: [], glow: [] };

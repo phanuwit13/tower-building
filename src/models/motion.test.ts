@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { Vec3 } from './kit';
 import {
+  ANIM_STEP, MOTION_ATTRIBUTES, MOTION_LIMITS, packAnim, packAxis, unpackAnim,
   advanceMotion, BLINK_OFF_LEVEL, BREATHE_AMP, BREATHE_MID, BREATHE_MIN, TAU, snapWind, WIND_EASE_SECONDS, BLINK_ON, BLINK_PERIOD, BREATHE_PERIOD, WINDOW_VARIATION, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
   MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, patchWaterShader, resolveMotion, setMoon, setNight,
   setReducedMotion, setWind, WATER, WATER_FRAGMENT, WATER_FRAGMENT_PARS, waterLight, watchReducedMotion,
@@ -56,6 +58,70 @@ describe('resolveMotion', () => {
     expect(() => resolveMotion({ kind: 'sway', amount: NaN }, at, 0)).toThrow(/amount/);
     expect(() => resolveMotion({ kind: 'sway', speed: Infinity }, at, 0)).toThrow(/speed/);
     expect(() => resolveMotion({ kind: 'wave', axis: [0, 1, 0] }, at, 0)).toThrow(/wave/);
+  });
+  it('rejects an amount, speed or phase outside what the packed attribute holds; the limits themselves pass', () => {
+    const { amount, speed, phase } = MOTION_LIMITS;
+    expect(() => resolveMotion({ kind: 'swing', amount, speed: -speed, phase }, at, 0)).not.toThrow();
+    expect(() => resolveMotion({ kind: 'swing', amount: -amount, speed, phase: -phase }, at, 0)).not.toThrow();
+    expect(() => resolveMotion({ kind: 'sway', amount: amount + 0.01 }, at, 0)).toThrow(/style kit: motion amount.*±4/);
+    expect(() => resolveMotion({ kind: 'spin', speed: -speed - 0.01 }, at, 0)).toThrow(/style kit: motion speed.*±16/);
+    expect(() => resolveMotion({ kind: 'spin', phase: phase + 0.01 }, at, 0)).toThrow(/style kit: motion phase.*±16/);
+  });
+});
+
+describe('packed motion attributes', () => {
+  it('fit in 24 bytes a vertex (was 40 as floats), every stride a multiple of 4 (no realignment on Metal)', () => {
+    let bytes = 0;
+    for (const f of Object.values(MOTION_ATTRIBUTES)) {
+      const stride = f.array.BYTES_PER_ELEMENT * f.itemSize;
+      expect(stride % 4).toBe(0);
+      bytes += stride;
+    }
+    expect(bytes).toBeLessThanOrEqual(24);
+    expect(Object.keys(MOTION_ATTRIBUTES)).toEqual(['anim', 'pivot', 'axis']);
+  });
+  it('anim keeps the code exact and amount, speed and phase within half a step, out to the limits', () => {
+    const half = (i: number) => ANIM_STEP[i] / 2 + 1e-12;
+    const { amount, speed, phase } = MOTION_LIMITS;
+    const cases = [
+      [0, 0, 0, 0],
+      [MOTION_CODE.swing + LIGHT_STRIDE * LIGHT_CODE.window, amount, -speed, phase + TAU - 1e-6], // a window pane's hash rides on the phase
+      [MOTION_CODE.pool, -amount, speed, -phase],
+      [MOTION_CODE.sway, 0.05, 1.7, 0.123456],
+      [MOTION_CODE.spin, 1, 0.4, TAU * 0.999],
+    ];
+    for (const v of cases) {
+      const packed = packAnim(v);
+      for (const p of packed) expect(Number.isInteger(p) && p >= -32768 && p <= 32767, String(v)).toBe(true);
+      const back = unpackAnim(packed);
+      expect(back[0]).toBe(v[0]);
+      for (let i = 1; i < 4; i++) expect(Math.abs(back[i] - v[i]), `${v} [${i}]`).toBeLessThanOrEqual(half(i));
+    }
+    // tolerances in words: amount 0.00013 (a 1-unit crown at 0.05 leans 0.1 mm off), speed and phase 0.0005 rad
+    expect(ANIM_STEP).toEqual([1, 2 ** -12, 2 ** -10, 2 ** -10]);
+  });
+  it('anim refuses values it cannot hold rather than wrapping them', () => {
+    expect(() => packAnim([0, 9, 0, 0])).toThrow(/packed/);
+    expect(() => packAnim([0, 0, 0, 40])).toThrow(/packed/);
+    expect(() => packAnim([0.5, 0, 0, 0])).toThrow(/whole/);
+  });
+  it('a unit axis comes back within 0.4° (exactly for the axis directions); a second packing (a merge) stays within 0.8°', () => {
+    const angle = (a: Vec3, b: Vec3) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])) * (180 / Math.PI);
+    const unit = (v: Vec3): Vec3 => { const l = Math.hypot(...v); return [v[0] / l, v[1] / l, v[2] / l]; };
+    const back = (v: Vec3) => unit(packAxis(v).slice(0, 3).map((c) => c / 127) as Vec3);
+    for (const v of [[1, 0, 0], [0, 1, 0], [0, 0, -1], [-1, 0, 0]] as Vec3[]) expect(back(v)).toEqual(v.map((c) => c + 0));
+    let once = 0;
+    let twice = 0;
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 * 2 - 1; };
+    for (let i = 0; i < 5000; i++) {
+      const v = unit([rnd(), rnd(), rnd()]);
+      once = Math.max(once, angle(v, back(v)));
+      twice = Math.max(twice, angle(v, back(back(v)))); // a merge reads the bytes, re-normalises, packs again
+    }
+    expect(once).toBeLessThan(0.4);
+    expect(twice).toBeLessThan(0.8);
+    expect(packAxis([0, 0, 0])).toEqual([0, 0, 0, 0]);
   });
 });
 
@@ -183,7 +249,7 @@ describe('motion shader', () => {
   });
 
   it('declares the attributes, the shared uniforms and the fragment flag', () => {
-    for (const s of ['attribute vec4 anim;', 'attribute vec3 pivot;', 'attribute vec3 axis;', 'uniform float uTime;',
+    for (const s of ['attribute vec4 anim;', 'attribute vec3 pivot;', 'attribute vec4 axis;', 'uniform float uTime;',
       'uniform float uWind;', 'uniform float uMotion;', 'uniform float uNight;', 'varying vec4 vAnim;']) {
       expect(MOTION_VERTEX_PARS).toContain(s);
     }
@@ -198,6 +264,35 @@ describe('motion shader', () => {
     expect(MOTION_VERTEX_SETUP).toContain('uMotion');
     expect(MOTION_VERTEX_APPLY).toContain('transformed = pivot + motionRot * ( transformed - pivot ) + motionShift');
     expect(MOTION_VERTEX_REST).toContain('transformed = motionRest');
+  });
+
+  it('unpacks anim with exactly the TS steps and re-normalises the byte axis (parity)', () => {
+    expect(MOTION_VERTEX_SETUP).toContain('int motionPacked = int( anim.x + 0.5 );'); // a whole number: rounding, not truncation
+    expect(MOTION_VERTEX_SETUP).toContain(`anim.yzw * vec3( ${glslFloat(ANIM_STEP[1])}, ${glslFloat(ANIM_STEP[2])}, ${glslFloat(ANIM_STEP[3])} )`);
+    expect(MOTION_VERTEX_SETUP).toContain('normalize( axis.xyz )');
+    expect(MOTION_VERTEX_SETUP.match(/\banim\.\w+/g)).toEqual(['anim.x', 'anim.yzw']); // only through the unpack
+    expect(MOTION_VERTEX_SETUP.match(/\baxis\b(\.\w+)?/g)).toEqual(['axis.xyz']);
+  });
+
+  it('a still part with a steady light (anim.x == 0) skips all the motion maths', () => {
+    const gate = 'if ( motionPacked != 0 ) {';
+    const i = MOTION_VERTEX_SETUP.indexOf(gate);
+    expect(i).toBeGreaterThan(0);
+    const before = MOTION_VERTEX_SETUP.slice(0, i);
+    for (const costly of ['sin(', 'motionHash(', 'normalize(', 'modelMatrix', 'motionRotation(']) expect(before).not.toContain(costly);
+    // the defaults a still vertex keeps: no light change, no move, a zero vAnim (the fragment reads it as still)
+    for (const d of ['vLight = 1.0;', 'vAnim = vec4( 0.0 );', 'bool motionMoves = false;', 'mat3 motionRot = mat3( 1.0 );', 'vec3 motionShift = vec3( 0.0 );']) {
+      expect(before).toContain(d);
+    }
+    // the gate's block runs to the end of the setup
+    const after = MOTION_VERTEX_SETUP.slice(i + gate.length).trimEnd();
+    let depth = 1;
+    let closed = -1;
+    for (let k = 0; k < after.length && closed < 0; k++) {
+      depth += after[k] === '{' ? 1 : after[k] === '}' ? -1 : 0;
+      if (depth === 0) closed = k;
+    }
+    expect(closed).toBe(after.length - 1);
   });
 
   it('patches a standard shader in order: setup after the normal, move before projecting, rest before the shadow lookup', () => {

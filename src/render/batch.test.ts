@@ -5,8 +5,9 @@ import { school } from '../themes/school';
 import { GRID_SIZE, type Placement, type Rotation } from '../game/types';
 import { CHUNK_TILES, CHUNKS_PER_SIDE, chunkOf, createBatch, mergeItems, placementMatrix, planBatch, type BatchItem } from './batch';
 import { placementTransform } from './city';
-import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE } from '../models/motion';
+import { ANIM_STEP, CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, readMotion } from '../models/motion';
 import type { ItemModel } from '../models/contract';
+import type { Vec3 } from '../models/kit';
 
 const kit = getStyleKit();
 const { materials } = kit;
@@ -172,17 +173,19 @@ describe('mergeItems with animated items', () => {
     ]),
   };
   const at = (it: ItemModel, x: number, z: number, r: Rotation): BatchItem => ({ model: it.build(kit), matrix: placementMatrix(it.footprint, x, z, r) });
-  /** Distinct [anim kind, pivot, axis] rows of a merged geometry, rounded. */
+  /** Distinct [anim kind, pivot, axis] rows of a merged geometry (unpacked, as the shader sees them), rounded. */
   const rows = (g: THREE.BufferGeometry) => {
-    const { anim, pivot, axis } = g.attributes;
     const out = new Map<string, { kind: number; pivot: number[]; axis: number[] }>();
-    for (let i = 0; i < anim.count; i++) {
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      const m = readMotion(g, i);
       const r = (v: number) => +v.toFixed(5) + 0; // + 0: no -0
-      const row = { kind: anim.getX(i), pivot: [r(pivot.getX(i)), r(pivot.getY(i)), r(pivot.getZ(i))], axis: [r(axis.getX(i)), r(axis.getY(i)), r(axis.getZ(i))] };
+      const row = { kind: m.anim[0], pivot: m.pivot.map(r), axis: m.axis.map(r) };
       out.set(JSON.stringify(row), row);
     }
     return [...out.values()];
   };
+  const degrees = (a: readonly number[], b: THREE.Vector3) =>
+    new THREE.Vector3(a[0], a[1], a[2]).angleTo(b) * (180 / Math.PI);
 
   it('merges still and animated items into one chunk without a mismatch', () => {
     const m = mergeItems([at(item('bench'), 0, 0, 0), at(animated, 3, 3, 0), at(item('street-lamp'), 5, 2, 0), at(item('tree'), 7, 7, 3)], materials);
@@ -202,12 +205,47 @@ describe('mergeItems with animated items', () => {
       const wantPivot = new THREE.Vector3(0.2, 1, 0).applyMatrix4(matrix);
       const wantAxis = new THREE.Vector3(1, 0, 0).transformDirection(matrix);
       swing.pivot.forEach((v, i) => expect(v).toBeCloseTo(wantPivot.getComponent(i), 4));
-      swing.axis.forEach((v, i) => expect(v).toBeCloseTo(wantAxis.getComponent(i), 4));
+      swing.axis.forEach((v, i) => expect(v).toBeCloseTo(wantAxis.getComponent(i), 4)); // a quarter turn keeps x exact
       expect(Math.hypot(...swing.axis)).toBeCloseTo(1, 5);
       const sway = rows(m.body!).find((row) => row.kind === MOTION_CODE.sway)!;
       expect(sway.axis).toEqual([0, 1, 0]); // straight up stays up under a turn about y
       const wantSway = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix);
       sway.pivot.forEach((v, i) => expect(v).toBeCloseTo(wantSway.getComponent(i), 4));
+    }
+  });
+
+  it('keeps the packed storage through a merge (the merged attributes are what the material reads)', () => {
+    const m = mergeItems([at(animated, 4, 6, 1), at(item('street-lamp'), 5, 2, 3)], materials);
+    for (const g of [m.body!, m.glow!]) {
+      for (const name of ['anim', 'pivot', 'axis'] as const) {
+        const a = g.attributes[name] as THREE.BufferAttribute;
+        expect(a.array, name).toBeInstanceOf(MOTION_ATTRIBUTES[name].array);
+        expect([a.itemSize, a.normalized], name).toEqual([MOTION_ATTRIBUTES[name].itemSize, MOTION_ATTRIBUTES[name].normalized]);
+      }
+    }
+  });
+
+  it('a pivot anywhere on the map lands within 1 mm, and a slanted axis within 1° of exact, in every turn', () => {
+    const slanted: Vec3 = [0.3, 0.8, -0.52]; // not along any axis: the packed direction is not exact
+    const reach: ItemModel = {
+      id: 'test-reach', name: 'reach', category: 'nature', footprint: { w: 1, d: 1 },
+      build: (k) => k.finish([k.box([0.1, 0.1, 0.1], [0.45, 4.9, -0.45], 'red', {
+        motion: { kind: 'swing', pivot: [0.5, 5, -0.5], axis: slanted, amount: MOTION_LIMITS.amount, speed: -MOTION_LIMITS.speed, phase: MOTION_LIMITS.phase },
+      })]),
+    };
+    for (const [x, z] of [[0, 0], [GRID_SIZE - 1, GRID_SIZE - 1], [0, GRID_SIZE - 1], [GRID_SIZE - 1, 0]]) {
+      for (const r of [0, 1, 2, 3] as const) {
+        const matrix = placementMatrix(reach.footprint, x, z, r);
+        const g = mergeItems([{ model: reach.build(kit), matrix }], materials).body!;
+        const m = readMotion(g, 0);
+        const wantPivot = new THREE.Vector3(0.5, 5, -0.5).applyMatrix4(matrix);
+        expect(new THREE.Vector3(...m.pivot).distanceTo(wantPivot), `${x},${z} r${r}`).toBeLessThan(0.001);
+        expect(degrees(m.axis, new THREE.Vector3(...slanted).normalize().transformDirection(matrix)), `${x},${z} r${r}`).toBeLessThan(1);
+        expect(m.anim[0]).toBe(MOTION_CODE.swing);
+        expect(Math.abs(m.anim[1] - MOTION_LIMITS.amount)).toBeLessThanOrEqual(ANIM_STEP[1] / 2);
+        expect(Math.abs(m.anim[2] + MOTION_LIMITS.speed)).toBeLessThanOrEqual(ANIM_STEP[2] / 2);
+        expect(Math.abs(m.anim[3] - MOTION_LIMITS.phase)).toBeLessThanOrEqual(ANIM_STEP[3] / 2);
+      }
     }
   });
 

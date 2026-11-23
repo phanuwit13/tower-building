@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { ThemeDef } from '../themes/types';
 import { CATEGORIES, type ItemModel } from './contract';
 import type { StyleKit } from './kit';
+import { MOTION_ATTRIBUTES } from './motion';
 import { PALETTE } from './palette';
 
 const FOOTPRINTS = ['1x1', '1x2', '2x1', '2x2', '2x3', '3x2'];
@@ -28,6 +29,9 @@ function offPaletteColor(g: THREE.BufferGeometry, attr: 'color' | 'glowColor'): 
   }
   return false;
 }
+
+/** "Int16Array x4", "Int8Array x4 normalised": how an attribute is stored, for messages. */
+const storage = (array: string, itemSize: number, normalized: boolean) => `${array} x${itemSize}${normalized ? ' normalised' : ''}`;
 
 function positionsOf(obj: THREE.Object3D): number[][] {
   const out: number[][] = [];
@@ -72,6 +76,13 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
     if (names !== (isGlow ? 'anim,axis,color,glowColor,normal,pivot,position' : 'anim,axis,color,normal,pivot,position')) {
       errs.push(`${tag}: ${isGlow ? 'glow' : 'body'} geometry must have exactly ${isGlow ? 'position, normal, color, glowColor, anim, pivot and axis' : 'position, normal, color, anim, pivot and axis'} attributes (has ${names || 'none'}); build parts with the kit`);
     } else {
+      for (const name of ['anim', 'pivot', 'axis'] as const) {
+        const a = g.attributes[name] as THREE.BufferAttribute;
+        const f = MOTION_ATTRIBUTES[name];
+        if (!(a.array instanceof f.array) || a.itemSize !== f.itemSize || a.normalized !== f.normalized) {
+          errs.push(`${tag}: "${name}" must be stored as ${storage(f.array.name, f.itemSize, f.normalized)} (has ${storage(a.array.constructor.name, a.itemSize, a.normalized)}); build parts with the kit`);
+        }
+      }
       if (offPaletteColor(g, 'color')) errs.push(`${tag}: vertex colour is not a palette colour`);
       if (isGlow && offPaletteColor(g, 'glowColor')) errs.push(`${tag}: glow colour is not a palette colour`);
     }

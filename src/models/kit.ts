@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { CULL_MARGIN, LIGHT_STRIDE, MOTION_CODE, packLight, patchMotionShader, patchWaterShader, resolveMotion, type LightKind, type MotionOpts } from './motion';
+import {
+  CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, packAnim, packAxis, packLight, patchMotionShader, patchWaterShader,
+  resolveMotion, type LightKind, type MotionAttribute, type MotionOpts,
+} from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
@@ -77,8 +80,8 @@ export interface StyleKit {
 
 /**
  * Non-indexed geometry with exactly position, normal, color, anim, pivot, axis (+ glowColor on glow
- * parts); transformed and coloured. Every part has the motion attributes (zeros when still) so any
- * two parts, and any two placed items, always merge.
+ * parts); transformed and coloured. Every part has the motion attributes (zeros when still, stored
+ * packed as MOTION_ATTRIBUTES says) so any two parts, and any two placed items, always merge.
  */
 function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?: PartOpts): Part {
   let g = src.index ? src.toNonIndexed() : src;
@@ -117,14 +120,16 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
     // motion pivot, so give it one (harmless: movement is gated by the motion kind)
     if (!m) pivot = at;
   }
-  const repeat = (name: string, v: readonly number[] | null, size: number) => {
-    const arr = new Float32Array(n * size);
-    if (v) for (let i = 0; i < n; i++) arr.set(v, i * size);
-    g.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  // stored packed (MOTION_ATTRIBUTES): v is one vertex's stored values, the same on every vertex
+  const repeat = (name: MotionAttribute, v: readonly number[] | null) => {
+    const { array: Typed, itemSize, normalized } = MOTION_ATTRIBUTES[name];
+    const arr = new Typed(n * itemSize);
+    if (v) for (let i = 0; i < n; i++) arr.set(v, i * itemSize);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, itemSize, normalized));
   };
-  repeat('anim', anim, 4);
-  repeat('pivot', pivot, 3);
-  repeat('axis', m?.axis ?? null, 3);
+  repeat('anim', anim && packAnim(anim));
+  repeat('pivot', pivot);
+  repeat('axis', m && packAxis(m.axis));
   return { geometry: g, glow: !!glow };
 }
 
@@ -145,7 +150,7 @@ function lowestY(g: THREE.BufferGeometry): number {
 function moves(g: THREE.BufferGeometry): boolean {
   const anim = g.attributes.anim;
   for (let i = 0; i < anim.count; i++) {
-    const k = Math.round(anim.getX(i)) % LIGHT_STRIDE;
+    const k = Math.round(anim.getX(i)) % LIGHT_STRIDE; // anim.x stores the packed code as it is
     if (k >= MOTION_CODE.sway && k <= MOTION_CODE.swing) return true;
   }
   return false;

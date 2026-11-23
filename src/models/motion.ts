@@ -3,13 +3,14 @@ import type { Vec3 } from './kit';
 
 /**
  * GPU item animation. Every kit part carries three per-vertex attributes (all zero = still):
- *   anim  vec4  (kind code, amount, speed, phase offset)
- *   pivot vec3  the point the motion is about, in item space (a position: placements move it)
- *   axis  vec3  the motion's direction, unit length (a direction: placements turn it)
- * The two kit materials read them in their vertex shader with the shared `motionUniforms`, so
- * swaying, waving, spinning and swinging cost no draw calls and no per-frame CPU work. Shadows
- * stay static: the shadow map is drawn with three's own depth material (the rest pose), and
- * moving surfaces look their shadows up where their rest pose is.
+ *   anim  (kind code, amount, speed, phase offset)
+ *   pivot the point the motion is about, in item space (a position: placements move it)
+ *   axis  the motion's direction, unit length (a direction: placements turn it)
+ * packed into 24 bytes a vertex (see MOTION_ATTRIBUTES). The two kit materials read them in their
+ * vertex shader with the shared `motionUniforms`, so swaying, waving, spinning and swinging cost no
+ * draw calls and no per-frame CPU work. Shadows stay static: the shadow map is drawn with three's
+ * own depth material (the rest pose), and moving surfaces look their shadows up where their rest
+ * pose is.
  */
 export type MotionKind = 'sway' | 'wave' | 'spin' | 'swing' | 'water';
 
@@ -25,11 +26,11 @@ export interface MotionOpts {
    * from the pole; must not be upright); spin = straight up; swing = x (the bar it hangs from).
    */
   axis?: Vec3;
-  /** sway: lean per unit of height; wave: sideways ripple per unit of cloth; swing: max angle (radians); spin: unused. */
+  /** sway: lean per unit of height; wave: sideways ripple per unit of cloth; swing: max angle (radians); spin: unused. At most ±4. */
   amount?: number;
-  /** Radians per second: spin's turn rate (negative turns the other way), the others' rhythm. */
+  /** Radians per second: spin's turn rate (negative turns the other way), the others' rhythm. At most ±16. */
   speed?: number;
-  /** Extra phase in radians (parts of one item out of step); each placed item also gets its own. */
+  /** Extra phase in radians (parts of one item out of step); each placed item also gets its own. At most ±16. */
   phase?: number;
   /** For `kind: 'water'`: a pond (default) or a pool; the water look is drawn in the fragment shader. */
   water?: 'pond' | 'pool';
@@ -104,6 +105,75 @@ export const MOTION_DEFAULTS: Record<MotionKind, { amount: number; speed: number
 /** Bounding-sphere padding (world units) for meshes that move, so frustum culling never clips a sway. */
 export const CULL_MARGIN = 0.3;
 
+/**
+ * How the motion attributes are stored (24 bytes a vertex; plain floats took 40). Every stride is a
+ * multiple of 4 bytes, so no GPU backend (Metal on iPads and Macs) has to realign the buffers.
+ *   anim  Int16 x4, whole numbers: the packed code as it is; amount, speed and phase as multiples of
+ *         ANIM_STEP (packAnim). The vertex shader multiplies them back.
+ *   pivot Float32 x3: kept exact. Placements move it anywhere on the map, and each item's phase is a
+ *         hash of its world pivot (a sub-millimetre change would reshuffle every item's rhythm).
+ *   axis  Int8 x4, normalised: x, y, z times 127 (packAxis), w unused. The shader re-normalises it;
+ *         the axis directions are exact, any other direction is within 0.4°.
+ */
+export const MOTION_ATTRIBUTES = {
+  anim: { array: Int16Array, itemSize: 4, normalized: false },
+  pivot: { array: Float32Array, itemSize: 3, normalized: false },
+  axis: { array: Int8Array, itemSize: 4, normalized: true },
+} as const;
+export type MotionAttribute = keyof typeof MOTION_ATTRIBUTES;
+
+/**
+ * anim's fixed-point steps (code, amount, speed, phase): an amount comes back within 0.00013, a
+ * speed (rad/s) and a phase (rad) within 0.0005. Powers of two, so the shader's multiply is exact.
+ */
+export const ANIM_STEP = [1, 2 ** -12, 2 ** -10, 2 ** -10] as const;
+/**
+ * The largest amount, speed (rad/s) and phase (rad) a motion may take (either sign), well inside
+ * what anim holds: a window pane adds up to 2π to the phase.
+ */
+export const MOTION_LIMITS = { amount: 4, speed: 16, phase: 16 } as const;
+
+const INT16_MAX = 32767;
+
+/** anim's stored values (whole numbers) for `[code, amount, speed, phase]`; throws on what it cannot hold. */
+export function packAnim(anim: readonly number[]): number[] {
+  if (!Number.isInteger(anim[0])) throw new Error(`style kit: the motion code must be a whole number (got ${anim[0]})`);
+  return anim.map((v, i) => {
+    const q = Math.round(v / ANIM_STEP[i]);
+    if (!(Math.abs(q) <= INT16_MAX)) throw new Error(`style kit: motion value ${v} does not fit the packed anim attribute`);
+    return q + 0; // + 0: no -0
+  });
+}
+
+/** `[code, amount, speed, phase]` from anim's stored values (what the shader works with). */
+export function unpackAnim(stored: readonly number[]): [number, number, number, number] {
+  return [stored[0] * ANIM_STEP[0], stored[1] * ANIM_STEP[1], stored[2] * ANIM_STEP[2], stored[3] * ANIM_STEP[3]];
+}
+
+/** axis's stored bytes for a unit direction (a zero vector for a still part stays zero). */
+export function packAxis(axis: Vec3): [number, number, number, number] {
+  const q = (v: number) => Math.round(Math.max(-1, Math.min(1, v)) * 127) + 0;
+  return [q(axis[0]), q(axis[1]), q(axis[2]), 0];
+}
+
+export interface MotionVertex { anim: [number, number, number, number]; pivot: Vec3; axis: Vec3 }
+
+/**
+ * One vertex's motion attributes as the shader uses them: anim unpacked, the axis re-normalised
+ * (zero for a still part). For tests and tools; a kit part or a merged chunk.
+ */
+export function readMotion(g: THREE.BufferGeometry, i: number): MotionVertex {
+  const { anim, pivot, axis } = g.attributes;
+  const a = unpackAnim([anim.getX(i), anim.getY(i), anim.getZ(i), anim.getW(i)]);
+  const d: Vec3 = [axis.getX(i), axis.getY(i), axis.getZ(i)]; // three un-normalises the bytes
+  const len = Math.hypot(...d);
+  return {
+    anim: a,
+    pivot: [pivot.getX(i), pivot.getY(i), pivot.getZ(i)],
+    axis: len > 0 ? [d[0] / len, d[1] / len, d[2] / len] : [0, 0, 0],
+  };
+}
+
 const UP: Vec3 = [0, 1, 0];
 const X: Vec3 = [1, 0, 0];
 const DEFAULT_AXIS: Record<MotionKind, Vec3> = { sway: UP, wave: X, spin: UP, swing: X, water: UP };
@@ -117,13 +187,15 @@ export interface ResolvedMotion { anim: [number, number, number, number]; pivot:
 export function resolveMotion(m: MotionOpts, at: Vec3, baseY: number): ResolvedMotion {
   const defaults = MOTION_DEFAULTS[m.kind];
   if (!defaults) throw new Error(`style kit: unknown motion kind "${String(m.kind)}"`);
-  const finite = (v: number, what: string) => {
+  const limited = (v: number, what: keyof typeof MOTION_LIMITS) => {
     if (!Number.isFinite(v)) throw new Error(`style kit: motion ${what} must be a finite number (got ${v})`);
+    const max = MOTION_LIMITS[what];
+    if (Math.abs(v) > max) throw new Error(`style kit: motion ${what} must be within ±${max} (got ${v})`);
     return v;
   };
-  const amount = finite(m.amount ?? defaults.amount, 'amount');
-  const speed = finite(m.speed ?? defaults.speed, 'speed');
-  const phase = finite(m.phase ?? 0, 'phase');
+  const amount = limited(m.amount ?? defaults.amount, 'amount');
+  const speed = limited(m.speed ?? defaults.speed, 'speed');
+  const phase = limited(m.phase ?? 0, 'phase');
   const pivot: Vec3 = m.pivot ? [...m.pivot] : m.kind === 'sway' ? [at[0], baseY, at[2]] : [...at];
   if (!pivot.every(Number.isFinite)) throw new Error(`style kit: motion pivot must be three finite numbers (got ${pivot.join(', ')})`);
   const raw = m.axis ?? DEFAULT_AXIS[m.kind];
@@ -229,9 +301,9 @@ const WIND_DIR = 'vec3( 1.0, 0.0, -0.75 )';
 
 /** Prepended to the vertex shader: attributes, uniforms, the fragment flag and helpers. */
 export const MOTION_VERTEX_PARS = /* glsl */ `
-attribute vec4 anim;
+attribute vec4 anim; // packed: see MOTION_ATTRIBUTES
 attribute vec3 pivot;
-attribute vec3 axis;
+attribute vec4 axis; // normalised bytes, w unused
 uniform float uTime;
 uniform float uWind;
 uniform float uMotion;
@@ -255,44 +327,52 @@ float motionHash( vec2 p ) {
 /**
  * After `beginnormal_vertex`: work out this vertex's motion (a rotation about the pivot and a
  * shift) and turn the normal with it. Positions here are in object space: the world for merged
- * chunks, the item for gallery models; the item's phase comes from its pivot in the world.
+ * chunks, the item for gallery models; the item's phase comes from its pivot in the world. A still
+ * part with a steady light (anim.x == 0: most of the map) skips all of it.
  */
 export const MOTION_VERTEX_SETUP = /* glsl */ `
 int motionPacked = int( anim.x + 0.5 );
-int lightCode = motionPacked / ${LIGHT_STRIDE};
-int motionKind = motionPacked - ${LIGHT_STRIDE} * lightCode;
-float motionPhase = anim.w + ${glslFloat(TAU)} * motionHash( ( modelMatrix * vec4( pivot, 1.0 ) ).xz );
-vAnim = vec4( float( motionKind ), anim.yz, motionPhase );
-// glow light pattern (mirrors lightPattern in this file); steady and reduced motion hold 1.0
+vAnim = vec4( 0.0 );
 vLight = 1.0;
-if ( uMotion > 0.0 ) {
-  if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = ${glslFloat(BREATHE_MID)} + ${glslFloat(BREATHE_AMP)} * sin( ${glslFloat(TAU)} * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
-  else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / ${glslFloat(TAU)} ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
-}
-if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / ${glslFloat(TAU)} ) - 1.0 );
-bool motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};
+bool motionMoves = false;
 mat3 motionRot = mat3( 1.0 );
 vec3 motionShift = vec3( 0.0 );
-if ( motionMoves ) {
-  float motionT = uTime * anim.z + motionPhase;
-  vec3 motionRel = position - pivot;
-  if ( motionKind == ${MOTION_CODE.sway} ) {
-    // lean downwind in proportion to the height above the pivot; rain leans further
-    vec3 wind = normalize( ( vec4( ${WIND_DIR}, 0.0 ) * modelMatrix ).xyz ); // world -> object (rotation)
-    float lean = 0.8 * sin( motionT ) + 0.2 * sin( 2.3 * motionT + 1.7 ) + 0.5 * max( uWind - 1.0, 0.0 );
-    motionShift = wind * ( anim.y * uWind * uMotion * lean * max( dot( motionRel, axis ), 0.0 ) );
-  } else if ( motionKind == ${MOTION_CODE.wave} ) {
-    // a ripple running out along the cloth from the pole, growing towards the free edge
-    float along = max( dot( motionRel, axis ), 0.0 );
-    vec3 side = cross( axis, vec3( 0.0, 1.0, 0.0 ) );
-    side = dot( side, side ) > 1e-6 ? normalize( side ) : vec3( 0.0, 0.0, 1.0 );
-    motionShift = side * ( anim.y * uMotion * min( uWind, 2.0 ) * along * sin( motionT - 7.0 * along ) );
-  } else if ( motionKind == ${MOTION_CODE.spin} ) {
-    motionRot = motionRotation( axis, uMotion * motionT );
-  } else if ( motionKind == ${MOTION_CODE.swing} ) {
-    motionRot = motionRotation( axis, uMotion * anim.y * sin( motionT ) );
+if ( motionPacked != 0 ) {
+  int lightCode = motionPacked / ${LIGHT_STRIDE};
+  int motionKind = motionPacked - ${LIGHT_STRIDE} * lightCode;
+  vec3 motionParams = anim.yzw * vec3( ${glslFloat(ANIM_STEP[1])}, ${glslFloat(ANIM_STEP[2])}, ${glslFloat(ANIM_STEP[3])} ); // amount, speed, phase
+  float motionPhase = motionParams.z + ${glslFloat(TAU)} * motionHash( ( modelMatrix * vec4( pivot, 1.0 ) ).xz );
+  vAnim = vec4( float( motionKind ), motionParams.xy, motionPhase );
+  // glow light pattern (mirrors lightPattern in this file); steady and reduced motion hold 1.0
+  if ( uMotion > 0.0 ) {
+    if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = ${glslFloat(BREATHE_MID)} + ${glslFloat(BREATHE_AMP)} * sin( ${glslFloat(TAU)} * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
+    else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / ${glslFloat(TAU)} ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
   }
-  objectNormal = motionRot * objectNormal;
+  if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / ${glslFloat(TAU)} ) - 1.0 );
+  motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};
+  if ( motionMoves ) {
+    float motionAmount = motionParams.x;
+    vec3 motionAxis = normalize( axis.xyz ); // bytes: re-normalise
+    float motionT = uTime * motionParams.y + motionPhase;
+    vec3 motionRel = position - pivot;
+    if ( motionKind == ${MOTION_CODE.sway} ) {
+      // lean downwind in proportion to the height above the pivot; rain leans further
+      vec3 wind = normalize( ( vec4( ${WIND_DIR}, 0.0 ) * modelMatrix ).xyz ); // world -> object (rotation)
+      float lean = 0.8 * sin( motionT ) + 0.2 * sin( 2.3 * motionT + 1.7 ) + 0.5 * max( uWind - 1.0, 0.0 );
+      motionShift = wind * ( motionAmount * uWind * uMotion * lean * max( dot( motionRel, motionAxis ), 0.0 ) );
+    } else if ( motionKind == ${MOTION_CODE.wave} ) {
+      // a ripple running out along the cloth from the pole, growing towards the free edge
+      float along = max( dot( motionRel, motionAxis ), 0.0 );
+      vec3 side = cross( motionAxis, vec3( 0.0, 1.0, 0.0 ) );
+      side = dot( side, side ) > 1e-6 ? normalize( side ) : vec3( 0.0, 0.0, 1.0 );
+      motionShift = side * ( motionAmount * uMotion * min( uWind, 2.0 ) * along * sin( motionT - 7.0 * along ) );
+    } else if ( motionKind == ${MOTION_CODE.spin} ) {
+      motionRot = motionRotation( motionAxis, uMotion * motionT );
+    } else if ( motionKind == ${MOTION_CODE.swing} ) {
+      motionRot = motionRotation( motionAxis, uMotion * motionAmount * sin( motionT ) );
+    }
+    objectNormal = motionRot * objectNormal;
+  }
 }
 `;
 
