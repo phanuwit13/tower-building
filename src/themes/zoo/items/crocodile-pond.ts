@@ -81,7 +81,7 @@ export const item: ItemModel = {
     parts.push(
       kit.cylinder(0.12, 0.12, 0.02, [-0.15, WATER_H + 0.01, 0.55], 'leaf', { segments: 10 }),
       kit.sphere(0.04, [-0.15, WATER_H + 0.04, 0.55], 'pink', { detail: 0 }),
-      kit.sphere(0.14, [0.85, BANK_H + 0.08, -0.7], 'stoneDark', { detail: 0, scale: [1.2, 0.7, 1] }),
+      kit.sphere(0.14, [0.76, BANK_H + 0.08, -0.7], 'stoneDark', { detail: 0, scale: [1.2, 0.7, 1] }),
       kit.sphere(0.2, [0.75, BANK_H + 0.12, 0.8], 'leaf', { detail: 0, scale: [1.2, 0.8, 1] }),
       kit.sphere(0.13, [0.62, BANK_H + 0.08, 0.86], 'leafDark', { detail: 0 }),
     );

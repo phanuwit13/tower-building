@@ -7,7 +7,7 @@ const GRASS_H = 0.03;
 const HUTCH = { x: -0.15, w: 0.5, d: 0.64, h: 0.34 }; // x is the centre, w along x
 const LEG = 0.1;
 const WALL_TOP = GRASS_H + LEG + HUTCH.h;
-const RISE = 0.2;
+const RISE = 0.14;
 
 /** A rabbit facing +x at `at`, turned by `yaw`. */
 function rabbit(kit: StyleKit, at: Vec3, yaw: number, fur: 'white' | 'sand', ear: 'pink' | 'cream'): Part[] {
@@ -50,7 +50,6 @@ export const item: ItemModel = {
         kit.box([0.06, LEG, 0.06], [HUTCH.x + sx * (HUTCH.w / 2 - 0.04), GRASS_H + LEG / 2, sz * (HUTCH.d / 2 - 0.04)], 'woodDark')),
       kit.box([HUTCH.w, HUTCH.h, HUTCH.d], [HUTCH.x, GRASS_H + LEG + HUTCH.h / 2, 0], 'wood'),
       kit.box([HUTCH.w + 0.02, 0.025, HUTCH.d + 0.02], [HUTCH.x, GRASS_H + LEG + 0.15, 0], 'woodDark'),
-      kit.wedge([HUTCH.d, RISE, HUTCH.w], [HUTCH.x, WALL_TOP + RISE / 2, 0], 'wood', { rotate: [0, Math.PI / 2, 0] }),
       ...gableRoof(kit, { at: [HUTCH.x, WALL_TOP, 0], length: HUTCH.w + 0.12, width: HUTCH.d, rise: RISE, eave: 0.05, color: 'red', ridge: 'redDark', along: 'x' }),
       // open arched doorway on the front with a little ramp
       ...door(kit, { at: [frontX, GRASS_H + LEG + 0.14, 0], facing: 'x+', w: 0.24, h: 0.24, color: 'bark' }),
@@ -63,8 +62,8 @@ export const item: ItemModel = {
       kit.cone(0.04, 0.1, [0.4, GRASS_H + 0.05, 0.4], 'leaf', { segments: 5 }),
       kit.sphere(0.025, [0.1, GRASS_H + 0.07, -0.42], 'sunYellow', { detail: 0 }),
     ];
-    parts.push(...rabbit(kit, [0.3, GRASS_H, 0.2], 0.3, 'white', 'pink'));
-    parts.push(...rabbit(kit, [0.2, GRASS_H, -0.18], -0.5, 'sand', 'cream'));
+    parts.push(...rabbit(kit, [0.27, GRASS_H, 0.26], 0.5, 'white', 'pink'));
+    parts.push(...rabbit(kit, [0.25, GRASS_H, -0.15], -0.5, 'sand', 'cream'));
     return kit.finish(parts);
   },
 };

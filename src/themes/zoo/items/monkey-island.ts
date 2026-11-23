@@ -1,7 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, PartOpts, StyleKit, Vec3 } from '../../../models/kit';
 import type { MotionOpts } from '../../../models/motion';
-import { rod } from '../../../models/parts';
+import { aim, rod } from '../../../models/parts';
 
 // A grassy island in a water moat (2×3, long side along z). A wooden climbing frame stands on it; one monkey
 // swings on a rope from the top beam, one sits on the platform and one munches a banana on the lawn.
@@ -11,7 +11,8 @@ const ISLAND = { r: 0.66, h: 0.16, stretch: 1.65 }; // lawn disc, stretched alon
 const TOP = ISLAND.h;
 const BEAM = { y: TOP + 0.95, half: 0.62 }; // top beam along z, resting on two A-frames
 const POST_Z = 0.62;
-const ROPE_LEN = 0.5;
+const KNOT_Y = TOP + 0.8; // seat knot, just above the swinging monkey's head
+const ROPE_LEN = BEAM.y - KNOT_Y;
 const PLATFORM = { y: TOP + 0.5, z: -0.42 };
 
 // The rope and the monkey on it rock together about the beam (the z axis).
@@ -89,7 +90,7 @@ export const item: ItemModel = {
       rod(kit, [0.3, PLATFORM.y, PLATFORM.z + 0.1], [0.5, TOP + 0.03, 0.1], 0.02, 'stoneDark', { segments: 4 }),
       // the swinging rope and its seat knot
       kit.cylinder(0.02, 0.02, ROPE_LEN, [0, BEAM.y - ROPE_LEN / 2, 0.05], 'sand', { segments: 4, motion: SWING }),
-      kit.sphere(0.04, [0, BEAM.y - ROPE_LEN, 0.05], 'sand', { detail: 0, motion: SWING }),
+      kit.sphere(0.04, [0, KNOT_Y, 0.05], 'sand', { detail: 0, motion: SWING }),
       // banana on the lawn
       kit.box([0.14, 0.04, 0.04], [0.38, TOP + 0.03, 0.62], 'sunYellow', { rotate: [0, 0.6, 0.2] }),
       // a bush behind
@@ -97,7 +98,18 @@ export const item: ItemModel = {
       kit.sphere(0.12, [-0.15, TOP + 0.08, 0.92], 'leafDark', { detail: 0 }),
     );
     // the swinging monkey hangs by its hands from the rope knot
-    parts.push(...monkey(kit, [0, BEAM.y - ROPE_LEN - 0.22, 0.05], 0, 1, SWING));
+    parts.push(...monkey(kit, [0, TOP + 0.1, 0.05], 0, 1, SWING));
+    // both arms reach up to the knot (same swing object as the rope and the monkey)
+    for (const s of [-1, 1]) {
+      const from: Vec3 = [0, TOP + 0.1 + 0.22, 0.05 + s * 0.1];
+      const to: Vec3 = [0, KNOT_Y - 0.01, 0.05 + s * 0.03];
+      const d: Vec3 = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+      const len = Math.hypot(...d);
+      parts.push(
+        kit.cylinder(0.028, 0.032, len, [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2], 'wood', { segments: 6, rotate: aim(d), motion: SWING }),
+        kit.sphere(0.035, to, 'woodDark', { detail: 0, motion: SWING }),
+      );
+    }
     parts.push(...monkey(kit, [0.02, PLATFORM.y + 0.025, PLATFORM.z], 0.5, 1));
     parts.push(...monkey(kit, [0.25, TOP, 0.75], -0.6, 0.9));
     return kit.finish(parts);
