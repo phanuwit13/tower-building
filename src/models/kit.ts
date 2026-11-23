@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {
-  CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, packAnim, packAxis, packLight, patchMotionShader, patchWaterShader,
-  resolveMotion, type LightKind, type MotionAttribute, type MotionOpts,
+  CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, packAnim, packAxis, packChase, packLight, patchMotionShader, patchWaterShader,
+  resolveMotion, type ChaseSlot, type LightKind, type MotionAttribute, type MotionOpts,
 } from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
@@ -29,10 +29,18 @@ export interface PartOpts {
   glow?: boolean | PaletteColor;
   /**
    * Glow parts only: how the light behaves when it is on (dusk and night). `steady` (default),
-   * `breathe` (0.65..1.0 over ~3 s), `blink` (on/off under 1 Hz) or `window` (steady, each pane
-   * ±15 % in brightness). Reduced motion holds every pattern at 1.0. See motion.ts.
+   * `breathe` (0.65..1.0 over ~3 s), `blink` (on/off under 1 Hz), `window` (steady, each pane
+   * ±15 % in brightness) or `chase` (running lights: set `chase` too). Reduced motion holds every
+   * pattern at 1.0. See motion.ts.
    */
   light?: LightKind;
+  /**
+   * `light: 'chase'` only: this bulb's place in its run, `index` 0..count-1 in running order (the
+   * lit stretch runs towards higher indices), `count` the bulbs in the run (2..64). A chase bulb is
+   * still or spins; still bulbs take the item's phase, so every bulb of a run shares it, and the
+   * bulbs of a spinning run must share their spin (pivot, axis, speed, phase).
+   */
+  chase?: ChaseSlot;
   /**
    * Animate the part on the GPU (no extra draw calls): `sway` leans it downwind from `pivot` (its
    * base by default), `wave` ripples cloth out along `axis` from the pole at `pivot`, `spin` turns
@@ -109,16 +117,24 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   if (glow && opts?.motion?.kind === 'water') {
     throw new Error('style kit: water is drawn by the body material (its night look is built in): drop glow');
   }
+  if (opts?.chase && opts.light !== 'chase') throw new Error("style kit: chase (a bulb's place in its run) only applies to light: 'chase'");
+  if (opts?.light === 'chase') {
+    if (!opts.chase) throw new Error("style kit: a chase light needs chase: { index, count } (the bulb's place in its run)");
+    // the slot rides in the motion amount, which only a still or spinning part leaves free
+    if (m && m.anim[0] !== MOTION_CODE.spin) throw new Error('style kit: a chase bulb must be still or spin (not sway, wave or swing)');
+  }
   let anim: readonly number[] | null = m?.anim ?? null;
   let pivot: readonly number[] | null = m?.pivot ?? null;
   if (opts?.light && opts.light !== 'steady') {
     // the pattern code rides in anim.x; a window pane's brightness comes from a hash of its own position
     const base = m?.anim ?? [0, 0, 0, 0];
     const pane = opts.light === 'window' ? 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719) : 0;
-    anim = [packLight(base[0], opts.light), base[1], base[2], base[3] + pane];
+    const amount = opts.light === 'chase' ? packChase(opts.chase!) : base[1];
+    anim = [packLight(base[0], opts.light), amount, base[2], base[3] + pane];
     // the shader hashes the world position of the pivot for each light's own phase; a light-only part has no
-    // motion pivot, so give it one (harmless: movement is gated by the motion kind)
-    if (!m) pivot = at;
+    // motion pivot, so give it one (harmless: movement is gated by the motion kind): its own centre, or for a
+    // chase bulb the item origin, so every bulb of a run takes the same phase and they run in order
+    if (!m) pivot = opts.light === 'chase' ? [0, 0, 0] : at;
   }
   // stored packed (MOTION_ATTRIBUTES): v is one vertex's stored values, the same on every vertex
   const repeat = (name: MotionAttribute, v: readonly number[] | null) => {

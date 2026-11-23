@@ -2,6 +2,7 @@ import { test as plain } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { T } from '../src/ui/strings';
 import { school } from '../src/themes/school';
+import { amusement } from '../src/themes/amusement';
 import { FLOOR_TILES } from '../src/floors';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
@@ -170,4 +171,23 @@ test('?demo=full plays a full map in memory; on smooth it draws in a handful of 
   await expect(page.getByText(T.endTitle)).toBeVisible();
   await expect(page.getByText(/ใช้พื้นที่ 100%/)).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('city-builder/save'))).toBeNull(); // the player's own save is untouched
+});
+
+test('theme select offers สวนสนุก and its round starts with an amusement item', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'สวนสนุก' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(amusement.items.map((i) => i.name)).toContain(name);
+});
+
+test('a saved School city still loads with two themes registered', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'โรงเรียน' }).click();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await expect(page.getByText(T.pickTheme)).toBeHidden();
 });

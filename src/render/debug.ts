@@ -1,29 +1,35 @@
 import { memoryStore } from '../app/browserStore';
 import { demoFullGame } from '../game/demo';
 import { loadQuality, saveGame, saveQuality, type KeyValueStore } from '../game/save';
-import type { Catalog, QualityTier } from '../game/types';
+import type { Catalog, GroundId, QualityTier } from '../game/types';
 import { T } from '../ui/strings';
 import type { Stage } from './stage';
 
 const UPDATE_MS = 500;
 const DEFAULT_DEMO_SEED = 1;
 
-/** `?demo=full[&seed=<uint>]`: start on a full map (see demoFullGame); null when not asked for. */
-export function parseDemoParam(search: string): { seed: number } | null {
+const DEFAULT_DEMO_THEME = 'school';
+
+/**
+ * `?demo=full[&seed=<uint>][&theme=<id>]`: start on a full map (see demoFullGame); null when not
+ * asked for. The theme is returned as given: the caller falls back to School when it is unknown.
+ */
+export function parseDemoParam(search: string): { seed: number; theme: string } | null {
   const params = new URLSearchParams(search);
   if (params.get('demo') !== 'full') return null;
   const raw = params.get('seed');
   const seed = raw !== null && /^\d+$/.test(raw) ? Number(raw) >>> 0 : DEFAULT_DEMO_SEED;
-  return { seed };
+  const theme = params.get('theme');
+  return { seed, theme: theme && theme.length > 0 ? theme : DEFAULT_DEMO_THEME };
 }
 
 /**
  * The store a demo round plays in: memory only, holding the demo city (sunny day on grass) and a
- * copy of the player's quality preference. The player's own save and preference are never touched.
+ * copy of the player's quality preference. `ground` is the theme's own ground (School: grass). The player's own save and preference are never touched.
  */
-export function demoStore(real: KeyValueStore, catalog: Catalog, seed: number): KeyValueStore {
+export function demoStore(real: KeyValueStore, catalog: Catalog, seed: number, ground: GroundId = 'grass'): KeyValueStore {
   const store = memoryStore({});
-  saveGame(store, demoFullGame(catalog, { weather: 'sunny', time: 'day', ground: 'grass' }, seed));
+  saveGame(store, demoFullGame(catalog, { weather: 'sunny', time: 'day', ground }, seed));
   const quality = loadQuality(real);
   if (quality) saveQuality(store, quality);
   return store;

@@ -13,14 +13,27 @@ describe('parseDemoParam', () => {
   });
 
   it('defaults to seed 1 and takes &seed=<uint>', () => {
-    expect(parseDemoParam('?demo=full')).toEqual({ seed: 1 });
-    expect(parseDemoParam('?demo=full&fps=1&seed=42')).toEqual({ seed: 42 });
-    expect(parseDemoParam('?demo=full&seed=-3')).toEqual({ seed: 1 });
-    expect(parseDemoParam('?demo=full&seed=abc')).toEqual({ seed: 1 });
+    expect(parseDemoParam('?demo=full')).toEqual({ seed: 1, theme: 'school' });
+    expect(parseDemoParam('?demo=full&fps=1&seed=42')).toEqual({ seed: 42, theme: 'school' });
+    expect(parseDemoParam('?demo=full&seed=-3')).toEqual({ seed: 1, theme: 'school' });
+    expect(parseDemoParam('?demo=full&seed=abc')).toEqual({ seed: 1, theme: 'school' });
+  });
+
+  it('takes &theme=<id>, school when missing or empty', () => {
+    expect(parseDemoParam('?demo=full&theme=amusement')).toEqual({ seed: 1, theme: 'amusement' });
+    expect(parseDemoParam('?demo=full&theme=')).toEqual({ seed: 1, theme: 'school' });
   });
 });
 
 describe('demoStore', () => {
+  it('plays any registered theme on its ground', () => {
+    const store = demoStore(memoryStore({}), getCatalog('amusement')!, 3, 'concrete');
+    const game = loadGame(store, getCatalog, isFloorTile);
+    expect(game?.themeId).toBe('amusement');
+    expect(game?.settings.ground).toBe('concrete');
+    expect(game?.placements.length).toBeGreaterThan(50);
+  });
+
   it('holds a full demo round and the real quality preference, and never writes to the real store', () => {
     const real = memoryStore({ [QUALITY_KEY]: 'smooth', [SAVE_KEY]: 'the player\'s own city' });
     const store = demoStore(real, getCatalog('school')!, 7);
