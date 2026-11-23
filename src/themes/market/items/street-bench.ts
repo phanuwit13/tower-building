@@ -33,6 +33,18 @@ export const item: ItemModel = {
         kit.box([0.36, 0.04, 0.05], [-0.0, 0.2, z], 'charcoal'),
       );
     }
+    // a glowing lantern on each end post, and fairy bulbs along the planter rim
+    for (const z of [Z0 + 0.03, Z1 - 0.03]) {
+      parts.push(
+        kit.box([0.05, 0.1, 0.05], [-0.22, 0.79, z], 'charcoal'),
+        kit.sphere(0.06, [-0.22, 0.88, z], z < 0 ? 'orange' : 'pink', { detail: 0, glow: true, light: 'breathe' }),
+      );
+    }
+    const FAIRY = ['sunYellow', 'pink', 'lime', 'orange'] as const;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      parts.push(kit.sphere(0.03, [0.2 * Math.cos(a), 0.25, PLANTER_Z + 0.2 * Math.sin(a)], FAIRY[i % 4], { detail: 0, glow: true, light: 'breathe' }));
+    }
     // planter with flowers
     parts.push(
       kit.box([0.34, 0.2, 0.34], [0, 0.1, PLANTER_Z], 'terracotta'),

@@ -40,13 +40,13 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [-0.3, 0.94, -B.z], facing: 'z-', w: 0.6, h: 0.2 }),
       ...glassWindow(kit, { at: [B.x0, 0.45, 0], facing: 'x-', w: 1.0, h: 0.4, panes: 3 }),
       ...wallPanel(kit, { at: [B.x1, 0.78, 0], facing: 'x+', w: 1.9, h: 0.05, depth: 0.03, color: 'purple' }),
-      // sign board on posts above the roof
-      kit.box([0.05, 0.5, 0.8], [0.0, B.top + 0.07 + 0.25, 0], 'navy'),
-      // the shirt neon (glowing purple): body, two sleeves, a collar notch
-      kit.box([0.03, 0.2, 0.2], [0.04, B.top + 0.28, 0], 'purple', { glow: true }),
-      kit.box([0.03, 0.07, 0.16], [0.04, B.top + 0.36, 0.16], 'purple', { glow: true, rotate: [-0.7, 0, 0] }),
-      kit.box([0.03, 0.07, 0.16], [0.04, B.top + 0.36, -0.16], 'purple', { glow: true, rotate: [0.7, 0, 0] }),
-      kit.box([0.03, 0.05, 0.08], [0.04, B.top + 0.4, 0], 'navy'),
+      // sign board above the roof, a big thick shirt neon (glowing purple) and a roof-edge strip
+      kit.box([0.06, 0.62, 1.0], [0.0, B.top + 0.07 + 0.31, 0], 'navy'),
+      kit.box([0.05, 0.32, 0.4], [0.05, B.top + 0.07 + 0.28, 0], 'purple', { glow: true }),
+      kit.box([0.05, 0.12, 0.26], [0.05, B.top + 0.07 + 0.42, 0.3], 'purple', { glow: true, rotate: [-0.7, 0, 0] }),
+      kit.box([0.05, 0.12, 0.26], [0.05, B.top + 0.07 + 0.42, -0.3], 'purple', { glow: true, rotate: [0.7, 0, 0] }),
+      kit.box([0.06, 0.07, 0.14], [0.05, B.top + 0.07 + 0.46, 0], 'navy'),
+      kit.box([0.04, 0.04, 2.0], [0.34, B.top + 0.09, 0], 'pink', { glow: true }),
       // a little shrub by the door
       kit.cylinder(0.1, 0.08, 0.14, [0.8, 0.1, 0.7], 'terracotta', { segments: 8 }),
       kit.sphere(0.14, [0.8, 0.28, 0.7], 'leaf', { detail: 0 }),

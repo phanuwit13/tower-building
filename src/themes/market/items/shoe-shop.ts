@@ -3,7 +3,7 @@ import type { Part } from '../../../models/kit';
 import { door, glassWindow, wallPanel } from '../../../models/parts';
 
 // A shoe shop (2×2, front on +x): shelves of shoes in front of a big window and a giant glowing
-// sneaker on the roof (blue neon).
+// sneaker on the roof (teal neon on a navy board).
 const B = { x0: -0.95, x1: 0.3, z: 0.95, top: 1.05 };
 const SHELF_X = 0.47;
 const SHELF_Y = [0.2, 0.37, 0.54];
@@ -37,14 +37,15 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [-0.3, 0.9, -B.z], facing: 'z-', w: 0.6, h: 0.2 }),
       ...glassWindow(kit, { at: [B.x0, 0.42, 0], facing: 'x-', w: 1.0, h: 0.4, panes: 3 }),
       ...wallPanel(kit, { at: [B.x1, 0.76, 0], facing: 'x+', w: 1.9, h: 0.05, depth: 0.03, color: 'blue' }),
-      // the giant sneaker on the roof, toe towards +z: sole, upper, toe cap, tongue and laces
-      kit.box([0.2, 0.05, 0.72], [-0.2, B.top + 0.07 + 0.025, 0], 'sunYellow', { glow: true }),
-      kit.box([0.2, 0.2, 0.3], [-0.2, B.top + 0.07 + 0.17, -0.22], 'blue', { glow: true }),
-      kit.wedge([0.2, 0.16, 0.34], [-0.2, B.top + 0.07 + 0.15, 0.1], 'blue', { glow: true }),
-      kit.sphere(0.12, [-0.2, B.top + 0.07 + 0.12, 0.3], 'skyBlue', { detail: 0, glow: true, scale: [0.85, 0.8, 1.1] }),
-      kit.box([0.24, 0.025, 0.2], [-0.2, B.top + 0.07 + 0.29, -0.2], 'pink', { glow: true, rotate: [0.35, 0, 0] }),
-      kit.box([0.04, 0.05, 0.2], [-0.07, B.top + 0.07 + 0.18, 0.08], 'orange', { glow: true }),
-      kit.box([0.04, 0.05, 0.2], [-0.33, B.top + 0.07 + 0.18, 0.08], 'orange', { glow: true }),
+      // a navy board on the roof with a thick teal sneaker neon (side view, toe towards +z) and a roof-edge strip
+      kit.box([0.06, 0.62, 1.0], [-0.1, B.top + 0.07 + 0.31, 0], 'navy'),
+      kit.box([0.05, 0.08, 0.76], [-0.05, B.top + 0.07 + 0.2, 0], 'teal', { glow: true }),
+      kit.box([0.05, 0.24, 0.3], [-0.05, B.top + 0.07 + 0.36, -0.22], 'teal', { glow: true }),
+      kit.box([0.05, 0.14, 0.3], [-0.05, B.top + 0.07 + 0.3, 0.14], 'teal', { glow: true }),
+      kit.sphere(0.09, [-0.05, B.top + 0.07 + 0.3, 0.3], 'teal', { detail: 0, glow: true, scale: [0.55, 0.75, 1.1] }),
+      kit.box([0.05, 0.05, 0.2], [-0.05, B.top + 0.07 + 0.5, -0.22], 'teal', { glow: true }),
+      kit.box([0.06, 0.04, 0.14], [-0.05, B.top + 0.07 + 0.37, 0.0], 'orange', { glow: true }),
+      kit.box([0.04, 0.04, 2.0], [0.32, B.top + 0.09, 0], 'teal', { glow: true }),
     ];
     // shelves and a few shoes on each
     SHELF_Y.forEach((y, row) => {

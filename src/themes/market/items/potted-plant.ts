@@ -27,6 +27,14 @@ export const item: ItemModel = {
       kit.sphere(0.04, [0.25, 0.97, 0.12], 'pink', { detail: 0, motion: SWAY }),
       kit.sphere(0.04, [-0.12, 1.1, 0.12], 'sunYellow', { detail: 0, motion: SWAY }),
     ];
+    // fairy lights wound round the shrub: small glowing bulbs in three colours, swaying with it
+    const FAIRY = ['sunYellow', 'pink', 'lime'] as const;
+    for (let i = 0; i < 10; i++) {
+      const a = i * 2.4;
+      const y = 0.62 + i * 0.05;
+      const r = 0.36 - Math.abs(y - 0.8) * 0.45;
+      parts.push(kit.sphere(0.035, [r * Math.cos(a), y, r * Math.sin(a)], FAIRY[i % 3], { detail: 0, glow: true, light: 'breathe', motion: SWAY }));
+    }
     return kit.finish(parts);
   },
 };

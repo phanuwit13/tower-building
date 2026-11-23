@@ -29,12 +29,14 @@ export const item: ItemModel = {
       // sign board standing on the roof, a cup neon on its front
       kit.box([0.05, 0.5, 1.1], [-0.35, B.top + 0.07 + 0.25, 0], 'navy'),
       kit.box([0.05, 0.05, 1.1], [-0.35, B.top + 0.07 + 0.52, 0], 'woodDark'),
-      // the cup (glowing orange), its handle, a saucer and two steam curls
+      // the cup (glowing orange), its handle, a saucer and a thin wavy steam curl
       kit.box([0.03, 0.2, 0.24], [-0.31, B.top + 0.32, 0], 'orange', { glow: true }),
       kit.torus(0.07, 0.022, [-0.31, B.top + 0.32, 0.17], 'orange', { glow: true, radialSegments: 4, tubularSegments: 8, rotate: [0, Math.PI / 2, 0] }),
       kit.box([0.03, 0.035, 0.38], [-0.31, B.top + 0.2, 0], 'orange', { glow: true }),
-      kit.box([0.03, 0.12, 0.035], [-0.31, B.top + 0.52, -0.06], 'orange', { glow: true }),
-      kit.box([0.03, 0.12, 0.035], [-0.31, B.top + 0.52, 0.06], 'orange', { glow: true }),
+      kit.box([0.03, 0.06, 0.03], [-0.31, B.top + 0.45, -0.07], 'orange', { glow: true }),
+      kit.box([0.03, 0.03, 0.05], [-0.31, B.top + 0.485, -0.05], 'orange', { glow: true }),
+      kit.box([0.03, 0.06, 0.03], [-0.31, B.top + 0.52, -0.03], 'orange', { glow: true }),
+      kit.box([0.03, 0.03, 0.05], [-0.31, B.top + 0.555, -0.05], 'orange', { glow: true }),
       // ground floor: two big windows and a door; upper floor: three windows
       ...glassWindow(kit, { at: [B.x1, 0.38, -0.9], facing: 'x+', w: 0.7, h: 0.4, panes: 3 }),
       ...glassWindow(kit, { at: [B.x1, 0.38, 0.9], facing: 'x+', w: 0.7, h: 0.4, panes: 3 }),
