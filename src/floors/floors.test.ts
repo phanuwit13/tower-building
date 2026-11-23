@@ -31,8 +31,11 @@ describe('floor registry', () => {
     expect(isFloorTile('brick-red')).toBe(true);
     expect(isFloorTile('nope')).toBe(false);
   });
-  it('starts with the four first tiles', () => {
-    expect(FLOOR_TILES.map((t) => t.id)).toEqual(['wood-light', 'brick-red', 'lawn', 'water-shallow']);
+  it('starts with the four first tiles, then the three sculpted batches: 34 tiles, every id unique', () => {
+    const ids = FLOOR_TILES.map((t) => t.id);
+    expect(ids.slice(0, 4)).toEqual(['wood-light', 'brick-red', 'lawn', 'water-shallow']);
+    expect(ids).toHaveLength(34);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
