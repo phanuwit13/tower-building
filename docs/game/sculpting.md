@@ -262,6 +262,8 @@ Not checked, but expected:
 - No royal portraits or royal imagery, and no religious shrines or Buddha images, unless the owner asks for them.
 - The Thai flag appears only on a pole, at full mast (see `flagpole.ts`).
 - Hospital (Stage 2): no red cross on white. Use a heart with a plus in teal or green, or a green plus in a circle (the pharmacy); no letters, not even an "H".
+- Space (Stage 2): no people or astronauts (robots and the one friendly cartoon alien are fine), no national flags or space-agency logos, no weapons or lasers, no wind (no sway or wave).
+- Tokyo (Stage 2): the owner asked for a Japanese temple, so temple and pagoda architecture is allowed there only; no Buddha or deity statues, altars, offerings, incense, prayer boards, fortune slips or torii; no kanji, kana or Latin letters; no lucky-cat charm, no pachinko or prize machines, no sake or beer.
 - No real brand names or logos. There are no textures, so there is no written text: let shapes and colours tell the story. Not even a single letter built from boxes: signs are pictures and icons.
 
 ## 10. Checking your work

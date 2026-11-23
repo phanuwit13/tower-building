@@ -20,7 +20,7 @@ function docItems(): DocItem[] {
 }
 
 describe('registry', () => {
-  // Builds every item of every theme (ten themes, ~590 items): past the default 5 s when every worker is busy.
+  // Builds every item of every theme (eleven themes, ~650 items): past the default 5 s when every worker is busy.
   it('every theme passes validation', () => {
     const kit = getStyleKit();
     for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 50 })).toEqual([]);
@@ -56,12 +56,13 @@ describe('registry', () => {
 });
 
 describe('nightGlow', () => {
-  it('the shopping district, the café and the hospital are registered with their bright nights; the other themes keep the standard one', () => {
-    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village', 'park', 'hospital', 'space']);
+  it('the shopping district, the café, the hospital and Tokyo are registered with their bright nights; the other themes keep the standard one', () => {
+    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village', 'park', 'hospital', 'space', 'tokyo']);
     expect(getTheme('market')!.nightGlow).toBe(1.5);
     expect(getTheme('cafe')!.nightGlow).toBeGreaterThan(1);
     expect(getTheme('hospital')!.nightGlow).toBe(1.5);
-    const bright = ['market', 'cafe', 'hospital'];
+    expect(getTheme('tokyo')!.nightGlow).toBe(1.5);
+    const bright = ['market', 'cafe', 'hospital', 'tokyo'];
     for (const t of THEMES.filter((x) => !bright.includes(x.id))) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
   });
   it('the café and the hospital are indoors, each with its own room', () => {
