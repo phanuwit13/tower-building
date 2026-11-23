@@ -24,6 +24,8 @@ function warmth(hex: number): number {
   return ((hex >> 16) & 255) - (hex & 255);
 }
 
+const TIERS = ['smooth', 'pretty'] as const;
+
 describe('envPreset', () => {
   it('glows fully at night and not at all by day', () => {
     expect(envPreset('night', 'sunny').glowStrength).toBe(1);
@@ -104,8 +106,11 @@ describe('envPreset', () => {
 });
 
 describe('envPreset: a theme\'s city night (nightGlow)', () => {
-  it('is exactly today\'s look at the default factor 1, for every time and weather (the other themes)', () => {
+  it('is exactly today\'s look at the default factor 1, for every time, weather and tier (the other themes)', () => {
     for (const { time, weather } of ALL) expect(envPreset(time, weather, 1), `${time} ${weather}`).toEqual(envPreset(time, weather));
+    for (const { time, weather } of ALL) for (const tier of TIERS) {
+      expect(envPreset(time, weather, 1, tier), `${time} ${weather} ${tier}`).toEqual(envPreset(time, weather));
+    }
     // the hand-tuned night itself, so the default can never drift
     expect(envPreset('night', 'sunny')).toMatchObject({
       sky: 0x121a44, fog: 0x2b3874, hemiSky: 0x5f6fd8, hemiGround: 0x2e2a52, hemiIntensity: 0.9, sunColor: 0xaab8ff, sunIntensity: 0.8, glowStrength: 1,
@@ -120,9 +125,11 @@ describe('envPreset: a theme\'s city night (nightGlow)', () => {
     for (const { time, weather } of ALL) expect(envPreset(time, weather, 9), `${time} ${weather}`).toEqual(envPreset(time, weather, 2));
   });
 
-  it('leaves day and dawn exactly as they are', () => {
+  it('leaves day and dawn exactly as they are, on either tier', () => {
     for (const time of ['dawn', 'day'] as const) {
-      for (const weather of WEATHER_IDS) expect(envPreset(time, weather, 1.5), `${time} ${weather}`).toEqual(envPreset(time, weather));
+      for (const weather of WEATHER_IDS) for (const tier of TIERS) {
+        expect(envPreset(time, weather, 1.5, tier), `${time} ${weather} ${tier}`).toEqual(envPreset(time, weather));
+      }
     }
   });
 
@@ -135,8 +142,28 @@ describe('envPreset: a theme\'s city night (nightGlow)', () => {
     expect(warmth(city.hemiSky)).toBeGreaterThan(warmth(night.hemiSky));
     expect(luma(city.fog)).toBeGreaterThan(luma(night.fog)); // city light pollution at the horizon
     expect(luma(city.fog)).toBeLessThan(luma(envPreset('dusk', 'sunny').fog)); // a glow, not a sunset
-    // the sky overhead, the moon, the stars and the moonlight stay
-    expect(city).toMatchObject({ sky: night.sky, sunColor: night.sunColor, sunIntensity: night.sunIntensity, moon: 1, stars: true });
+    // the deep blue sky overhead, the moon, the stars and the moonlight's strength stay
+    expect(city).toMatchObject({ sky: night.sky, sunIntensity: night.sunIntensity, moon: 1, stars: true });
+  });
+
+  it('takes the moonlit blue out of a city night\'s light, so painted colours (reds, yellows, greens) read as themselves', () => {
+    const blueCast = (hex: number) => -warmth(hex);
+    for (const weather of WEATHER_IDS) {
+      const night = envPreset('night', weather);
+      const city = envPreset('night', weather, 1.5);
+      // the fill's sky colour (it lights roofs and the street) keeps at most a hint of the blue
+      expect(blueCast(city.hemiSky), weather).toBeLessThan(blueCast(night.hemiSky) / 3);
+      expect(saturation(city.hemiSky), weather).toBeLessThan(saturation(night.hemiSky) / 2);
+      // the light bounced up from the lit street is warm, not violet
+      expect(warmth(city.hemiGround), weather).toBeGreaterThan(0);
+      // the moonlight loses about half its blue but none of its brightness
+      expect(blueCast(city.sunColor), weather).toBeLessThan(0.6 * blueCast(night.sunColor));
+      expect(Math.abs(luma(city.sunColor) - luma(night.sunColor)), weather).toBeLessThan(2);
+    }
+  });
+
+  it('leaves dusk\'s setting sun alone (only the moonlight is cooled at night)', () => {
+    for (const weather of WEATHER_IDS) expect(envPreset('dusk', weather, 1.5).sunColor, weather).toBe(envPreset('dusk', weather).sunColor);
   });
 
   it('only ever adds light: no colour of a city dusk or night is darker than the standard one', () => {
@@ -149,14 +176,29 @@ describe('envPreset: a theme\'s city night (nightGlow)', () => {
     }
   });
 
-  it('strengthens the lights\' glow with the factor, gently (a stronger glow whitens neon colours), and less at dusk', () => {
-    const night = envPreset('night', 'sunny', 1.5).glowStrength;
-    expect(night).toBeCloseTo(1.3);
-    expect(envPreset('night', 'rain', 1.5).glowStrength).toBe(night);
-    expect(envPreset('night', 'sunny', 2).glowStrength).toBeGreaterThan(night);
-    const dusk = envPreset('dusk', 'sunny', 1.5).glowStrength;
+  it('on smooth (no bloom) strengthens the glowing parts with the factor, and less at dusk', () => {
+    const night = envPreset('night', 'sunny', 1.5, 'smooth').glowStrength;
+    expect(night).toBeCloseTo(1.6);
+    expect(envPreset('night', 'rain', 1.5, 'smooth').glowStrength).toBe(night);
+    expect(envPreset('night', 'sunny', 2, 'smooth').glowStrength).toBeGreaterThan(night);
+    const dusk = envPreset('dusk', 'sunny', 1.5, 'smooth').glowStrength;
     expect(dusk).toBeGreaterThan(0.6);
     expect(dusk / 0.6).toBeLessThan(night);
+  });
+
+  it('on pretty keeps any night\'s glow: bloom already spreads it, and more would wash the neon and windows white', () => {
+    for (const { time, weather } of ALL) for (const f of [1.5, 2]) {
+      expect(envPreset(time, weather, f, 'pretty').glowStrength, `${time} ${weather} ${f}`).toBe(envPreset(time, weather).glowStrength);
+    }
+    expect(envPreset('night', 'sunny', 1.5).glowStrength).toBe(1); // pretty is the default tier
+  });
+
+  it('lights a city night the same on both tiers apart from the glow', () => {
+    for (const { time, weather } of ALL) {
+      const { glowStrength: _s, ...smooth } = envPreset(time, weather, 1.5, 'smooth');
+      const { glowStrength: _p, ...pretty } = envPreset(time, weather, 1.5, 'pretty');
+      expect(smooth, `${time} ${weather}`).toEqual(pretty);
+    }
   });
 
   it('lifts dusk less than night, and more for a bigger factor', () => {
@@ -405,9 +447,12 @@ describe('createEnvironment', () => {
     env.apply(night, 'smooth', 1.5);
     expect(hemi.intensity).toBe(envPreset('night', 'sunny', 1.5).hemiIntensity);
     expect(hemi.groundColor.getHex()).toBe(envPreset('night', 'sunny', 1.5).hemiGround);
-    expect(kit.getGlowStrength()).toBe(envPreset('night', 'sunny', 1.5).glowStrength);
+    expect(kit.getGlowStrength()).toBe(envPreset('night', 'sunny', 1.5, 'smooth').glowStrength);
     expect(kit.getGlowStrength()).toBeGreaterThan(1);
     expect(motionUniforms.uNight.value).toBe(1);
+    env.apply(night, 'pretty', 1.5); // the tier picks the glow: bloom does the rest on pretty
+    expect(kit.getGlowStrength()).toBe(envPreset('night', 'sunny', 1.5, 'pretty').glowStrength);
+    expect(hemi.intensity).toBe(envPreset('night', 'sunny', 1.5).hemiIntensity);
     env.apply({ ...night, time: 'dusk' }, 'smooth', 1.5);
     expect(motionUniforms.uNight.value).toBe(0.6); // water dims by the time of day alone
     env.apply({ ...night, time: 'day' }, 'smooth', 1.5);

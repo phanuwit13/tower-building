@@ -6,8 +6,9 @@ export interface ThemeDef {
   id: ThemeId; name: string; emoji: string; defaultGround: GroundId; items: readonly ItemModel[];
   /**
    * How brightly the theme's dusk and night are lit (src/render/environment.ts envPreset): 1, the
-   * default, is the standard night; above 1 a city's night, with a warm, brighter street light and
-   * stronger glowing parts (the shopping district, 1.5). Day and dawn are never changed.
+   * default, is the standard night; above 1 a city's night, with a brighter, warm-neutral street
+   * light instead of moonlit blue (painted colours read as themselves) and, on smooth, stronger
+   * glowing parts (the shopping district, 1.5). Day and dawn are never changed.
    */
   nightGlow?: number;
 }
