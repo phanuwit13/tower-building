@@ -43,7 +43,7 @@ export const item: ItemModel = {
     const parts: Part[] = [
       kit.box([LAWN.w, LAWN.h, LAWN.d], [0, LAWN.h / 2, 0], 'lime'),
       ...bird(kit, px, pz, yaw, { body: 'blue', neck: 'teal', belly: 'teal', s: 1 }),
-      ...bird(kit, 0.12, 0.5, 2.6, { body: 'sand', neck: 'wood', belly: 'cream', s: 0.8 }),
+      ...bird(kit, 0.12, 0.5, 2.6, { body: 'sand', neck: 'wood', belly: 'cream', s: 1.05 }),
     ];
     // crest of the peacock
     const c = Math.cos(yaw);

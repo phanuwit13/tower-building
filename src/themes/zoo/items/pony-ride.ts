@@ -8,7 +8,7 @@ import type { PaletteColor } from '../../../models/palette';
 const GROUND = { w: 0.96, d: 1.96, h: 0.03 };
 const DECK = { r: 0.47, h: 0.05 }; // still round footing
 const DECK_TOP = GROUND.h + DECK.h;
-const POST = { r: 0.05, top: 0.98 };
+const POST = { r: 0.05, top: 1.12 };
 const ARM_Y = 0.7;
 const RING = 0.34; // ponies' distance from the post
 const SPIN: MotionOpts = { kind: 'spin', pivot: [0, 0, 0], axis: [0, 1, 0], speed: 0.4 };
@@ -63,10 +63,10 @@ export const item: ItemModel = {
       kit.box([GROUND.w, GROUND.h, GROUND.d], [0, GROUND.h / 2, 0], 'lime'),
       kit.cylinder(DECK.r, DECK.r, DECK.h, [0, GROUND.h + DECK.h / 2, 0], 'stone', { segments: 20 }),
       kit.cylinder(POST.r, POST.r, POST.top - DECK_TOP, [0, (POST.top + DECK_TOP) / 2, 0], 'sunYellow', { segments: 8, ...m }),
-      kit.cylinder(0.46, 0.46, 0.05, [0, POST.top + 0.025, 0], 'red', { segments: 12, ...m }),
-      kit.cone(0.46, 0.2, [0, POST.top + 0.15, 0], 'red', { segments: 6, ...m }),
-      kit.cone(0.46, 0.2, [0, POST.top + 0.15, 0], 'white', { segments: 6, rotate: [0, Math.PI / 6, 0], ...m }),
-      kit.sphere(0.04, [0, POST.top + 0.27, 0], 'sunYellow', { detail: 0, ...m }),
+      kit.cylinder(0.3, 0.3, 0.04, [0, POST.top + 0.02, 0], 'red', { segments: 12, ...m }),
+      kit.cone(0.3, 0.16, [0, POST.top + 0.12, 0], 'red', { segments: 6, ...m }),
+      kit.cone(0.3, 0.16, [0, POST.top + 0.12, 0], 'white', { segments: 6, rotate: [0, Math.PI / 6, 0], ...m }),
+      kit.sphere(0.04, [0, POST.top + 0.22, 0], 'sunYellow', { detail: 0, ...m }),
     ];
     for (const p of PONIES) parts.push(...pony(kit, p));
     // still decoration at both ends: hay bales and a flower bush

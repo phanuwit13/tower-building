@@ -24,8 +24,8 @@ export const item: ItemModel = {
     ];
     for (const z of [-POST.z, POST.z]) {
       parts.push(
-        kit.cylinder(POST.r, POST.r + 0.01, POST.h - 0.06, [0, 0.06 + (POST.h - 0.06) / 2 - 0.03, z], 'wood', { segments: 8 }),
-        kit.cone(0.065, 0.07, [0, POST.h - 0.09 + 0.05, z], 'woodDark', { segments: 8 }),
+        kit.cylinder(POST.r, POST.r + 0.01, POST.h - 0.1, [0, 0.06 + (POST.h - 0.1) / 2 - 0.03, z], 'wood', { segments: 8 }),
+        kit.cone(0.065, 0.07, [0, POST.h - 0.085, z], 'woodDark', { segments: 8 }),
       );
     }
     parts.push(
@@ -34,21 +34,21 @@ export const item: ItemModel = {
       kit.sphere(0.12, [0.0, BRANCH_Y + 0.12, 0.3], 'leaf', { detail: 0, scale: [1, 0.8, 1.2], ...m }),
       kit.sphere(0.1, [0.02, BRANCH_Y + 0.1, -0.3], 'leafDark', { detail: 0, scale: [1, 0.8, 1.2], ...m }),
       // sloth: round body hanging below, arms up over the branch, long sleepy face
-      kit.sphere(0.16, [0.02, 0.62, 0], 'sand', { scale: [0.9, 1.3, 0.9], ...m }),
-      kit.sphere(0.1, [0.1, 0.58, 0], 'cream', { detail: 0, scale: [0.6, 1.3, 1], ...m }),
-      kit.sphere(0.13, [0.1, 0.9, 0], 'sand', { scale: [0.95, 0.9, 1.05], ...m }),
-      kit.sphere(0.075, [0.2, 0.88, 0], 'cream', { detail: 0, scale: [0.6, 0.8, 1.1], ...m }),
-      kit.sphere(0.03, [0.25, 0.89, 0], 'charcoal', { detail: 0, ...m }),
-      kit.cone(0.04, 0.06, [0.1, 1.0, 0], 'sand', { segments: 6, ...m }),
+      kit.sphere(0.192, [0.024, 0.544, 0.0], 'sand', { scale: [0.9, 1.3, 0.9], ...m }),
+      kit.sphere(0.12, [0.12, 0.496, 0.0], 'cream', { detail: 0, scale: [0.6, 1.3, 1], ...m }),
+      kit.sphere(0.156, [0.12, 0.88, 0.0], 'sand', { scale: [0.95, 0.9, 1.05], ...m }),
+      kit.sphere(0.09, [0.24, 0.856, 0.0], 'cream', { detail: 0, scale: [0.6, 0.8, 1.1], ...m }),
+      kit.sphere(0.036, [0.3, 0.868, 0.0], 'charcoal', { detail: 0, ...m }),
+      kit.cone(0.048, 0.072, [0.12, 1.0, 0], 'sand', { segments: 6, ...m }),
     );
     for (const s of [-1, 1]) {
       parts.push(
-        kit.sphere(0.055, [0.2, 0.94, s * 0.075], 'woodDark', { detail: 0, scale: [0.5, 1.2, 1.4], rotate: [s * 0.5, 0, 0], ...m }), // eye patches
-        kit.box([0.012, 0.012, 0.05], [0.248, 0.94, s * 0.075], 'charcoal', m), // closed, sleepy eyes
-        kit.cylinder(0.035, 0.035, 0.34, [0.06, 0.82, s * 0.17], 'sand', { segments: 6, rotate: [s * -0.1, 0, 0], ...m }), // arms
-        kit.sphere(0.04, [0.06, BRANCH_Y + 0.0, s * 0.17], 'sand', { detail: 0, ...m }),
-        kit.cylinder(0.04, 0.035, 0.22, [0.0, 0.47, s * 0.09], 'sand', { segments: 6, ...m }), // legs
-        kit.box([0.012, 0.06, 0.012], [0.09, BRANCH_Y + 0.045, s * 0.17 + s * 0.02], 'cream', m), // claws
+        kit.sphere(0.066, [0.24, 0.928, s * 0.09], 'woodDark', { detail: 0, scale: [0.5, 1.2, 1.4], rotate: [s * 0.5, 0, 0], ...m }), // eye patches
+        kit.box([0.0144, 0.0144, 0.06], [0.298, 0.928, s * 0.09], 'charcoal', m), // closed, sleepy eyes
+        kit.cylinder(0.042, 0.042, 0.408, [0.072, 0.784, s * 0.204], 'sand', { segments: 6, rotate: [s * -0.1, 0, 0], ...m }), // arms
+        kit.sphere(0.048, [0.072, BRANCH_Y + 0.0, s * 0.204], 'sand', { detail: 0, ...m }),
+        kit.cylinder(0.048, 0.042, 0.264, [0.0, 0.364, s * 0.108], 'sand', { segments: 6, ...m }), // legs
+        kit.box([0.0144, 0.072, 0.0144], [0.108, BRANCH_Y + 0.054, s * 0.228], 'cream', m), // claws
       );
     }
     // little tufts at the foot
