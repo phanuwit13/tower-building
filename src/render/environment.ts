@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { nextRandom } from '../game/rng';
+import { clampNightGlow } from '../themes/types';
 import { GRID_SIZE, type QualityTier, type SceneSettings, type TimeId, type WeatherId } from '../game/types';
 import type { StyleKit } from '../models/kit';
 import { glslFloat, setMoon, setNight, setWind } from '../models/motion';
@@ -105,7 +106,7 @@ export function envPreset(time: TimeId, weather: WeatherId, nightGlow = 1): EnvP
     stars: time === 'night' && weather === 'sunny', // rain clouds hide them
     moon: weather === 'rain' ? 0 : MOON_LIGHT[time],
   };
-  const lift = Math.max(0, nightGlow - 1) * CITY_NIGHT[time];
+  const lift = (clampNightGlow(nightGlow) - 1) * CITY_NIGHT[time]; // held to 1–2 whatever a theme says
   if (lift > 0) {
     p.hemiIntensity *= 1 + CITY.fill * lift;
     p.hemiSky = addLight(p.hemiSky, CITY_LIGHT, CITY.sky * lift);

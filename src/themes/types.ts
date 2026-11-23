@@ -12,6 +12,15 @@ export interface ThemeDef {
   nightGlow?: number;
 }
 
+/** The range a theme's `nightGlow` may take: 1 is the standard night, 2 the brightest city night. */
+export const NIGHT_GLOW_MIN = 1;
+export const NIGHT_GLOW_MAX = 2;
+/** A theme's night glow as the environment uses it: missing or not a number is 1, anything else is held to 1–2. */
+export function clampNightGlow(n: number | undefined): number {
+  if (n === undefined || !Number.isFinite(n)) return NIGHT_GLOW_MIN;
+  return Math.min(NIGHT_GLOW_MAX, Math.max(NIGHT_GLOW_MIN, n));
+}
+
 export function toCatalog(t: ThemeDef): Catalog {
   const items: Record<string, ItemSpec> = {};
   for (const it of t.items) items[it.id] = { id: it.id, footprint: it.footprint };

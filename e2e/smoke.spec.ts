@@ -5,6 +5,7 @@ import { school } from '../src/themes/school';
 import { amusement } from '../src/themes/amusement';
 import { zoo } from '../src/themes/zoo';
 import { beach } from '../src/themes/beach';
+import { market } from '../src/themes/market';
 import { FLOOR_TILES } from '../src/floors';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
@@ -197,6 +198,40 @@ test('theme select offers ชายหาดทะเล and its round starts wi
   await expect(page.getByText(placed(0))).toBeVisible();
   const name = await page.getByTestId('current-name').textContent();
   expect(beach.items.map((i) => i.name)).toContain(name);
+});
+
+test('theme select offers ย่านการค้า and its round starts with a market item, lit with its night glow', async ({ page }) => {
+  await page.goto('/');
+  // the theme select (no game yet) is the standard night
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
+  await page.getByRole('button', { name: 'ย่านการค้า' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(market.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1.5'); // started round
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await page.reload(); // the saved game
+  await expect(page.getByText(placed(1))).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1.5');
+  // clearing the city and starting another theme puts the standard night back
+  await page.getByRole('button', { name: T.settings }).click();
+  await page.getByRole('button', { name: T.clear }).click();
+  await page.getByRole('button', { name: T.confirmClearOk }).click();
+  await expect(page.getByText(T.pickTheme)).toBeVisible();
+  await page.getByRole('button', { name: 'ชายหาดทะเล' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
+});
+
+test('the demo of ย่านการค้า is lit with its night glow; another theme\'s demo is not', async ({ page }) => {
+  await page.goto('/?demo=full&theme=market');
+  await expect(page.getByTestId('current-name')).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1.5');
+  await page.goto('/?demo=full&theme=beach');
+  await expect(page.getByTestId('current-name')).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {

@@ -10,7 +10,7 @@ import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
-import type { ThemeDef } from './themes/types';
+import { clampNightGlow, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { applyViewShift, viewShiftPx } from './render/viewShift';
@@ -118,17 +118,18 @@ function boot(app: HTMLElement): void {
   // Scene: re-applied when settings, tier (rain counts are per tier) or the theme's night glow change.
   const applyScene = (s: AppState): void => {
     const settings = s.game?.settings ?? BACKDROP;
-    const nightGlow = s.game ? getTheme(s.game.themeId)?.nightGlow : undefined;
+    const nightGlow = clampNightGlow(s.game ? getTheme(s.game.themeId)?.nightGlow : undefined);
     if (s.quality !== tier) {
       tier = s.quality;
       stage.setQuality(tier);
       fpsMonitor.reset();
       appliedKey = ''; // force environment.apply below
     }
-    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow ?? 1}`;
+    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}`;
     if (key === appliedKey) return;
     appliedKey = key;
     environment.apply(settings, tier, nightGlow);
+    app.dataset.nightGlow = String(nightGlow); // what the environment was given (the e2e reads it)
     ground.setGround(settings.ground, settings.weather === 'rain');
   };
 

@@ -116,6 +116,10 @@ describe('envPreset: a theme\'s city night (nightGlow)', () => {
     for (const { time, weather } of ALL) expect(envPreset(time, weather, 0.5), `${time} ${weather}`).toEqual(envPreset(time, weather));
   });
 
+  it('holds a factor above 2 to 2 (a theme cannot over-light its night)', () => {
+    for (const { time, weather } of ALL) expect(envPreset(time, weather, 9), `${time} ${weather}`).toEqual(envPreset(time, weather, 2));
+  });
+
   it('leaves day and dawn exactly as they are', () => {
     for (const time of ['dawn', 'day'] as const) {
       for (const weather of WEATHER_IDS) expect(envPreset(time, weather, 1.5), `${time} ${weather}`).toEqual(envPreset(time, weather));
