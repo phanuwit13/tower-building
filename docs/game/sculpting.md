@@ -223,6 +223,7 @@ Validation (`src/models/validate.ts`) enforces these, and every theme is checked
 - **Stay inside the footprint**, with no overhang at all (not even leaves, roofs or awnings).
 - **Sit on the ground**: the lowest point is exactly y = 0. The height is at most 5.
 - **Fill the footprint**: on each axis of n ≥ 2 tiles, the model spans at least n − 0.6.
+- **Ground-level surfaces sit at least 0.02 above the ground** (yards, sand, courts, mats, bases, stepping stones): floor tiles are up to 0.015 tall and must never cover them. A surface lower than that is only allowed as a tiny detail (under 0.01 in area); `src/floors/itemSurfaces.test.ts` checks every School item.
 - **At most 2 meshes, made with `kit.finish`.** Only kit materials and only kit attributes: no raw `THREE.Mesh`, materials, textures or geometry.
 - **Never transform the returned group** (no `group.position`, `rotation` or `scale`). Transform the parts.
 - **Palette colours only**, for both `color` and `glow`.
@@ -328,9 +329,9 @@ export const tile: FloorTile = {
 Rules (checked by `validateFloorTile`, run by `npx vitest run src/floors`):
 
 - **Footprint 1 x 1, centred on the cell** like a 1x1 item: x and z inside [-0.5, 0.5]. The ground is y = 0 and the tile sits on it (lowest point 0).
-- **Flat:** the top is at most 0.05 high (aim for 0.03; a base of about 0.015 to 0.02 plus 0.01 relief is plenty). Items standing on a tile sink into it by that much, so keep it low.
+- **Flat:** everything, relief included, is at most 0.015 above the ground (a base of 0.008 plus 0.007 of relief, say). Items' own ground surfaces start at 0.02, so a tile never covers them.
 - **At most 160 triangles** (a box is 12). Tiles are merged per map chunk, so a fully painted map stays at 4 draw calls however many tiles it holds.
-- **Kit and palette only**, body material: no `glow` (floors do not light up), no own materials, 2 meshes at most. The root group is identity.
+- **Kit and palette only**, body material: no `glow` (floors do not light up), no own materials, 2 meshes at most (checked, as for items). The root group is identity.
 - **Make it tile.** Neighbouring cells touch, so the pattern must continue across the edge: put the full 1 x 1 base to the edge, keep specks and details away from the edge, and in a running pattern (bricks, planks) end every row on the cell edge. Check it as a block of cells, not alone.
 - **Water:** put `motion: { kind: 'water', water: 'pond' }` on the surface part (see section 3); a block of water tiles then shimmers as one pool and holds still with "reduce motion". Use `navy` for pond water and `skyBlue` for a tiled pool, like the items.
 - Floors cast no shadow and receive the items' shadows. Do not put anything above the cell that should throw one.

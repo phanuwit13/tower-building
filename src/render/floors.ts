@@ -24,9 +24,9 @@ export function changedFloorChunks(prev: readonly (string | null)[], next: reado
   return [...out].sort((a, b) => a - b);
 }
 
-const PREVIEW_Y = 0.06; // the preview floats over the floor and over items' bases, so nothing z-fights
+const PREVIEW_Y = 0.01; // just over a tile's top (0.015), under every item's own ground surfaces (0.02+): no z-fighting
 const PREVIEW_OPACITY = 0.6;
-const OUTLINE_Y = 0.08;
+const OUTLINE_Y = 0.025;
 
 export interface FloorLayer {
   /** Bring the merged floor and the rectangle preview in line with the app state. */

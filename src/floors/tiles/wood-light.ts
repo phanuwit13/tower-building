@@ -1,8 +1,8 @@
 import type { Part } from '../../models/kit';
 import type { FloorTile } from '../types';
 
-const BASE_H = 0.015; // the dark joints between the planks
-const PLANK_H = 0.012;
+const BASE_H = 0.008; // the dark joints between the planks
+const PLANK_H = 0.007; // top at 0.015, the most a tile may rise
 const PLANK_W = 0.23; // four planks across the cell leave a 0.02 joint between them
 const PLANK_Z = [-0.375, -0.125, 0.125, 0.375];
 

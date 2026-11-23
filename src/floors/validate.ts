@@ -4,8 +4,8 @@ import type { StyleKit } from '../models/kit';
 import { validateItemModel } from '../models/validate';
 import { FLOOR_GROUPS, type FloorTile } from './types';
 
-/** Tiles lie on the ground: nothing taller than this (relief included). */
-export const MAX_TILE_TOP = 0.05;
+/** Tiles lie on the ground: nothing taller than this (relief included). Items' own ground surfaces start at 0.02, so a tile never covers them. */
+export const MAX_TILE_TOP = 0.015;
 export const MAX_TILE_TRIANGLES = 160;
 const TOL = 0.001;
 
@@ -39,7 +39,7 @@ export function validateFloorTile(t: FloorTile, kit: StyleKit): string[] {
   if (glows) errs.push(`${tag}: floor tiles do not glow (body material only)`);
   obj.updateMatrixWorld(true);
   const top = new THREE.Box3().setFromObject(obj).max.y;
-  if (top > MAX_TILE_TOP + TOL) errs.push(`${tag}: top is ${top.toFixed(3)} high, at most ${MAX_TILE_TOP}`);
+  if (top > MAX_TILE_TOP + TOL) errs.push(`${tag}: top is ${top.toFixed(3)} high; a tile may rise at most ${MAX_TILE_TOP} above the ground`);
   const n = triangles(obj);
   if (n > MAX_TILE_TRIANGLES) errs.push(`${tag}: ${n} triangles exceeds budget ${MAX_TILE_TRIANGLES}`);
   return errs;

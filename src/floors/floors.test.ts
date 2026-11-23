@@ -9,7 +9,7 @@ const kit = getStyleKit();
 
 const tile = (over: Partial<FloorTile> = {}): FloorTile => ({
   id: 'sample', name: 'ตัวอย่าง', group: 'tile',
-  build: (k) => k.finish([k.box([1, 0.02, 1], [0, 0.01, 0], 'cream')]),
+  build: (k) => k.finish([k.box([1, 0.01, 1], [0, 0.005, 0], 'cream')]),
   ...over,
 });
 
@@ -42,11 +42,12 @@ describe('validateFloorTile', () => {
   }
   it('accepts a minimal tile', () => expect(validateFloorTile(tile(), kit)).toEqual([]));
   it('rejects a tile wider than its cell', () => {
-    const t = tile({ build: (k) => k.finish([k.box([1.2, 0.02, 1], [0, 0.01, 0], 'cream')]) });
+    const t = tile({ build: (k) => k.finish([k.box([1.2, 0.01, 1], [0, 0.005, 0], 'cream')]) });
     expect(validateFloorTile(t, kit).join('|')).toContain('footprint');
   });
-  it('rejects a tall tile', () => {
-    const t = tile({ build: (k) => k.finish([k.box([1, 0.08, 1], [0, 0.04, 0], 'cream')]) });
+  it('rejects a tile taller than 0.015 and accepts exactly 0.015', () => {
+    expect(validateFloorTile(tile({ build: (k) => k.finish([k.box([1, 0.015, 1], [0, 0.0075, 0], 'cream')]) }), kit)).toEqual([]);
+    const t = tile({ build: (k) => k.finish([k.box([1, 0.02, 1], [0, 0.01, 0], 'cream')]) });
     expect(validateFloorTile(t, kit).join('|')).toContain('top is');
   });
   it('rejects a tile over 160 triangles', () => {
@@ -58,6 +59,10 @@ describe('validateFloorTile', () => {
   it('rejects a glowing tile', () => {
     const t = tile({ build: (k) => k.finish([k.box([1, 0.02, 1], [0, 0.01, 0], 'lampWarm', { glow: true })]) });
     expect(validateFloorTile(t, kit).join('|')).toContain('glow');
+  });
+  it('rejects a tile of more than 2 meshes', () => {
+    const t = tile({ build: () => { const g = new THREE.Group(); for (let i = 0; i < 3; i++) g.add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.01, 0.1), kit.materials.body)); return g; } });
+    expect(validateFloorTile(t, kit).join('|')).toContain('meshes');
   });
   it('rejects a mesh with its own material', () => {
     const t = tile({ build: () => new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 1).translate(0, 0.01, 0), new THREE.MeshBasicMaterial()) });

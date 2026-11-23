@@ -1,7 +1,7 @@
 import type { MotionOpts } from '../../models/motion';
 import type { FloorTile } from '../types';
 
-const WATER_H = 0.03;
+const WATER_H = 0.015;
 // navy, like the pond: the night light is blue, so pale water would glare (see the sculpting guide).
 const WATER: MotionOpts = { kind: 'water', water: 'pond' };
 

@@ -1,8 +1,8 @@
 import type { Part } from '../../models/kit';
 import type { FloorTile } from '../types';
 
-const BASE_H = 0.015; // the mortar
-const BRICK_H = 0.012;
+const BASE_H = 0.008; // the mortar
+const BRICK_H = 0.007; // top at 0.015, the most a tile may rise
 const BRICK_D = 0.21;
 const ROWS_Z = [-0.375, -0.125, 0.125, 0.375];
 /** Bricks of a row: [centre x, width]. Odd rows are shifted half a brick so the courses interlock (and still tile). */
