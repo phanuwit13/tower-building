@@ -4,6 +4,7 @@ import { T } from '../src/ui/strings';
 import { school } from '../src/themes/school';
 import { amusement } from '../src/themes/amusement';
 import { zoo } from '../src/themes/zoo';
+import { beach } from '../src/themes/beach';
 import { FLOOR_TILES } from '../src/floors';
 
 const placed = (n: number) => `วางแล้ว ${n} ชิ้น`;
@@ -188,6 +189,14 @@ test('theme select offers สวนสัตว์ and its round starts with a z
   await expect(page.getByText(placed(0))).toBeVisible();
   const name = await page.getByTestId('current-name').textContent();
   expect(zoo.items.map((i) => i.name)).toContain(name);
+});
+
+test('theme select offers ชายหาดทะเล and its round starts with a beach item', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'ชายหาดทะเล' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(beach.items.map((i) => i.name)).toContain(name);
 });
 
 test('a saved School city still loads with three themes registered', async ({ page }) => {
