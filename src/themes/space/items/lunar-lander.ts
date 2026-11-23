@@ -40,7 +40,7 @@ export const item: ItemModel = {
     }
     // ladder from the +x side of the body down to the ground
     parts.push(
-      kit.box([0.025, 0.55, 0.025], [0.36, 0.3, -0.07], 'chrome', { rotate: [0, 0, 0.0] }),
+      kit.box([0.025, 0.55, 0.025], [0.36, 0.3, -0.07], 'chrome'),
       kit.box([0.025, 0.55, 0.025], [0.36, 0.3, 0.07], 'chrome'),
     );
     for (let i = 0; i < 5; i++) {

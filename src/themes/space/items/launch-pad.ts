@@ -29,8 +29,9 @@ export const item: ItemModel = {
       kit.cylinder(r, r, 0.55, [x, bottom + 0.975, z], 'white'),
       kit.cylinder(r + 0.01, r + 0.01, 0.18, [x, bottom + 1.34, z], 'blue'),
       kit.cylinder(r, r, 0.25, [x, bottom + 1.555, z], 'white'),
-      kit.cone(r, 1.0, [x, bottom + 2.18, z], 'red'),
-      kit.sphere(0.05, [x, bottom + 2.7, z], 'sunYellow', { detail: 0 }),
+      kit.cone(r, 0.8, [x, bottom + 2.08, z], 'red'),
+      // small blinking nose light (top at about 3.0)
+      kit.sphere(0.045, [x, bottom + 2.5, z], 'sunYellow', { detail: 0, glow: true, light: 'blink' }),
       // engine nozzle
       kit.cylinder(0.12, 0.2, 0.18, [x, bottom - 0.09, z], 'charcoal', { segments: 8 }),
       // porthole

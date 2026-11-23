@@ -42,7 +42,7 @@ export const item: ItemModel = {
       kit.sphere(0.06, [c.x, 0.18, PIPE_Z], 'orange', { detail: 0 }),
     );
     parts.push(
-      kit.cylinder(0.07, 0.07, 0.03, [c.x, 0.3, PIPE_Z], 'red', { segments: 8, rotate: [0, 0, 0] }),
+      kit.cylinder(0.07, 0.07, 0.03, [c.x, 0.3, PIPE_Z], 'red', { segments: 8 }),
       kit.cylinder(0.025, 0.025, 0.1, [c.x, 0.24, PIPE_Z], 'redDark', { segments: 6 }),
     );
     return kit.finish(parts);

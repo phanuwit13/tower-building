@@ -51,7 +51,7 @@ export const item: ItemModel = {
       kit.cone(FUSE_R, 0.36, [px, FUSE_Y, PLANE_Z + 0.53], 'red', { rotate: [Math.PI / 2, 0, 0] }),
       kit.cylinder(FUSE_R - 0.03, FUSE_R, 0.1, [px, FUSE_Y, PLANE_Z - 0.4], 'charcoal', { rotate: [Math.PI / 2, 0, 0] }),
       // cockpit glass
-      kit.sphere(0.09, [px, FUSE_Y + 0.1, PLANE_Z + 0.3], 'skyBlue', { glow: 'windowWarm', light: 'window', scale: [1, 0.7, 1.4] }),
+      kit.box([0.16, 0.02, 0.14], [px, FUSE_Y + FUSE_R - 0.005, PLANE_Z + 0.3], 'teal'),
       // wings (swept: wide at the body, tipped orange)
       kit.box([1.1, 0.04, 0.34], [px, FUSE_Y - 0.06, PLANE_Z - 0.1], 'blue'),
       kit.box([0.12, 0.045, 0.3], [px + 0.55 - 0.06, FUSE_Y - 0.06, PLANE_Z - 0.1], 'orange'),

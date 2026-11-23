@@ -24,8 +24,9 @@ export const item: ItemModel = {
       kit.box([0.02, 0.025, 0.12], [-0.05 + PUMP.w / 2 + 0.05, BASE.h + 0.5, 0], 'navy'),
       // holster on the +z face and a coiled hose out to the nozzle
       kit.box([0.1, 0.16, 0.06], [-0.05, BASE.h + 0.42, PUMP.d / 2 + 0.03], 'charcoal'),
-      kit.cylinder(0.025, 0.025, 0.22, [-0.05, BASE.h + 0.55, PUMP.d / 2 + 0.06], 'charcoal', { segments: 6, rotate: [0, 0, 0.0] }),
-      kit.torus(0.14, 0.022, [-0.05 + 0.0, BASE.h + 0.26, PUMP.d / 2 + 0.02], 'charcoal', { rotate: [Math.PI / 2, 0, 0] }),
+      kit.cylinder(0.025, 0.025, 0.3, [-0.05, BASE.h + 0.33, PUMP.d / 2 + 0.06], 'charcoal', { segments: 6 }),
+      // nozzle at the hose end, resting against the pump face
+      kit.box([0.06, 0.1, 0.06], [-0.05, BASE.h + 0.18, PUMP.d / 2 + 0.06], 'chrome'),
     ];
     return kit.finish(parts);
   },
