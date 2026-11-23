@@ -1,10 +1,11 @@
 import { GRID_SIZE, GROUND_IDS, QUALITY_TIERS, STATUSES, TIME_IDS, WEATHER_IDS } from './types';
 import type { Catalog, GameState, Placement, QualityTier, Rotation, SceneSettings } from './types';
+import { emptyFloors } from './floors';
 import { fitsAnywhere, rotatedFootprint } from './grid';
 
 export const SAVE_KEY = 'city-builder/save';
 export const QUALITY_KEY = 'city-builder/quality';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface KeyValueStore {
   getItem(k: string): string | null;
@@ -52,13 +53,14 @@ export function loadQuality(store: KeyValueStore): QualityTier | null {
 export function loadGame(
   store: KeyValueStore,
   getCatalog: (themeId: string) => Catalog | undefined,
+  isFloorTile: (id: string) => boolean,
 ): GameState | null {
   try {
     const raw = store.getItem(SAVE_KEY);
     if (raw === null) return null;
     const data: unknown = JSON.parse(raw);
-    if (!isRecord(data) || data.v !== SAVE_VERSION) return null;
-    return validateState(data.state, getCatalog);
+    if (!isRecord(data) || (data.v !== 1 && data.v !== SAVE_VERSION)) return null;
+    return validateState(data.state, getCatalog, isFloorTile);
   } catch {
     return null;
   }
@@ -83,6 +85,7 @@ function hasItem(catalog: Catalog, id: unknown): id is string {
 function validateState(
   s: unknown,
   getCatalog: (themeId: string) => Catalog | undefined,
+  isFloorTile: (id: string) => boolean,
 ): GameState | null {
   if (!isRecord(s) || typeof s.themeId !== 'string') return null;
   const catalog = getCatalog(s.themeId);
@@ -134,5 +137,12 @@ function validateState(
     next: s.next,
     status: s.status === 'finished' || !fitsAnywhere(occ, catalog.items[s.current].footprint) ? 'finished' : 'playing',
     nextUid: s.nextUid,
+    floors: validateFloors(s.floors, isFloorTile),
   };
+}
+
+/** Missing (v1) or malformed floors never reject the city; unknown tile ids drop just that cell. */
+function validateFloors(f: unknown, isFloorTile: (id: string) => boolean): (string | null)[] {
+  if (!Array.isArray(f) || f.length !== GRID_SIZE * GRID_SIZE) return emptyFloors();
+  return f.map((id: unknown) => (typeof id === 'string' && isFloorTile(id) ? id : null));
 }

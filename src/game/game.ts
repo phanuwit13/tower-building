@@ -1,4 +1,5 @@
 import { draw } from './bag';
+import { emptyFloors } from './floors';
 import { buildOccupancy, canPlace, fitsAnywhere } from './grid';
 import type { Catalog, GameState, Rotation, SceneSettings } from './types';
 
@@ -15,6 +16,7 @@ export function newGame(catalog: Catalog, settings: SceneSettings, seed: number)
     next: second.id,
     status: 'playing',
     nextUid: 1,
+    floors: emptyFloors(),
   };
 }
 

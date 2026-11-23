@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { Controller } from '../app/controller';
+import type { Controller, FloorUiState } from '../app/controller';
+import type { FloorRect } from '../game/floors';
 import { rotatedFootprint } from '../game/grid';
 import { GRID_SIZE, type Catalog } from '../game/types';
 import { getCatalog } from '../themes/registry';
@@ -63,6 +64,35 @@ export function screenArrowToGrid(key: string, azimuthRad: number): { dx: number
   }
 }
 
+export interface Cell { tx: number; tz: number }
+
+/**
+ * Pure: who owns a new press on the map. With the floor drawer open, the 🖌 tool paints with a
+ * finger, a pen or the left mouse button (the other buttons keep the camera's pan); the ✋ tool
+ * leaves every press to the camera. With the drawer shut, the item rules apply.
+ */
+export function pressAction(
+  floor: Pick<FloorUiState, 'open' | 'tool'>, p: { pointerType: string; button: number },
+): 'paint' | 'camera' | 'items' {
+  if (!floor.open) return 'items';
+  if (floor.tool === 'camera') return 'camera';
+  return p.pointerType === 'mouse' && p.button !== 0 ? 'camera' : 'paint';
+}
+
+/** A paint stroke: the cell it was pressed on, the cell under the pointer now, and whether it has been elsewhere. */
+export interface Stroke { start: Cell; end: Cell; left: boolean }
+
+/** Pure: the stroke's rectangle, from the press cell to the cell under the pointer. */
+export const strokeRect = (s: Stroke): FloorRect => ({ x0: s.start.tx, z0: s.start.tz, x1: s.end.tx, z1: s.end.tz });
+
+/**
+ * Pure: a release paints the stroke's rectangle (a press that never left its cell paints that one
+ * cell), except that dragging back to the start cell cancels, as in The Sims.
+ */
+export function strokeOnRelease(s: Stroke): 'paint' | 'cancel' {
+  return s.left && s.end.tx === s.start.tx && s.end.tz === s.start.tz ? 'cancel' : 'paint';
+}
+
 export interface InputOptions {
   catalogOf?: (themeId: string) => Catalog | undefined;
   /** World-space box of the visible ghost (footprint x item height), or null. */
@@ -114,6 +144,13 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     hoverTx = tx;
     hoverTz = tz;
     opts.onHover?.(tx < 0 ? null : { tx, tz });
+    hoverFloorPreview(tx, tz);
+  };
+  /** Floor mode (🖌, drawer open, no stroke): the free mouse shows the one cell under it, as a tap would paint. */
+  const hoverFloorPreview = (tx: number, tz: number): void => {
+    if (stroke || floorMode()?.tool !== 'paint') return;
+    if (tx >= 0) c.previewFloors({ x0: tx, z0: tz, x1: tx, z1: tz });
+    else if (c.getState().floor.preview) c.previewFloors(null);
   };
   let lastX = 0;
   let lastY = 0;
@@ -144,6 +181,64 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   let dragging = false;
   let multi = false; // a second finger joined this gesture: never a tap, never a ghost drag
 
+  // Floor painting -------------------------------------------------------------------------------
+  /** The floor drawer's state while it is open over a city; null when the item rules apply. */
+  const floorMode = (): FloorUiState | null => {
+    const s = c.getState();
+    return s.floor.open && s.screen !== 'theme-select' ? s.floor : null;
+  };
+  const painting = (): boolean => floorMode()?.tool === 'paint';
+  // 🖌 paints with one finger and the left button, so those must not orbit. OrbitControls still
+  // tracks every pointer, so two fingers pinch and pan (and cancel the stroke); right-drag pans
+  // and the wheel zooms in either tool. ✋ and the item rules get the camera's own mapping back.
+  const cameraOne = controls.touches.ONE;
+  const cameraLeft = controls.mouseButtons.LEFT;
+  const lendCamera = (paintTool: boolean): void => {
+    controls.touches.ONE = paintTool ? null : cameraOne;
+    controls.mouseButtons.LEFT = paintTool ? null : cameraLeft;
+  };
+  /** The stroke being dragged; (x, y) is where it was pressed, `moved` once it went past a tap's wobble. */
+  let stroke: (Stroke & { id: number; x: number; y: number; moved: boolean }) | null = null;
+  const startStroke = (e: PointerEvent): void => {
+    const tile = pick(e, false);
+    if (!tile) return; // pressed off the map
+    stroke = { id: e.pointerId, start: tile, end: { ...tile }, left: false, x: e.clientX, y: e.clientY, moved: false };
+    c.previewFloors(strokeRect(stroke));
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+  };
+  /**
+   * Follow the pointer; the preview changes only when the cell under it does (off the map: the edge
+   * cell). Until the pointer goes past a tap's few pixels the stroke stays on its press cell, so a
+   * tap is one cell even on a cell edge or while the camera still glides after a turn.
+   */
+  const moveStroke = (e: PointerEvent): void => {
+    if (!stroke) return;
+    if (!painting()) { stroke = null; return; } // the drawer closed or the tool changed: their preview is already gone
+    if (!stroke.moved) {
+      if (Math.hypot(e.clientX - stroke.x, e.clientY - stroke.y) <= TAP_MAX_MOVE_PX) return;
+      stroke.moved = true;
+    }
+    const tile = pick(e, true);
+    if (!tile || (tile.tx === stroke.end.tx && tile.tz === stroke.end.tz)) return;
+    stroke.end = tile;
+    if (tile.tx !== stroke.start.tx || tile.tz !== stroke.start.tz) stroke.left = true;
+    c.previewFloors(strokeRect(stroke));
+  };
+  /** A second finger, Escape, a lost pointer: no paint, the preview goes; the rest of the gesture paints nothing. */
+  const cancelStroke = (): void => {
+    if (!stroke) return;
+    stroke = null;
+    if (c.getState().floor.preview) c.previewFloors(null);
+  };
+  const endStroke = (e: PointerEvent): void => {
+    moveStroke(e);
+    const s = stroke;
+    stroke = null;
+    if (!s) return;
+    if (strokeOnRelease(s) === 'paint') c.paintFloors(strokeRect(s));
+    else c.previewFloors(null);
+  };
+
   const endDrag = () => {
     if (dragging) {
       dragging = false;
@@ -153,15 +248,24 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); }
+    const floor = floorMode();
+    // Runs before OrbitControls sees the press (capture): a new gesture gets the current tool's mapping.
+    if (pointers.size === 0) lendCamera(floor?.tool === 'paint');
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointers.add(e.pointerId);
     if (pointers.size > 1) {
       multi = true;
       endDrag();
+      cancelStroke();
       press = null;
       return;
     }
     multi = false;
+    if (floor) {
+      press = null; // floor mode never taps or drags items
+      if (pressAction(floor, e) === 'paint') startStroke(e);
+      return;
+    }
     press = {
       id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(),
       camPos: camera.position.clone(), target: controls.target.clone(),
@@ -175,6 +279,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && !dragging && pointers.size === 0) updateHover(e);
+    if (stroke && e.pointerId === stroke.id) { moveStroke(e); return; }
     if (!dragging || !press || e.pointerId !== press.id || multi) return;
     const tile = pick(e, true);
     if (tile) c.dragGhostTo(tile.tx, tile.tz);
@@ -187,6 +292,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const handleUp = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
+    if (stroke && e.pointerId === stroke.id) endStroke(e);
     const p = press;
     if (!p || e.pointerId !== p.id) {
       if (pointers.size === 0) { multi = false; endDrag(); }
@@ -216,6 +322,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onCancel = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
+    if (stroke?.id === e.pointerId) cancelStroke();
     press = null;
     if (pointers.size === 0) multi = false;
     endDrag();
@@ -224,6 +331,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   /** The browser took the pointer away (or never delivered its release): end the gesture cleanly. */
   const onLost = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
+    if (stroke?.id === e.pointerId) cancelStroke();
     if (press?.id === e.pointerId) press = null;
     if (pointers.size === 0) multi = false;
     endDrag();
@@ -233,6 +341,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     overCanvas = false;
     hideHover();
     pointers.clear();
+    cancelStroke();
     press = null;
     multi = false;
     endDrag();
@@ -241,6 +350,14 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onKey = (e: KeyboardEvent) => {
     if (opts.isBlocked?.()) return;
+    if (floorMode()) {
+      // The drawer is open: the item keys rest. Escape drops the stroke being dragged, else closes the drawer.
+      if (e.key === 'Escape') {
+        if (stroke) cancelStroke(); else c.closeFloors();
+        e.preventDefault();
+      }
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target as HTMLElement | null;
     const tag = t?.tagName;
@@ -282,5 +399,6 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     window.removeEventListener('blur', onBlur);
     document.removeEventListener('keydown', onKey);
     endDrag();
+    lendCamera(false);
   };
 }

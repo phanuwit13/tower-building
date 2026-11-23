@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { GRID_SIZE, TIME_IDS, WEATHER_IDS } from '../game/types';
 import { getStyleKit } from '../models/kit';
-import { acesFilmic, createEnvironment, envPreset } from './environment';
+import { advanceMotion, glslFloat, motionUniforms } from '../models/motion';
+import { acesFilmic, createEnvironment, envPreset, MOON, SKY_FROM } from './environment';
 import { CAMERA, type Stage } from './stage';
+import { SURROUND_FADE } from './ground';
 
 const ALL = TIME_IDS.flatMap((time) => WEATHER_IDS.map((weather) => ({ time, weather })));
 
@@ -75,6 +77,14 @@ describe('envPreset', () => {
     }
   });
 
+  it('shows the moon fully at night, faintly at dusk and dawn, never by day or in rain', () => {
+    expect(envPreset('night', 'sunny').moon).toBe(1);
+    expect(envPreset('dusk', 'sunny').moon).toBeCloseTo(0.35);
+    expect(envPreset('dawn', 'sunny').moon).toBeCloseTo(0.35);
+    expect(envPreset('day', 'sunny').moon).toBe(0);
+    for (const time of TIME_IDS) expect(envPreset(time, 'rain').moon, time).toBe(0);
+  });
+
   it('returns a fresh object each call', () => {
     const a = envPreset('day', 'sunny');
     a.sunDir[0] = 99;
@@ -103,7 +113,171 @@ describe('acesFilmic', () => {
   });
 });
 
+describe('moon placement', () => {
+  /** The default camera of a 1280 x 800 window (stage.ts). */
+  const defaultCamera = () => {
+    const centre = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+    const cam = new THREE.PerspectiveCamera(CAMERA.fov, 1280 / 800, 0.1, 300);
+    cam.position.copy(centre).addScaledVector(CAMERA.direction, CAMERA.distance);
+    cam.lookAt(centre);
+    cam.updateMatrixWorld();
+    return cam;
+  };
+
+  /** The default camera tilted down to the lowest angle the controls allow (stage.ts maxPolarAngle), at a given distance. */
+  const tiltedCamera = (distance: number) => {
+    const centre = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+    const flat = new THREE.Vector3(CAMERA.direction.x, 0, CAMERA.direction.z).normalize();
+    const polar = 1.25;
+    const dir = flat.multiplyScalar(Math.sin(polar)).setY(Math.cos(polar));
+    const cam = new THREE.PerspectiveCamera(CAMERA.fov, 1280 / 800, 0.1, 300);
+    cam.position.copy(centre).addScaledVector(dir, distance);
+    cam.lookAt(centre);
+    cam.updateMatrixWorld();
+    return cam;
+  };
+  const project = (cam: THREE.PerspectiveCamera, dir: THREE.Vector3) => cam.position.clone().addScaledVector(dir, MOON.distance).project(cam);
+  /** How far from the map centre the moon's line of sight meets the ground (Infinity if it never does). */
+  const landHit = (cam: THREE.PerspectiveCamera) => {
+    const [dx, dy, dz] = MOON.dir;
+    if (dy >= 0) return Infinity;
+    const t = (SURROUND_FADE.y - cam.position.y) / dy;
+    return Math.hypot(cam.position.x + dx * t - GRID_SIZE / 2, cam.position.z + dz * t - GRID_SIZE / 2);
+  };
+
+  it('is in the sky, so the steep default view (which shows no sky) does not show it', () => {
+    expect(MOON.dir[1]).toBeGreaterThan(Math.sin(-0.2)); // within about 11° of the horizon, not down in the land
+    expect(project(defaultCamera(), new THREE.Vector3(...MOON.dir)).y).toBeGreaterThan(1); // above the top of the view
+  });
+
+  it('rises over the far side of the city when the camera is tilted towards the horizon, halo and all on screen', () => {
+    for (const distance of [CAMERA.distance, CAMERA.maxDistance]) {
+      const cam = tiltedCamera(distance);
+      const dir = new THREE.Vector3(...MOON.dir);
+      const c = project(cam, dir);
+      expect(c.z, `${distance}`).toBeLessThan(1); // in front of the camera, inside the far plane
+      expect(c.y, `${distance}`).toBeGreaterThan(0.2); // the upper part of the screen, where the sky is
+      expect(Math.abs(c.x), `${distance}`).toBeLessThan(0.5); // not under the corner buttons
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+      expect(project(cam, dir.clone().addScaledVector(up, MOON.haloRadius).normalize()).y, `${distance}`).toBeLessThan(1);
+      expect(landHit(cam), `${distance}`).toBeGreaterThan(SURROUND_FADE.end); // past the land: in clear sky
+    }
+  });
+
+  it('is covered by the land when zoomed right in (its line of sight meets the map)', () => {
+    expect(landHit(tiltedCamera(CAMERA.minDistance))).toBeLessThan(SKY_FROM);
+  });
+
+  it('shows the moon and stars only over land that has melted into the sky', () => {
+    expect(SKY_FROM).toBeGreaterThan(SURROUND_FADE.start);
+    expect(SKY_FROM).toBeLessThan(SURROUND_FADE.end);
+    // the steep default view's top edge meets the ground well inside SKY_FROM: no stars over the green there
+    const cam = defaultCamera();
+    const top = new THREE.Vector3(0, 1, 0.5).unproject(cam).sub(cam.position).normalize();
+    const t = (SURROUND_FADE.y - cam.position.y) / top.y;
+    const far = Math.hypot(cam.position.x + top.x * t - GRID_SIZE / 2, cam.position.z + top.z * t - GRID_SIZE / 2);
+    expect(far).toBeLessThan(SKY_FROM);
+  });
+
+  it('sits on the night light\'s compass line, across the map from the default camera', () => {
+    const [sx, , sz] = envPreset('night', 'sunny').sunDir;
+    const [mx, , mz] = MOON.dir;
+    expect(Math.hypot(...MOON.dir)).toBeCloseTo(1);
+    expect(sx * mz - sz * mx).toBeCloseTo(0); // same compass line
+    expect(sx * mx + sz * mz).toBeLessThan(0); // the far side of the map
+  });
+
+  it('is a disc with a wider soft halo, drawn in front of the far plane and behind the whole map', () => {
+    expect(MOON.haloRadius).toBeGreaterThan(2 * MOON.discRadius);
+    expect(MOON.distance).toBeLessThan(300); // the camera's far plane
+    expect(MOON.distance).toBeGreaterThan(CAMERA.maxDistance + GRID_SIZE * 2);
+  });
+});
+
 describe('createEnvironment', () => {
+  const fakeStage = () => ({
+    scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows: () => {},
+  }) as unknown as Stage;
+  const moonOf = (stage: Stage) => stage.scene.getObjectByName('moon') as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  // three calls a scene's onBeforeRender with (renderer, scene, camera, renderTarget) at the start of each render
+  const beforeRender = (stage: Stage) => (stage.scene.onBeforeRender as (...a: unknown[]) => void)(null, stage.scene, null, null);
+
+  it('adds one moon: a sky picture that casts no shadow, ignores fog and is never frustum-culled', () => {
+    const stage = fakeStage();
+    createEnvironment(stage, getStyleKit());
+    const moon = moonOf(stage);
+    expect(moon).toBeInstanceOf(THREE.Mesh);
+    expect(stage.scene.children.filter((c) => c.name === 'moon')).toHaveLength(1);
+    expect(moon.castShadow).toBe(false);
+    expect(moon.receiveShadow).toBe(false);
+    expect(moon.frustumCulled).toBe(false);
+    expect(moon.material.fog).toBe(false);
+    expect(moon.material.depthWrite).toBe(false);
+    expect(moon.material.transparent).toBe(true);
+    expect(moon.renderOrder).toBeLessThan(0); // first of the see-through things: everything nearer draws over it
+  });
+
+  it('the moon face is dimmer on pretty (bloom would whiten it) and no star shows through it', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const moon = moonOf(stage);
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'smooth');
+    const smooth = moon.material.uniforms.faceGain.value;
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'pretty');
+    expect(moon.material.uniforms.faceGain.value).toBeLessThan(smooth);
+    expect(smooth).toBeLessThanOrEqual(1);
+    const stars = stage.scene.children.find((c) => c instanceof THREE.Points) as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    const shader = { vertexShader: THREE.ShaderLib.points.vertexShader, fragmentShader: THREE.ShaderLib.points.fragmentShader };
+    stars.material.onBeforeCompile(shader as never, null as never);
+    expect(shader.vertexShader).toContain(`vec3( ${MOON.dir.map(glslFloat).join(', ')} )`); // stars in line with the moon fade out
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('shows the moon at night, faintly at dusk, and hides it by day and in rain (no draw call then)', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const moon = moonOf(stage);
+    const shown = () => { beforeRender(stage); return moon.visible; };
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'smooth');
+    expect(shown()).toBe(true);
+    expect(moon.material.uniforms.visibility.value).toBe(1);
+    env.apply({ weather: 'sunny', time: 'dusk', ground: 'grass' }, 'smooth');
+    expect(shown()).toBe(true);
+    expect(moon.material.uniforms.visibility.value).toBeCloseTo(0.35);
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
+    expect(shown()).toBe(false);
+    env.apply({ weather: 'rain', time: 'night', ground: 'grass' }, 'smooth');
+    expect(shown()).toBe(false);
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('leaves the moon out of override passes (the AO normal pass), so it costs one draw call', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const moon = moonOf(stage);
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'pretty');
+    stage.scene.overrideMaterial = new THREE.MeshNormalMaterial();
+    beforeRender(stage);
+    expect(moon.visible).toBe(false);
+    stage.scene.overrideMaterial = null;
+    beforeRender(stage);
+    expect(moon.visible).toBe(true);
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('draws its own halo on smooth and leaves most of it to bloom on pretty', () => {
+    const stage = fakeStage();
+    const env = createEnvironment(stage, getStyleKit());
+    const halo = () => moonOf(stage).material.uniforms.halo.value as number;
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'smooth');
+    const smooth = halo();
+    env.apply({ weather: 'sunny', time: 'night', ground: 'grass' }, 'pretty');
+    expect(smooth).toBe(1);
+    expect(halo()).toBeGreaterThan(0);
+    expect(halo()).toBeLessThan(smooth);
+    getStyleKit().setGlowStrength(0);
+  });
+
   it('asks for a shadow update on every apply: time and weather move the sun, the tier resizes its map', () => {
     const invalidateShadows = vi.fn();
     const stage = { scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows } as unknown as Stage;
@@ -114,6 +288,39 @@ describe('createEnvironment', () => {
     expect(invalidateShadows).toHaveBeenCalledTimes(3);
     const sun = stage.scene.children.find((c): c is THREE.DirectionalLight => c instanceof THREE.DirectionalLight)!;
     expect(sun.shadow.mapSize.x).toBe(2048); // smooth
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('drives the motion uniforms: rain blows harder, night follows the time of day', () => {
+    const stage = { scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows: () => {} } as unknown as Stage;
+    const env = createEnvironment(stage, getStyleKit());
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBe(1);
+    expect(motionUniforms.uNight.value).toBe(0);
+    env.apply({ weather: 'rain', time: 'night', ground: 'grass' }, 'smooth');
+    expect(motionUniforms.uWind.value).toBe(1); // the wind eases in with the frames, it does not jump
+    for (let i = 0; i < 120; i++) advanceMotion(16);
+    expect(motionUniforms.uWind.value).toBeGreaterThan(1.5);
+    expect(motionUniforms.uNight.value).toBe(1);
+    env.apply({ weather: 'sunny', time: 'dusk', ground: 'grass' }, 'smooth');
+    for (let i = 0; i < 120; i++) advanceMotion(16);
+    expect(motionUniforms.uWind.value).toBeCloseTo(1, 1);
+    expect(motionUniforms.uNight.value).toBe(0.6);
+    env.apply({ weather: 'sunny', time: 'day', ground: 'grass' }, 'smooth');
+    getStyleKit().setGlowStrength(0);
+  });
+
+  it('drives the moonlight on water: full on a clear night, faint at dusk, none by day or in rain', () => {
+    const stage = { scene: new THREE.Scene(), onFrame: () => {}, renderer: { toneMappingExposure: 1.4 }, invalidateShadows: () => {} } as unknown as Stage;
+    const env = createEnvironment(stage, getStyleKit());
+    const moon = (time: 'day' | 'dusk' | 'night', weather: 'sunny' | 'rain') => {
+      env.apply({ weather, time, ground: 'grass' }, 'smooth');
+      return motionUniforms.uMoon.value;
+    };
+    expect(moon('night', 'sunny')).toBe(1);
+    expect(moon('dusk', 'sunny')).toBeCloseTo(0.35);
+    expect(moon('night', 'rain')).toBe(0);
+    expect(moon('day', 'sunny')).toBe(0);
     getStyleKit().setGlowStrength(0);
   });
 });

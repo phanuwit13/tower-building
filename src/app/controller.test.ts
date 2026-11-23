@@ -23,7 +23,7 @@ const catalog = getCatalog('school')!;
 const settings = { weather: 'sunny', time: 'day', ground: 'grass' } as const;
 
 function make(store: KeyValueStore): Controller {
-  return createController({ store, getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty' });
+  return createController({ store, getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty', isFloorTile: (id) => id.startsWith('t') });
 }
 function seeded(patch: Partial<GameState> = {}): ReturnType<typeof memStore> {
   const store = memStore();
@@ -177,7 +177,7 @@ describe('controller round end and no-op emits', () => {
     const s = c.getState();
     expect(s.ghost).toBeNull();
     expect(s.game!.status).toBe('finished');
-    const saved = loadGame(store, getCatalog)!;
+    const saved = loadGame(store, getCatalog, () => true)!;
     expect(saved.status).toBe('finished');
     expect(saved.placements.length).toBe(s.game!.placements.length);
   });
@@ -241,7 +241,117 @@ describe('controller storage', () => {
     const c = make(store);
     c.setSettings({ time: 'night' });
     expect(c.getState().screen).toBe('finished');
-    expect(loadGame(store, getCatalog)!.settings.time).toBe('night');
-    expect(loadGame(store, getCatalog)!.status).toBe('finished');
+    expect(loadGame(store, getCatalog, () => true)!.settings.time).toBe('night');
+    expect(loadGame(store, getCatalog, () => true)!.status).toBe('finished');
+  });
+});
+
+describe('controller floors', () => {
+  const rect = { x0: 2, z0: 2, x1: 0, z1: 1 };
+  function playing(patch: Partial<GameState> = {}) {
+    const store = seeded(patch);
+    return { store, c: make(store) };
+  }
+  it('has default floor ui state and open/close/pick/tool', () => {
+    const { c } = playing();
+    expect(c.getState().floor).toEqual({ open: false, pick: 'eraser', tool: 'paint', preview: null });
+    c.openFloors();
+    expect(c.getState().floor.open).toBe(true);
+    c.setFloorTool('camera');
+    expect(c.getState().floor.tool).toBe('camera');
+    c.pickFloor('t1');
+    expect(c.getState().floor).toMatchObject({ pick: 't1', tool: 'paint' });
+    c.closeFloors();
+    expect(c.getState().floor.open).toBe(false);
+  });
+  it('previewFloors changes only AppState and never saves', () => {
+    const { c, store } = playing();
+    const before = store.map.get(SAVE_KEY);
+    c.previewFloors(rect);
+    expect(c.getState().floor.preview).toEqual(rect);
+    c.previewFloors(null);
+    expect(store.map.get(SAVE_KEY)).toBe(before);
+  });
+  it('paints a rectangle, saves once, leaves placements/bag/status alone', () => {
+    const { c, store } = playing();
+    const g0 = c.getState().game!;
+    const setItem = store.setItem;
+    let saves = 0;
+    store.setItem = (k, v) => { saves++; setItem(k, v); };
+    c.pickFloor('t1');
+    c.previewFloors(rect);
+    c.paintFloors(rect);
+    expect(saves).toBe(1);
+    const g = c.getState().game!;
+    expect(g.floors.filter((f) => f === 't1')).toHaveLength(6);
+    expect(g.placements).toBe(g0.placements);
+    expect(g.bag).toBe(g0.bag);
+    expect(g.status).toBe(g0.status);
+    expect(c.getState().floor.preview).toBeNull();
+    expect(loadGame(store, getCatalog, (id) => id === 't1')!.floors).toEqual(g.floors);
+  });
+  it('eraser clears cells', () => {
+    const { c } = playing();
+    c.pickFloor('t1');
+    c.paintFloors(rect);
+    c.pickFloor('eraser');
+    c.paintFloors({ x0: 0, z0: 1, x1: 0, z1: 1 });
+    expect(c.getState().game!.floors.filter((f) => f === 't1')).toHaveLength(5);
+  });
+  it('works when the round is finished', () => {
+    const { c } = playing({ status: 'finished' });
+    expect(c.getState().screen).toBe('finished');
+    c.pickFloor('t1');
+    c.paintFloors(rect);
+    expect(c.getState().game!.floors.filter((f) => f === 't1')).toHaveLength(6);
+    expect(c.getState().screen).toBe('finished');
+  });
+  it('the drawer starts on the first floor tile when the app gives one (kids can paint at once)', () => {
+    const c = createController({
+      store: seeded(), getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty',
+      isFloorTile: (id) => id.startsWith('t'), firstFloorTile: 't1',
+    });
+    expect(c.getState().floor.pick).toBe('t1');
+    c.openFloors();
+    expect(c.getState().floor).toMatchObject({ open: true, pick: 't1', tool: 'paint' });
+  });
+  it('closeFloors shuts the drawer and resets the tool and the preview, keeping the pick', () => {
+    const { c } = playing();
+    c.openFloors();
+    c.pickFloor('t1');
+    c.setFloorTool('camera');
+    c.previewFloors(rect);
+    c.closeFloors();
+    expect(c.getState().floor).toEqual({ open: false, pick: 't1', tool: 'paint', preview: null });
+  });
+  it('paintFloors with no game is a no-op: nothing saved, no state change', () => {
+    const store = memStore();
+    let saves = 0;
+    const setItem = store.setItem.bind(store);
+    store.setItem = (k, v) => { saves++; setItem(k, v); };
+    const c = createController({ store, getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty', isFloorTile: (id) => id.startsWith('t') });
+    const before = c.getState();
+    c.paintFloors(rect);
+    expect(saves).toBe(0);
+    expect(c.getState()).toBe(before);
+  });
+  it('restart and clear close the drawer (a new city starts with the items)', () => {
+    const { c } = playing();
+    c.openFloors();
+    c.setFloorTool('camera');
+    c.restart();
+    expect(c.getState().floor).toMatchObject({ open: false, tool: 'paint', preview: null });
+    c.openFloors();
+    c.previewFloors(rect);
+    c.clearAll();
+    expect(c.getState().screen).toBe('theme-select');
+    expect(c.getState().floor).toMatchObject({ open: false, tool: 'paint', preview: null });
+  });
+  it('restart clears floors', () => {
+    const { c } = playing();
+    c.pickFloor('t1');
+    c.paintFloors(rect);
+    c.restart();
+    expect(c.getState().game!.floors.every((f) => f === null)).toBe(true);
   });
 });

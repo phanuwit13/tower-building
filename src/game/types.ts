@@ -21,6 +21,8 @@ export interface GameState {
   rng: number; // uint32 PRNG state
   current: string; next: string;
   status: GameStatus; nextUid: number;
+  /** Freestyle floor tile id per map cell (index z * GRID_SIZE + x), null = bare ground. */
+  floors: (string | null)[];
 }
 export type FootprintMix = Record<'1x1' | '1x2' | '2x2' | '2x3', number>;
 export interface FillStats { items: number; tilesUsed: number; percent: number } // percent = round(tilesUsed / GRID_SIZE^2 * 100)

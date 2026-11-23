@@ -5,6 +5,7 @@ import { demoFullGame } from './demo';
 import { buildOccupancy, canPlace, fillStats, nearestFreeSpot } from './grid';
 import { placeCurrent } from './game';
 import { loadGame, saveGame, type KeyValueStore } from './save';
+import { FLOOR_TILES, isFloorTile } from '../floors';
 import { GRID_SIZE, type SceneSettings } from './types';
 
 const catalog = getCatalog('school')!;
@@ -15,13 +16,29 @@ function memStore(): KeyValueStore {
   return { getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v), removeItem: (k) => void map.delete(k) };
 }
 
+describe('demoFullGame floors', () => {
+  it('cover the whole map and use every floor tile, for several seeds', () => {
+    for (const seed of [1, 2, 1234, 99999]) {
+      const floors = demoFullGame(catalog, settings, seed).floors;
+      expect(floors).toHaveLength(GRID_SIZE * GRID_SIZE);
+      expect(floors.every((f) => f !== null)).toBe(true);
+      expect(new Set(floors)).toEqual(new Set(FLOOR_TILES.map((t) => t.id)));
+    }
+  });
+
+  it('are deterministic per seed and leave the placements alone', () => {
+    expect(demoFullGame(catalog, settings, 5).floors).toEqual(demoFullGame(catalog, settings, 5).floors);
+    expect(demoFullGame(catalog, settings, 5).floors).not.toEqual(demoFullGame(catalog, settings, 6).floors);
+  });
+});
+
 describe('demoFullGame', () => {
   const game = demoFullGame(catalog, settings, 1234);
 
   it('is a valid save: loadGame accepts it unchanged, still playing', () => {
     const store = memStore();
     expect(saveGame(store, game)).toBe(true);
-    const loaded = loadGame(store, getCatalog);
+    const loaded = loadGame(store, getCatalog, isFloorTile);
     expect(loaded).toEqual(game);
     expect(loaded?.status).toBe('playing');
   });

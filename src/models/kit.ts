@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {
+  CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, packAnim, packAxis, packLight, patchMotionShader, patchWaterShader,
+  resolveMotion, type LightKind, type MotionAttribute, type MotionOpts,
+} from './motion';
 import { PALETTE, type PaletteColor } from './palette';
 
 export interface Part { geometry: THREE.BufferGeometry; glow: boolean }
@@ -23,6 +27,22 @@ export interface PartOpts {
    * surface use `color` by day and emit that colour at night (glass-blue windows, warm glow).
    */
   glow?: boolean | PaletteColor;
+  /**
+   * Glow parts only: how the light behaves when it is on (dusk and night). `steady` (default),
+   * `breathe` (0.65..1.0 over ~3 s), `blink` (on/off under 1 Hz) or `window` (steady, each pane
+   * ±15 % in brightness). Reduced motion holds every pattern at 1.0. See motion.ts.
+   */
+  light?: LightKind;
+  /**
+   * Animate the part on the GPU (no extra draw calls): `sway` leans it downwind from `pivot` (its
+   * base by default), `wave` ripples cloth out along `axis` from the pole at `pivot`, `spin` turns
+   * it about `axis` through `pivot`, `swing` rocks it about `axis` through `pivot`; `water` marks a
+   * water surface that stays put and is drawn in the fragment shader: slow highlight bands by day,
+   * moonlight glints on a `pond` (default) and a soft cyan glow on a `pool` at night (body parts
+   * only: no `glow`). `pivot` and `axis` are in item space, like `at`. See MotionOpts and WATER
+   * (motion.ts) for the defaults.
+   */
+  motion?: MotionOpts;
 }
 
 export interface StyleKit {
@@ -58,7 +78,11 @@ export interface StyleKit {
   finish(parts: Part[]): THREE.Group;
 }
 
-/** Non-indexed geometry with exactly position, normal, color (+ glowColor on glow parts); transformed and coloured. */
+/**
+ * Non-indexed geometry with exactly position, normal, color, anim, pivot, axis (+ glowColor on glow
+ * parts); transformed and coloured. Every part has the motion attributes (zeros when still, stored
+ * packed as MOTION_ATTRIBUTES says) so any two parts, and any two placed items, always merge.
+ */
 function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?: PartOpts): Part {
   let g = src.index ? src.toNonIndexed() : src;
   if (g !== src) src.dispose();
@@ -80,7 +104,56 @@ function prepare(src: THREE.BufferGeometry, at: Vec3, color: PaletteColor, opts?
   fill('color', color);
   const glow = opts?.glow;
   if (glow) fill('glowColor', glow === true ? color : glow);
+  const m = opts?.motion ? resolveMotion(opts.motion, at, lowestY(g)) : null;
+  if (opts?.light && !glow) throw new Error('style kit: light only applies to glow parts (set glow too)');
+  if (glow && opts?.motion?.kind === 'water') {
+    throw new Error('style kit: water is drawn by the body material (its night look is built in): drop glow');
+  }
+  let anim: readonly number[] | null = m?.anim ?? null;
+  let pivot: readonly number[] | null = m?.pivot ?? null;
+  if (opts?.light && opts.light !== 'steady') {
+    // the pattern code rides in anim.x; a window pane's brightness comes from a hash of its own position
+    const base = m?.anim ?? [0, 0, 0, 0];
+    const pane = opts.light === 'window' ? 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719) : 0;
+    anim = [packLight(base[0], opts.light), base[1], base[2], base[3] + pane];
+    // the shader hashes the world position of the pivot for each light's own phase; a light-only part has no
+    // motion pivot, so give it one (harmless: movement is gated by the motion kind)
+    if (!m) pivot = at;
+  }
+  // stored packed (MOTION_ATTRIBUTES): v is one vertex's stored values, the same on every vertex
+  const repeat = (name: MotionAttribute, v: readonly number[] | null) => {
+    const { array: Typed, itemSize, normalized } = MOTION_ATTRIBUTES[name];
+    const arr = new Typed(n * itemSize);
+    if (v) for (let i = 0; i < n; i++) arr.set(v, i * itemSize);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, itemSize, normalized));
+  };
+  repeat('anim', anim && packAnim(anim));
+  repeat('pivot', pivot);
+  repeat('axis', m && packAxis(m.axis));
   return { geometry: g, glow: !!glow };
+}
+
+/** Deterministic 0..1 hash of two numbers (item-local, so a rebuilt item looks the same). */
+function hash2(a: number, b: number): number {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function lowestY(g: THREE.BufferGeometry): number {
+  const pos = g.attributes.position;
+  let y = Infinity;
+  for (let i = 0; i < pos.count; i++) y = Math.min(y, pos.getY(i));
+  return y;
+}
+
+/** Whether any vertex of a merged geometry moves (sway, wave, spin, swing). */
+function moves(g: THREE.BufferGeometry): boolean {
+  const anim = g.attributes.anim;
+  for (let i = 0; i < anim.count; i++) {
+    const k = Math.round(anim.getX(i)) % LIGHT_STRIDE; // anim.x stores the packed code as it is
+    if (k >= MOTION_CODE.sway && k <= MOTION_CODE.swing) return true;
+  }
+  return false;
 }
 
 /** Scale a non-indexed geometry; a mirroring scale also reverses each triangle so it still faces out. */
@@ -155,13 +228,21 @@ function createKit(): StyleKit {
   const glowUniform = { value: 0 };
   const body = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
   const glow = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, metalness: 0 });
+  // Both read the motion attributes (motion.ts). Explicit cache keys: the two must never share a program.
+  body.onBeforeCompile = (s) => {
+    patchMotionShader(s);
+    patchWaterShader(s); // pond and pool surfaces (motion kind water)
+  };
+  body.customProgramCacheKey = () => 'kit-body';
+  glow.customProgramCacheKey = () => 'kit-glow';
   glow.onBeforeCompile = (s) => {
+    patchMotionShader(s);
     s.uniforms.glowStrength = glowUniform;
     s.vertexShader = ('attribute vec3 glowColor;\nvarying vec3 vGlowColor;\n' + s.vertexShader)
       .replace(/void main\(\) ?\{/, 'void main() {\n  vGlowColor = glowColor;');
     s.fragmentShader = 'uniform float glowStrength;\nvarying vec3 vGlowColor;\n' + s.fragmentShader.replace(
       'vec3 totalEmissiveRadiance = emissive;',
-      'vec3 totalEmissiveRadiance = vGlowColor * glowStrength * 1.5;');
+      'vec3 totalEmissiveRadiance = vGlowColor * glowStrength * vLight * 1.5;');
   };
 
   const merge = (parts: Part[], material: THREE.Material): THREE.Mesh | null => {
@@ -169,6 +250,10 @@ function createKit(): StyleKit {
     const merged = mergeGeometries(parts.map((p) => p.geometry), false);
     for (const p of parts) p.geometry.dispose();
     if (!merged) throw new Error('style kit: mergeGeometries failed');
+    if (moves(merged)) { // never culled while part of it is swayed or swung out of its rest bounds
+      merged.computeBoundingSphere();
+      merged.boundingSphere!.radius += CULL_MARGIN;
+    }
     const mesh = new THREE.Mesh(merged, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;

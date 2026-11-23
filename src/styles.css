@@ -62,7 +62,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hud-placed { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 14px; }
 .hud-tools { display: flex; gap: 8px; }
 .hud-hint { align-self: center; background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 14px; }
-.hud-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.hud-bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.hud-actions { display: flex; justify-content: flex-end; gap: 12px; margin-left: auto; }
+.btn-floors { min-width: 96px; font-size: 18px; }
 .btn-place { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 20px; }
 .btn-rotate { min-width: 96px; font-size: 18px; }
 .btn-restart { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 18px; }
@@ -106,6 +108,28 @@ button:disabled { opacity: 0.45; cursor: default; }
 .gallery-note { color: #b00020; }
 .gallery-label strong { font-size: 14px; font-weight: 600; }
 .gallery-label span { font-size: 10px; opacity: 0.7; }
+
+/* Floor painting: the "n ช่อง" count over the rectangle being dragged */
+.floor-count { position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none; padding: 2px 12px; border-radius: 12px; background: rgb(255 255 255 / 0.92); box-shadow: 0 2px 0 rgb(0 0 0 / 0.18); font-size: 16px; font-weight: 600; white-space: nowrap; }
+
+/* Floor drawer: a bottom sheet over the map while floors are laid (above the HUD, under settings and dialogs) */
+.floor-drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: rgb(255 255 255 / 0.95); box-shadow: 0 -4px 16px rgb(0 0 0 / 0.15); animation: floor-drawer-up 180ms ease-out; }
+@keyframes floor-drawer-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .floor-drawer { animation: none; } }
+.floor-drawer-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.floor-groups { display: flex; gap: 6px; flex-wrap: wrap; }
+.floor-drawer-actions { display: flex; gap: 8px; margin-left: auto; }
+.floor-drawer-body { display: flex; gap: 10px; align-items: stretch; min-width: 0; }
+.floor-tools { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: none; }
+.floor-tool { background: var(--chip); padding: 6px 14px; white-space: nowrap; }
+.floor-swatches { display: flex; gap: 8px; flex: 1; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 4px 4px 6px; }
+.floor-swatch { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 96px; padding: 6px 4px; border-radius: 16px; background: var(--chip); scroll-snap-align: start; }
+.floor-swatch img { width: 64px; height: 64px; object-fit: contain; pointer-events: none; }
+.floor-swatch span { font-size: 13px; line-height: 1.25; text-align: center; }
+.floor-eraser { background: var(--chip); }
+.floor-done { background: var(--accent); color: var(--accent-ink); min-width: 96px; }
+.floor-drawer [aria-pressed='true']:not(.floor-swatch) { background: var(--selected); color: #fff; }
+.floor-swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--selected); background: #fff; }
 
 /* Dev-only batch gallery message (?gallery=batch-<n>) */
 .gallery-dev-note { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 5; margin: 0; padding: 8px 16px; border-radius: 12px; background: rgb(255 255 255 / 0.92); font-size: 16px; }

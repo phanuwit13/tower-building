@@ -13,18 +13,23 @@ import { getCatalog, getTheme, THEMES } from './themes/registry';
 import type { ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
+import { applyViewShift, viewShiftPx } from './render/viewShift';
 import { placementAtTile } from './app/hover';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
 import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
 import { loadBatch, parseBatchParam } from './render/batchGallery';
+import { attachFloorGallery } from './render/floorGallery';
+import { createFloorLayer } from './render/floors';
+import { FLOOR_GROUPS, FLOOR_TILES, getFloorTile, isFloorTile, type FloorGroup } from './floors';
 import { school } from './themes/school';
 import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
 import { createThemeSelect } from './ui/themeSelect';
 import { createHud, type ItemCard } from './ui/hud';
+import { createFloorDrawer, drawerGroups } from './ui/floorDrawer';
 import { createSettingsPanel } from './ui/settings';
 import { button, el } from './ui/dom';
 import { confirmDialog } from './ui/dialogs';
@@ -69,7 +74,10 @@ function boot(app: HTMLElement): void {
   const demo = parseDemoParam(location.search);
   const schoolCatalog = getCatalog(school.id);
   const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
-  const controller = createController({ store, getTheme, getCatalog, seed: randomSeed, detectQuality });
+  const floorGroups = drawerGroups(FLOOR_GROUPS, FLOOR_TILES);
+  const controller = createController({
+    store, getTheme, getCatalog, seed: randomSeed, detectQuality, isFloorTile, firstFloorTile: floorGroups[0]?.tiles[0]?.id,
+  });
   let tier = controller.getState().quality;
   let appliedKey = '';
 
@@ -77,7 +85,12 @@ function boot(app: HTMLElement): void {
   const stage = createStage(app, tier);
   const ground = createGround(stage);
   const environment = createEnvironment(stage, kit);
+  const floorCount = el('div', { class: 'floor-count' });
+  document.body.append(floorCount);
+  const floorLayer = createFloorLayer(stage, kit, floorCount);
   const cityView = createCityView(stage, kit, getTheme);
+  /** The floor drawer is open over a city: the item ghost, hover, cards and หมุน/วาง step aside. */
+  const floorOpen = (s: AppState): boolean => s.floor.open && s.screen !== 'theme-select';
   let dialogOpen = false;
   // Mouse hover preview: the faint item under the cursor (never changes controller state).
   let hoverTile: { tx: number; tz: number } | null = null;
@@ -85,7 +98,7 @@ function boot(app: HTMLElement): void {
   const refreshHover = (): void => {
     const s = controller.getState();
     const catalog = s.game ? getCatalog(s.game.themeId) : undefined;
-    if (!hoverTile || !s.game || !catalog || s.screen !== 'playing' || blocked()) { cityView.setHover(null); return; }
+    if (!hoverTile || !s.game || !catalog || s.screen !== 'playing' || floorOpen(s) || blocked()) { cityView.setHover(null); return; }
     const p = placementAtTile(s.game, catalog, s.ghost?.rotation ?? s.rotation, hoverTile.tx, hoverTile.tz);
     const g = s.ghost;
     if (g && g.x === p.x && g.z === p.z && g.rotation === p.rotation) { cityView.setHover(null); return; }
@@ -153,7 +166,7 @@ function boot(app: HTMLElement): void {
       try {
         blob = await captureCanvas(stage);
       } finally {
-        cityView.setGhostVisible(true);
+        cityView.setGhostVisible(!floorOpen(controller.getState()));
       }
       const result = await deliverImage(blob, screenshotFilename(themeId, new Date()), shareEnv);
       if (result === 'downloaded') showNotice(app, T.noticeShotSaved);
@@ -183,12 +196,46 @@ function boot(app: HTMLElement): void {
     onView: () => { viewing = true; endScreen.hide(); },
   });
 
+  // Floor drawer: the shown group is the drawer's own; thumbnails are drawn the first time a group shows.
+  let floorGroup: FloorGroup = floorGroups[0]?.id ?? 'wood';
+  const drawer = createFloorDrawer(app, floorGroups, {
+    onPick: (id) => controller.pickFloor(id),
+    onEraser: () => controller.pickFloor('eraser'),
+    onTool: (t) => controller.setFloorTool(t),
+    onGroup: (g) => { floorGroup = g; showDrawer(controller.getState()); },
+    onDone: () => controller.closeFloors(),
+  });
+  const showDrawer = (s: AppState): void => {
+    const open = floorOpen(s);
+    const tiles = open ? floorGroups.find((g) => g.id === floorGroup)?.tiles ?? [] : [];
+    drawer.update({
+      open, group: floorGroup, pick: s.floor.pick, tool: s.floor.tool,
+      tiles: tiles.map((t) => ({ id: t.id, name: t.name, thumb: thumbnailer.get(t) || null })),
+    });
+  };
+
+  // The drawer covers the bottom of the map: while it is open the view rides up by half its height, so the
+  // bottom cells stay reachable without the ✋ tool. Re-applied on resize and when the drawer's height changes.
+  const drawerBox = app.querySelector<HTMLElement>('.floor-drawer');
+  const syncViewShift = (): void => {
+    const open = floorOpen(controller.getState());
+    const shift = open && drawerBox ? viewShiftPx(drawerBox.offsetHeight, app.clientHeight) : 0;
+    applyViewShift(stage.camera, app.clientWidth, app.clientHeight, shift);
+  };
+  new ResizeObserver(syncViewShift).observe(app);
+  if (drawerBox) new ResizeObserver(syncViewShift).observe(drawerBox);
+
   const hud = createHud(app, {
     onRotate: () => controller.rotateGhost(),
     onPlace: () => { controller.place(); },
     onSettings: openSettings,
     onScreenshot: () => void screenshot(),
     onRestart: () => void restart(),
+    onFloors: () => {
+      const picked = getFloorTile(controller.getState().floor.pick);
+      if (picked) floorGroup = picked.group; // open on the group of the tile in hand
+      controller.openFloors();
+    },
   });
 
   const card = (itemId: string, themeId: string): ItemCard | null => {
@@ -200,13 +247,17 @@ function boot(app: HTMLElement): void {
   let saveNoticeShown = false;
   const render = (s: AppState): void => {
     applyScene(s);
+    floorLayer.sync(s);
     cityView.sync(s);
+    cityView.setGhostVisible(!floorOpen(s));
     refreshHover();
 
     if (s.screen === 'theme-select') themeSelect.show(); else themeSelect.hide();
 
     const game = s.game;
     const playing = s.screen === 'playing' && game !== null;
+    showDrawer(s); // before the HUD: leaving floor mode hands the focus back to [พื้น]
+    syncViewShift();
     hud.update({
       visible: s.screen !== 'theme-select',
       current: playing ? card(game.current, game.themeId) : null,
@@ -216,6 +267,7 @@ function boot(app: HTMLElement): void {
       canRotate: playing,
       hint: playing && s.ghost === null ? T.hintTap : null,
       finished: s.screen === 'finished',
+      floorMode: floorOpen(s),
     });
 
     if (s.screen !== 'finished') viewing = false;
@@ -251,18 +303,32 @@ function boot(app: HTMLElement): void {
  * An unknown theme id starts the normal game.
  */
 function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
+  bootGalleryStage(app, theme.defaultGround, (stage, kit) => {
+    attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
+  }, devNote);
+}
+
+/** `?gallery=floors`: every floor tile as a 3 x 3 patch with its Thai name; lighting and tier from the settings panel. */
+function bootFloorGallery(app: HTMLElement): void {
+  bootGalleryStage(app, 'grass', (stage, kit) => { attachFloorGallery(stage, kit); });
+}
+
+/** The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch. */
+function bootGalleryStage(
+  app: HTMLElement, ground: SceneSettings['ground'], attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
+): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
-  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: theme.defaultGround };
+  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground };
   const kit = getStyleKit();
   const stage = createStage(app, quality);
-  const ground = createGround(stage);
+  const groundLayer = createGround(stage);
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
-  attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
+  attach(stage, kit);
 
   const apply = (): void => {
     environment.apply(scene, quality);
-    ground.setGround(scene.ground, scene.weather === 'rain');
+    groundLayer.setGround(scene.ground, scene.weather === 'rain');
   };
   const openSettings = (): void => settings.open({ settings: scene, quality });
   const change = (patch: Partial<SceneSettings>): void => {
@@ -304,6 +370,7 @@ if (app) {
     const gallery = galleryTheme === null ? undefined : getTheme(galleryTheme);
     const batch = import.meta.env.DEV ? parseBatchParam(galleryTheme) : null;
     if (!hasWebGL2()) showFatal(app);
+    else if (galleryTheme === 'floors') bootFloorGallery(app);
     else if (batch !== null) bootBatchGallery(app, batch);
     else if (gallery) bootGallery(app, gallery);
     else boot(app);

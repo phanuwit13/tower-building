@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ItemModel } from '../models/contract';
 import type { StyleKit } from '../models/kit';
+import { freezeMotion } from '../models/motion';
 
 const SIZE = 128;
 const VIEW_DIR = new THREE.Vector3(1, 0.85, 1).normalize(); // fixed 3/4 angle
@@ -29,13 +30,16 @@ function createGl(): ThumbGl {
   return { renderer, scene, camera: new THREE.PerspectiveCamera(FOV, 1, 0.1, 100) };
 }
 
+/** Anything built with the style kit: an item, or a floor tile (the drawer swatches). */
+export type Thumbnailable = Pick<ItemModel, 'build'>;
+
 /**
- * Small offscreen renderer that turns item models into transparent PNG data URLs.
- * Cached per ItemModel object (ids may repeat across themes). A WebGL init failure disables
+ * Small offscreen renderer that turns item models (and floor tiles) into transparent PNG data URLs.
+ * Cached per model object (ids may repeat across themes). A WebGL init failure disables
  * thumbnails for good; a single item that fails gets '' and is not retried, the others still work.
  */
-export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createGl): { get(item: ItemModel): string } {
-  const cache = new WeakMap<ItemModel, string>();
+export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createGl): { get(item: Thumbnailable): string } {
+  const cache = new WeakMap<Thumbnailable, string>();
   let gl: ThumbGl | null = null;
   let disabled = false;
 
@@ -53,9 +57,11 @@ export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createG
         }
       }
       const { renderer, scene, camera } = gl;
-      // Thumbnails must not bake the current night-time window glow into the picture.
+      // Thumbnails must not bake the current night-time window glow, or a moment of a sway or a
+      // spin, into the picture: glow off, motion at its rest pose (the shared clock is restored).
       const glow = kit.getGlowStrength();
       kit.setGlowStrength(0);
+      const restoreMotion = freezeMotion();
       let model: THREE.Object3D | null = null;
       let url = '';
       try {
@@ -74,6 +80,7 @@ export function createThumbnailer(kit: StyleKit, makeGl: () => ThumbGl = createG
         url = ''; // this item only: it is cached as '' and never retried
       } finally {
         kit.setGlowStrength(glow);
+        restoreMotion();
         if (model) {
           scene.remove(model);
           model.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); // shared kit materials stay

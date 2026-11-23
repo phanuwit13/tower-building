@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 
 const TOP = 1.24; // height of the top bar
@@ -38,10 +39,12 @@ export const item: ItemModel = {
     );
     const swings: Array<[number, PaletteColor]> = [[-0.38, 'sunYellow'], [0.38, 'orange']];
     for (const [sx, color] of swings) {
+      // each swing hangs from the top bar: ropes and seat swing together about the bar (x axis)
+      const swing: MotionOpts = { kind: 'swing', pivot: [sx, TOP, 0], axis: [1, 0, 0] };
       for (const dx of [-0.17, 0.17]) {
-        parts.push(kit.cylinder(0.018, 0.018, TOP - SEAT_Y, [sx + dx, (TOP + SEAT_Y) / 2, 0], 'stoneDark', { segments: 4 }));
+        parts.push(kit.cylinder(0.018, 0.018, TOP - SEAT_Y, [sx + dx, (TOP + SEAT_Y) / 2, 0], 'stoneDark', { segments: 4, motion: swing }));
       }
-      parts.push(kit.box([0.44, 0.06, 0.24], [sx, SEAT_Y, 0], color));
+      parts.push(kit.box([0.44, 0.06, 0.24], [sx, SEAT_Y, 0], color, { motion: swing }));
     }
     return kit.finish(parts);
   },

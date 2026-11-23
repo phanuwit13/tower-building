@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 import { along, heading } from '../../../models/parts';
 
@@ -14,6 +15,8 @@ const FROND_T = 0.02; // frond thickness
 const FRONDS = 7;
 /** Each frond is three flat diamonds getting smaller towards the tip: [length, width, pitch (+ up, - droops)]. */
 const FROND_PIECES: Array<[number, number, number]> = [[0.22, 0.15, 0.3], [0.2, 0.13, -0.25], [0.16, 0.09, -0.85]];
+// The crown (fronds, coconuts, the knob they grow from) sways about the top of the trunk; the trunk stays.
+const SWAY: MotionOpts = { kind: 'sway', pivot: [TOP[0], TOP[1] - 0.02, TOP[2]], amount: 0.2 };
 const COCONUT = { r: 0.075, out: 0.085, drop: 0.11 };
 
 function bezier(t: number): Vec3 {
@@ -25,7 +28,7 @@ function bezier(t: number): Vec3 {
 function diamond(kit: StyleKit, start: Vec3, yaw: number, [len, width, pitch]: [number, number, number], color: PaletteColor): [Part, Vec3] {
   const d = heading(yaw, pitch);
   const part = kit.cylinder(1, 1, FROND_T, along(start, d, len / 2), color, {
-    segments: 4, scale: [len / 2, 1, width / 2], rotate: [0, yaw, pitch],
+    segments: 4, scale: [len / 2, 1, width / 2], rotate: [0, yaw, pitch], motion: SWAY,
   });
   return [part, along(start, d, len * 0.8)]; // pieces overlap a little: the frond edge looks like a row of leaflets
 }
@@ -51,10 +54,10 @@ export const item: ItemModel = {
       parts.push(kit.cylinder(r * 1.12, r * 0.88, Math.hypot(dx, dy) + 0.02, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0],
         i % 2 === 0 ? 'wood' : 'woodDark', { segments: 7, rotate: [0, 0, -Math.atan2(dx, dy)] }));
     }
-    parts.push(kit.sphere(0.1, [TOP[0], TOP[1] + 0.02, TOP[2]], 'leafDark', { detail: 0 }));
+    parts.push(kit.sphere(0.1, [TOP[0], TOP[1] + 0.02, TOP[2]], 'leafDark', { detail: 0, motion: SWAY }));
     for (let k = 0; k < 3; k++) {
       const a = 0.4 + (k / 3) * Math.PI * 2;
-      parts.push(kit.sphere(COCONUT.r, [TOP[0] + Math.cos(a) * COCONUT.out, TOP[1] - COCONUT.drop, TOP[2] - Math.sin(a) * COCONUT.out], 'woodDark', { detail: 0 }));
+      parts.push(kit.sphere(COCONUT.r, [TOP[0] + Math.cos(a) * COCONUT.out, TOP[1] - COCONUT.drop, TOP[2] - Math.sin(a) * COCONUT.out], 'woodDark', { detail: 0, motion: SWAY }));
     }
     for (let f = 0; f < FRONDS; f++) {
       const yaw = 0.2 + (f / FRONDS) * Math.PI * 2;

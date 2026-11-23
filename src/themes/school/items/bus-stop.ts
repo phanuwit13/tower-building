@@ -68,15 +68,15 @@ export const item: ItemModel = {
     }
 
     // bus-stop sign: a round blue sign with a white face (lit at night) and a little bus on it, facing the road
-    const disc = (r: number, d: number, front: number, color: PaletteColor, glow = false): Part =>
-      kit.cylinder(r, r, d, [SIGN.x + front - d / 2, SIGN.y, SIGN.z], color, { rotate: [0, 0, Math.PI / 2], segments: 16, glow });
+    const disc = (r: number, d: number, front: number, color: PaletteColor, opts: { glow?: boolean; light?: 'blink' } = {}): Part =>
+      kit.cylinder(r, r, d, [SIGN.x + front - d / 2, SIGN.y, SIGN.z], color, { rotate: [0, 0, Math.PI / 2], segments: 16, ...opts });
     const icon = (w: number, h: number, dy: number, dz: number, front: number, color: PaletteColor): Part =>
       kit.box([0.02, h, w], [SIGN.x + front - 0.01, SIGN.y + dy, SIGN.z + dz], color);
     parts.push(
       kit.box([0.14, 0.05, 0.14], [SIGN.x, PAD.h + 0.025, SIGN.z], 'stoneDark'),
       kit.cylinder(0.03, 0.03, SIGN.top - PAD.h, [SIGN.x, (PAD.h + SIGN.top) / 2, SIGN.z], 'stoneDark', { segments: 8 }),
       disc(SIGN.r, 0.03, 0.06, 'blue'),
-      disc(SIGN.r - 0.035, 0.03, 0.07, 'white', true), // the sign face lights up at night
+      disc(SIGN.r - 0.035, 0.03, 0.07, 'white', { glow: true, light: 'blink' }), // the sign face lights up at night
       icon(0.17, 0.09, 0.0, 0, 0.08, 'blue'), // bus body
       icon(0.12, 0.03, 0.017, 0, 0.09, 'white'), // windows
       icon(0.035, 0.035, -0.06, -0.05, 0.09, 'charcoal'), // wheels (one layer out, like the windows)

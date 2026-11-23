@@ -7,8 +7,14 @@ export interface HudView {
   placed: number; canPlace: boolean; canRotate: boolean; hint: string | null;
   /** Round over and the end screen dismissed: restart replaces rotate/place. */
   finished: boolean;
+  /** The floor drawer is open: the item cards, the hint and the bottom row ([พื้น], หมุน/วาง) step aside. */
+  floorMode: boolean;
 }
-export interface HudHandlers { onRotate(): void; onPlace(): void; onSettings(): void; onScreenshot(): void; onRestart(): void }
+export interface HudHandlers {
+  onRotate(): void; onPlace(): void; onSettings(): void; onScreenshot(): void; onRestart(): void;
+  /** [พื้น]: open the floor drawer (while playing, and once the round is finished). */
+  onFloors(): void;
+}
 
 function cardView(label: string, cls: string, testId?: string) {
   const thumb = el('img', { class: 'card-thumb', attrs: { alt: '' } });
@@ -43,20 +49,32 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   const place = button(T.place, h.onPlace, 'btn-place');
   const restart = button(T.restart, h.onRestart, 'btn-restart');
   restart.hidden = true;
+  const floors = button(T.floor.open, h.onFloors, 'btn-floors');
+  const cards = el('div', { class: 'hud-cards' }, [cur.box, nxt.box]);
+  const bottom = el('div', { class: 'hud-bottom' }, [floors, el('div', { class: 'hud-actions' }, [rotate, place, restart])]);
   const hud = el('div', { class: 'hud' }, [
     el('div', { class: 'hud-top' }, [
-      el('div', { class: 'hud-cards' }, [cur.box, nxt.box]),
+      cards,
       placed,
       el('div', { class: 'hud-tools' }, [button(T.screenshot, h.onScreenshot), button(T.settings, h.onSettings)]),
     ]),
     hint,
-    el('div', { class: 'hud-actions' }, [rotate, place, restart]),
+    bottom,
   ]);
   hud.hidden = true;
   root.appendChild(hud);
+  let floorMode = false;
   return {
     update(v) {
       hud.hidden = !v.visible;
+      cards.hidden = v.floorMode;
+      bottom.hidden = v.floorMode;
+      if (floorMode && !v.floorMode) {
+        // The drawer took the focus with it (nowhere, or a button now hidden): give it back to [พื้น].
+        const a = document.activeElement;
+        if (!a || a === document.body || a.closest('[hidden]')) floors.focus();
+      }
+      floorMode = v.floorMode;
       cur.set(v.current);
       nxt.set(v.next);
       const placedText = placedLabel(v.placed);
@@ -68,7 +86,7 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
       place.disabled = !v.canPlace;
       const hintText = v.hint ?? '';
       if (hint.textContent !== hintText) hint.textContent = hintText;
-      hint.hidden = !v.hint;
+      hint.hidden = !v.hint || v.floorMode;
     },
   };
 }

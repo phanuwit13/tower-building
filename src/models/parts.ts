@@ -57,7 +57,7 @@ export function glassWindow(kit: StyleKit, o: OnWall & { w: number; h: number; f
     kit.box(wallSize(o.facing, w, h, depth), wallPoint(o, depth / 2, side), color, opts);
   const parts = [
     box(o.w + 2 * FRAME_BORDER, o.h + 2 * FRAME_BORDER, FRAME_DEPTH, frame),
-    box(o.w, o.h, GLASS_DEPTH, 'skyBlue', 0, { glow: 'windowWarm' }),
+    box(o.w, o.h, GLASS_DEPTH, 'skyBlue', 0, { glow: 'windowWarm', light: 'window' }),
   ];
   for (let i = 1; i < panes; i++) parts.push(box(BAR_WIDTH, o.h, BAR_DEPTH, frame, (i / panes - 0.5) * o.w));
   return parts;

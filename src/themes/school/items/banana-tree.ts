@@ -1,5 +1,6 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit, Vec3 } from '../../../models/kit';
+import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 import { along, heading } from '../../../models/parts';
 
@@ -21,6 +22,8 @@ const LEAVES: Leaf[] = [
   { yaw: 3.9, color: 'leaf', inner: [0.32, 0.22, 0.4], outer: [0.38, 0.21, -0.7] },
   { yaw: 5.0, color: 'leafDark', inner: [0.3, 0.21, 0.5], outer: [0.32, 0.2, -0.6] },
 ];
+// Leaves and the new shoot sway together about the top of the stem; the stem and the hanging bunch stay.
+const SWAY: MotionOpts = { kind: 'sway', pivot: [0, CROWN_Y, 0], amount: 0.18 };
 const SHOOT = { r: 0.045, h: 0.34 }; // the new rolled-up leaf in the middle
 const BUNCH = { yaw: 6.0, out: 0.21, y: 0.47 }; // the bananas hang in the gap on the front (+x) side
 const FINGER = { r: 0.032, len: 0.1, tilt: 0.5 }; // one banana: a stretched ball leaning out and up
@@ -33,8 +36,8 @@ function blade(kit: StyleKit, start: Vec3, yaw: number, [len, width, pitch]: [nu
   const mid = along(start, d, len / 2);
   const rot: Vec3 = [0, yaw, pitch];
   return [[
-    kit.cylinder(1, 1, BLADE_T, mid, color, { segments: 8, scale: [len / 2, 1, width / 2], rotate: rot }),
-    kit.box([len * 0.92, RIB.h, RIB.w], along(mid, up, BLADE_T / 2), 'lime', { rotate: rot }),
+    kit.cylinder(1, 1, BLADE_T, mid, color, { segments: 8, scale: [len / 2, 1, width / 2], rotate: rot, motion: SWAY }),
+    kit.box([len * 0.92, RIB.h, RIB.w], along(mid, up, BLADE_T / 2), 'lime', { rotate: rot, motion: SWAY }),
   ], along(start, d, len)];
 }
 
@@ -48,7 +51,7 @@ export const item: ItemModel = {
     const parts: Part[] = [
       kit.cylinder(TRUNK.rTop, TRUNK.rBottom, TRUNK.h, [0, TRUNK.h / 2, 0], 'lime', { segments: 8 }),
       kit.cylinder(TRUNK.rBottom + 0.02, TRUNK.rBottom + 0.03, 0.07, [0, 0.035, 0], 'leafDark', { segments: 8 }), // old leaf sheaths at the foot
-      kit.cone(SHOOT.r, SHOOT.h, [0, CROWN_Y + SHOOT.h / 2, 0], 'lime', { segments: 6 }),
+      kit.cone(SHOOT.r, SHOOT.h, [0, CROWN_Y + SHOOT.h / 2, 0], 'lime', { segments: 6, motion: SWAY }),
     ];
     for (const leaf of LEAVES) {
       const start = along([0, CROWN_Y, 0], heading(leaf.yaw, 0), 0.04);

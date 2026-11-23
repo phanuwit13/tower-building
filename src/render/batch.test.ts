@@ -5,6 +5,9 @@ import { school } from '../themes/school';
 import { GRID_SIZE, type Placement, type Rotation } from '../game/types';
 import { CHUNK_TILES, CHUNKS_PER_SIDE, chunkOf, createBatch, mergeItems, placementMatrix, planBatch, type BatchItem } from './batch';
 import { placementTransform } from './city';
+import { ANIM_STEP, CULL_MARGIN, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, readMotion } from '../models/motion';
+import type { ItemModel } from '../models/contract';
+import type { Vec3 } from '../models/kit';
 
 const kit = getStyleKit();
 const { materials } = kit;
@@ -86,9 +89,9 @@ describe('mergeItems', () => {
     }
   });
 
-  it('keeps the kit attributes: body = position/normal/color, glow adds glowColor; normals turn with the item', () => {
-    expect(Object.keys(merged.body!.attributes).sort()).toEqual(['color', 'normal', 'position']);
-    expect(Object.keys(merged.glow!.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+  it('keeps the kit attributes: body = position/normal/color/anim/pivot/axis, glow adds glowColor; normals turn with the item', () => {
+    expect(Object.keys(merged.body!.attributes).sort()).toEqual(['anim', 'axis', 'color', 'normal', 'pivot', 'position']);
+    expect(Object.keys(merged.glow!.attributes).sort()).toEqual(['anim', 'axis', 'color', 'glowColor', 'normal', 'pivot', 'position']);
     const n = merged.body!.attributes.normal;
     for (let i = 0; i < n.count; i += 97) expect(Math.hypot(n.getX(i), n.getY(i), n.getZ(i))).toBeCloseTo(1, 5);
   });
@@ -98,6 +101,15 @@ describe('mergeItems', () => {
     const both = mergeItems(items.slice(1), materials, first);
     expect(Array.from(both.body!.attributes.position.array)).toEqual(Array.from(merged.body!.attributes.position.array));
     expect(first.body!.attributes.position.count).toBeLessThan(both.body!.attributes.position.count);
+  });
+
+  it('pads each merged bounding sphere by the culling margin, so swaying edges never pop', () => {
+    for (const geo of [merged.body!, merged.glow!]) {
+      const exact = new THREE.BufferGeometry().setAttribute('position', geo.attributes.position);
+      exact.computeBoundingSphere();
+      expect(geo.boundingSphere!.center.distanceTo(exact.boundingSphere!.center)).toBeCloseTo(0, 6);
+      expect(geo.boundingSphere!.radius).toBeCloseTo(exact.boundingSphere!.radius + CULL_MARGIN, 6);
+    }
   });
 
   it('never disposes the prototype geometry it reads', () => {
@@ -147,5 +159,107 @@ describe('createBatch', () => {
     batch.clear();
     expect(disposed1).toBe(1);
     expect(parent.children).toHaveLength(0);
+  });
+});
+
+describe('mergeItems with animated items', () => {
+  /** A 1 x 1 test item: a still trunk, a swaying crown and a glowing lamp that swings about x from (0.2, 1, 0). */
+  const animated: ItemModel = {
+    id: 'test-animated', name: 'test', category: 'nature', footprint: { w: 1, d: 1 },
+    build: (k) => k.finish([
+      k.cylinder(0.05, 0.05, 1, [0, 0.5, 0], 'bark'),
+      k.sphere(0.3, [0, 1.2, 0], 'leaf', { motion: { kind: 'sway', pivot: [0, 1, 0] } }),
+      k.box([0.1, 0.1, 0.1], [0.2, 0.8, 0], 'lampWarm', { glow: true, motion: { kind: 'swing', pivot: [0.2, 1, 0], axis: [1, 0, 0] } }),
+    ]),
+  };
+  const at = (it: ItemModel, x: number, z: number, r: Rotation): BatchItem => ({ model: it.build(kit), matrix: placementMatrix(it.footprint, x, z, r) });
+  /** Distinct [anim kind, pivot, axis] rows of a merged geometry (unpacked, as the shader sees them), rounded. */
+  const rows = (g: THREE.BufferGeometry) => {
+    const out = new Map<string, { kind: number; pivot: number[]; axis: number[] }>();
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      const m = readMotion(g, i);
+      const r = (v: number) => +v.toFixed(5) + 0; // + 0: no -0
+      const row = { kind: m.anim[0], pivot: m.pivot.map(r), axis: m.axis.map(r) };
+      out.set(JSON.stringify(row), row);
+    }
+    return [...out.values()];
+  };
+  const degrees = (a: readonly number[], b: THREE.Vector3) =>
+    new THREE.Vector3(a[0], a[1], a[2]).angleTo(b) * (180 / Math.PI);
+
+  it('merges still and animated items into one chunk without a mismatch', () => {
+    const m = mergeItems([at(item('bench'), 0, 0, 0), at(animated, 3, 3, 0), at(item('street-lamp'), 5, 2, 0), at(item('tree'), 7, 7, 3)], materials);
+    expect(m.body).not.toBeNull();
+    expect(m.glow).not.toBeNull();
+    const kinds = new Set(rows(m.body!).map((r) => r.kind));
+    expect([...kinds].sort()).toEqual([0, MOTION_CODE.sway]);
+    // anim.x also packs the light pattern (street-lamp breathes): the motion kind is the remainder
+    expect(new Set(rows(m.glow!).map((r) => r.kind % LIGHT_STRIDE))).toEqual(new Set([0, MOTION_CODE.swing]));
+  });
+
+  it('moves the pivot like a position and turns the axis like a direction (normalised) with the placement', () => {
+    for (const r of [0, 1, 2, 3] as const) {
+      const matrix = placementMatrix(animated.footprint, 4, 6, r);
+      const m = mergeItems([{ model: animated.build(kit), matrix }], materials);
+      const swing = rows(m.glow!).find((row) => row.kind === MOTION_CODE.swing)!;
+      const wantPivot = new THREE.Vector3(0.2, 1, 0).applyMatrix4(matrix);
+      const wantAxis = new THREE.Vector3(1, 0, 0).transformDirection(matrix);
+      swing.pivot.forEach((v, i) => expect(v).toBeCloseTo(wantPivot.getComponent(i), 4));
+      swing.axis.forEach((v, i) => expect(v).toBeCloseTo(wantAxis.getComponent(i), 4)); // a quarter turn keeps x exact
+      expect(Math.hypot(...swing.axis)).toBeCloseTo(1, 5);
+      const sway = rows(m.body!).find((row) => row.kind === MOTION_CODE.sway)!;
+      expect(sway.axis).toEqual([0, 1, 0]); // straight up stays up under a turn about y
+      const wantSway = new THREE.Vector3(0, 1, 0).applyMatrix4(matrix);
+      sway.pivot.forEach((v, i) => expect(v).toBeCloseTo(wantSway.getComponent(i), 4));
+    }
+  });
+
+  it('keeps the packed storage through a merge (the merged attributes are what the material reads)', () => {
+    const m = mergeItems([at(animated, 4, 6, 1), at(item('street-lamp'), 5, 2, 3)], materials);
+    for (const g of [m.body!, m.glow!]) {
+      for (const name of ['anim', 'pivot', 'axis'] as const) {
+        const a = g.attributes[name] as THREE.BufferAttribute;
+        expect(a.array, name).toBeInstanceOf(MOTION_ATTRIBUTES[name].array);
+        expect([a.itemSize, a.normalized], name).toEqual([MOTION_ATTRIBUTES[name].itemSize, MOTION_ATTRIBUTES[name].normalized]);
+      }
+    }
+  });
+
+  it('a pivot anywhere on the map lands within 1 mm, and a slanted axis within 1° of exact, in every turn', () => {
+    const slanted: Vec3 = [0.3, 0.8, -0.52]; // not along any axis: the packed direction is not exact
+    const reach: ItemModel = {
+      id: 'test-reach', name: 'reach', category: 'nature', footprint: { w: 1, d: 1 },
+      build: (k) => k.finish([k.box([0.1, 0.1, 0.1], [0.45, 4.9, -0.45], 'red', {
+        motion: { kind: 'swing', pivot: [0.5, 5, -0.5], axis: slanted, amount: MOTION_LIMITS.amount, speed: -MOTION_LIMITS.speed, phase: MOTION_LIMITS.phase },
+      })]),
+    };
+    for (const [x, z] of [[0, 0], [GRID_SIZE - 1, GRID_SIZE - 1], [0, GRID_SIZE - 1], [GRID_SIZE - 1, 0]]) {
+      for (const r of [0, 1, 2, 3] as const) {
+        const matrix = placementMatrix(reach.footprint, x, z, r);
+        const g = mergeItems([{ model: reach.build(kit), matrix }], materials).body!;
+        const m = readMotion(g, 0);
+        const wantPivot = new THREE.Vector3(0.5, 5, -0.5).applyMatrix4(matrix);
+        expect(new THREE.Vector3(...m.pivot).distanceTo(wantPivot), `${x},${z} r${r}`).toBeLessThan(0.001);
+        expect(degrees(m.axis, new THREE.Vector3(...slanted).normalize().transformDirection(matrix)), `${x},${z} r${r}`).toBeLessThan(1);
+        expect(m.anim[0]).toBe(MOTION_CODE.swing);
+        expect(Math.abs(m.anim[1] - MOTION_LIMITS.amount)).toBeLessThanOrEqual(ANIM_STEP[1] / 2);
+        expect(Math.abs(m.anim[2] + MOTION_LIMITS.speed)).toBeLessThanOrEqual(ANIM_STEP[2] / 2);
+        expect(Math.abs(m.anim[3] - MOTION_LIMITS.phase)).toBeLessThanOrEqual(ANIM_STEP[3] / 2);
+      }
+    }
+  });
+
+  it('a quarter turn really turns the swing axis: x becomes -z or z', () => {
+    const m = mergeItems([at(animated, 4, 6, 1)], materials);
+    const axis = rows(m.glow!).find((row) => row.kind === MOTION_CODE.swing)!.axis;
+    expect(Math.abs(axis[0])).toBeCloseTo(0, 5);
+    expect(Math.abs(axis[2])).toBeCloseTo(1, 5);
+  });
+
+  it('still parts stay still: kind 0 and a zero axis; their pivot (the item origin) lands on the item in the world', () => {
+    const matrix = placementMatrix(item('bench').footprint, 8, 8, 1);
+    const m = mergeItems([{ model: item('bench').build(kit), matrix }], materials);
+    const origin = new THREE.Vector3().applyMatrix4(matrix);
+    expect(rows(m.body!)).toEqual([{ kind: 0, pivot: origin.toArray().map((v) => +v.toFixed(5) + 0), axis: [0, 0, 0] }]);
   });
 });

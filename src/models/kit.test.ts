@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { getStyleKit } from './kit';
+import { getStyleKit, type PartOpts, type Vec3 } from './kit';
+import { ANIM_STEP, CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, motionUniforms, readMotion } from './motion';
 import { PALETTE } from './palette';
 
 const kit = getStyleKit();
@@ -14,6 +15,8 @@ const size = (g: THREE.BufferGeometry) => box(g).getSize(new THREE.Vector3());
 const centre = (g: THREE.BufferGeometry) => box(g).getCenter(new THREE.Vector3());
 const tris = (g: THREE.BufferGeometry) => g.attributes.position.count / 3;
 const attrs = (g: THREE.BufferGeometry) => Object.keys(g.attributes).sort();
+const BODY_ATTRS = ['anim', 'axis', 'color', 'normal', 'pivot', 'position'];
+const GLOW_ATTRS = ['anim', 'axis', 'color', 'glowColor', 'normal', 'pivot', 'position'];
 
 /**
  * Faces whose winding (counter-clockwise seen from outside) or stored normal does not point away
@@ -74,7 +77,7 @@ describe('style kit wedge', () => {
     const col = p.geometry.attributes.color;
     expect(col.getX(0)).toBeCloseTo(want.r);
     expect(col.getZ(5)).toBeCloseTo(want.b);
-    expect(Object.keys(p.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(Object.keys(p.geometry.attributes).sort()).toEqual(GLOW_ATTRS);
     const g = kit.finish([p, kit.box([1, 1, 1], [0, 0, 0], 'red')]);
     expect(g.children).toHaveLength(2);
   });
@@ -96,7 +99,7 @@ describe('style kit glow colour', () => {
   it('body parts get no glowColor and finish merges body + both glow kinds', () => {
     const body = kit.box([1, 1, 1], [0, 0, 0], 'red');
     expect(body.glow).toBe(false);
-    expect(Object.keys(body.geometry.attributes).sort()).toEqual(['color', 'normal', 'position']);
+    expect(Object.keys(body.geometry.attributes).sort()).toEqual(BODY_ATTRS);
     const g = kit.finish([
       body,
       kit.box([1, 1, 1], [0, 0, 0], 'glassBlue', { glow: 'windowWarm' }),
@@ -104,10 +107,10 @@ describe('style kit glow colour', () => {
     ]);
     expect(g.children).toHaveLength(2);
     const glowMesh = g.children[1] as THREE.Mesh;
-    expect(Object.keys(glowMesh.geometry.attributes).sort()).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(Object.keys(glowMesh.geometry.attributes).sort()).toEqual(GLOW_ATTRS);
   });
   it('the glow shader emits glowColor, not vColor', () => {
-    const shader = { uniforms: {}, vertexShader: 'void main() {\n}', fragmentShader: 'vec3 totalEmissiveRadiance = emissive;' };
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
     kit.materials.glow.onBeforeCompile(shader as never, null as never);
     expect(shader.fragmentShader).toContain('vGlowColor * glowStrength');
     expect(shader.vertexShader).toContain('vGlowColor = glowColor');
@@ -159,10 +162,10 @@ describe('style kit scale', () => {
 });
 
 describe('style kit torus', () => {
-  it('is a low-poly ring in the x-y plane around `at`, with exactly position, normal and color', () => {
+  it('is a low-poly ring in the x-y plane around `at`, with exactly the body attributes', () => {
     const p = kit.torus(0.5, 0.1, [1, 2, 3], 'orange');
     const g = p.geometry;
-    expect(attrs(g)).toEqual(['color', 'normal', 'position']);
+    expect(attrs(g)).toEqual(BODY_ATTRS);
     expect(p.glow).toBe(false);
     expect(tris(g)).toBe(6 * 12 * 2);
     const b = box(g);
@@ -192,17 +195,17 @@ describe('style kit torus', () => {
   it('can glow', () => {
     const p = kit.torus(0.3, 0.05, [0, 0, 0], 'skyBlue', { glow: 'windowWarm' });
     expect(p.glow).toBe(true);
-    expect(attrs(p.geometry)).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(attrs(p.geometry)).toEqual(GLOW_ATTRS);
     expect(new THREE.Color().fromBufferAttribute(p.geometry.attributes.glowColor as THREE.BufferAttribute, 0).getHex())
       .toBe(new THREE.Color(PALETTE.windowWarm).getHex());
   });
 });
 
 describe('style kit dome', () => {
-  it('is a closed low-poly hemisphere standing on y = at[1], with exactly position, normal and color', () => {
+  it('is a closed low-poly hemisphere standing on y = at[1], with exactly the body attributes', () => {
     const p = kit.dome(0.5, [1, 2, 3], 'white');
     const g = p.geometry;
-    expect(attrs(g)).toEqual(['color', 'normal', 'position']);
+    expect(attrs(g)).toEqual(BODY_ATTRS);
     expect(p.glow).toBe(false);
     const b = box(g);
     expect(b.min.toArray().map((v) => +v.toFixed(6))).toEqual([0.5, 2, 2.5]);
@@ -235,8 +238,199 @@ describe('style kit dome', () => {
   it('can glow with its own colour', () => {
     const p = kit.dome(0.3, [0, 0, 0], 'lampWarm', { glow: true });
     expect(p.glow).toBe(true);
-    expect(attrs(p.geometry)).toEqual(['color', 'glowColor', 'normal', 'position']);
+    expect(attrs(p.geometry)).toEqual(GLOW_ATTRS);
     const g = kit.finish([p, kit.torus(0.3, 0.05, [0, 0.3, 0], 'navy')]);
     expect(g.children).toHaveLength(2);
   });
 });
+
+describe('style kit motion attributes', () => {
+  /** The distinct unpacked values (what the shader sees) of a motion attribute, as rounded arrays (anim to its step). */
+  const values = (g: THREE.BufferGeometry, name: 'anim' | 'pivot' | 'axis'): number[][] => {
+    const seen = new Map<string, number[]>();
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      const v = readMotion(g, i)[name].map((x) => +x.toFixed(name === 'anim' ? 3 : 5) + 0); // + 0: no -0
+      seen.set(v.join(','), v);
+    }
+    return [...seen.values()];
+  };
+  const bytesPerVertex = (g: THREE.BufferGeometry, names = Object.keys(g.attributes)) =>
+    names.reduce((sum, k) => sum + g.attributes[k].array.BYTES_PER_ELEMENT * g.attributes[k].itemSize, 0);
+
+  it('every part carries anim, pivot and axis, packed, one per vertex, all zero when static', () => {
+    for (const p of [kit.box([1, 1, 1], [0, 0.5, 0], 'red'), kit.sphere(0.3, [0, 1, 0], 'lampWarm', { glow: true })]) {
+      const g = p.geometry;
+      const n = g.attributes.position.count;
+      for (const name of ['anim', 'pivot', 'axis'] as const) {
+        const a = g.attributes[name] as THREE.BufferAttribute;
+        const f = MOTION_ATTRIBUTES[name];
+        expect(a.array, name).toBeInstanceOf(f.array);
+        expect([a.itemSize, a.normalized], name).toEqual([f.itemSize, f.normalized]);
+        expect(a.count).toBe(n);
+        expect(Array.from(a.array).every((v) => v === 0), name).toBe(true);
+      }
+    }
+  });
+
+  it('a body part takes 60 bytes a vertex and a glow part 72 (motion 24 of them, was 40)', () => {
+    const body = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { motion: { kind: 'sway' } }).geometry;
+    const glow = kit.box([0.2, 0.2, 0.2], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } }).geometry;
+    expect(bytesPerVertex(body, ['anim', 'pivot', 'axis'])).toBe(24);
+    expect(bytesPerVertex(glow, ['anim', 'pivot', 'axis'])).toBe(24);
+    expect(bytesPerVertex(body)).toBe(60);
+    expect(bytesPerVertex(glow)).toBe(72);
+  });
+
+  it('an animated part stores its kind code, amount, speed, phase, pivot and axis on every vertex', () => {
+    const p = kit.cylinder(0.3, 0.3, 0.1, [0, 0.4, 0], 'orange', {
+      motion: { kind: 'spin', pivot: [0, 0.4, 0], axis: [0, 2, 0], speed: 0.8, phase: 0.5 },
+    });
+    expect(values(p.geometry, 'anim')).toEqual([[MOTION_CODE.spin, 1, 0.8, 0.5]]);
+    expect(values(p.geometry, 'pivot')).toEqual([[0, 0.4, 0]]);
+    expect(values(p.geometry, 'axis')).toEqual([[0, 1, 0]]);
+  });
+
+  it('sway defaults its pivot to the base of the part, after scale and rotate', () => {
+    const p = kit.sphere(0.5, [0.1, 1.2, -0.2], 'leaf', { scale: [1, 0.6, 1], motion: { kind: 'sway' } });
+    const [pivot] = values(p.geometry, 'pivot');
+    expect(pivot[0]).toBeCloseTo(0.1);
+    expect(pivot[1]).toBeCloseTo(box(p.geometry).min.y, 4);
+    expect(pivot[1]).toBeLessThan(1.2 - 0.2);
+    expect(pivot[2]).toBeCloseTo(-0.2);
+    expect(values(p.geometry, 'axis')).toEqual([[0, 1, 0]]);
+    expect(values(p.geometry, 'anim')[0][0]).toBe(MOTION_CODE.sway);
+  });
+
+  it('kind codes for every kind, glow parts included', () => {
+    const code = (motion: NonNullable<PartOpts['motion']>, glow = false) =>
+      values(kit.box([0.2, 0.2, 0.2], [0, 1, 0], 'red', { motion, glow }).geometry, 'anim')[0][0];
+    expect(code({ kind: 'sway' })).toBe(1);
+    expect(code({ kind: 'wave', pivot: [0, 1, 0] })).toBe(2);
+    expect(code({ kind: 'spin' })).toBe(3);
+    expect(code({ kind: 'swing' }, true)).toBe(4);
+    expect(code({ kind: 'water' })).toBe(5);
+    expect(code({ kind: 'water', water: 'pool' })).toBe(6);
+  });
+
+  it('motion leaves positions, normals and colours exactly as without it', () => {
+    const plain = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { rotate: [0.2, 0.3, 0] }).geometry;
+    const moving = kit.cone(0.3, 0.8, [0, 0.4, 0], 'leaf', { rotate: [0.2, 0.3, 0], motion: { kind: 'sway' } }).geometry;
+    for (const name of ['position', 'normal', 'color']) {
+      expect(Array.from(moving.attributes[name].array)).toEqual(Array.from(plain.attributes[name].array));
+    }
+  });
+
+  it('rejects a bad motion with a style kit error', () => {
+    expect(() => kit.box([1, 1, 1], [0, 0.5, 0], 'red', { motion: { kind: 'spin', axis: [0, 0, 0] } })).toThrow(/style kit.*axis/);
+  });
+
+  it('finish merges static and animated parts into one body mesh with the same attributes', () => {
+    const g = kit.finish([
+      kit.cylinder(0.05, 0.05, 1, [0, 0.5, 0], 'bark'),
+      kit.sphere(0.4, [0, 1.3, 0], 'leaf', { motion: { kind: 'sway', pivot: [0, 1, 0] } }),
+      kit.box([0.1, 0.1, 0.1], [0, 1.8, 0], 'lampWarm', { glow: true, motion: { kind: 'sway', pivot: [0, 1, 0] } }),
+    ]);
+    expect(g.children).toHaveLength(2);
+    const [body, glow] = g.children as THREE.Mesh[];
+    expect(attrs(body.geometry)).toEqual(BODY_ATTRS);
+    expect(attrs(glow.geometry)).toEqual(GLOW_ATTRS);
+    expect(values(body.geometry, 'anim').map((v) => v[0]).sort()).toEqual([0, MOTION_CODE.sway]);
+  });
+
+  it('finish pads the bounding sphere of a moving mesh, not of a still one', () => {
+    const still = kit.finish([kit.sphere(0.4, [0, 0.4, 0], 'leaf')]).children[0] as THREE.Mesh;
+    const moving = kit.finish([kit.sphere(0.4, [0, 0.4, 0], 'leaf', { motion: { kind: 'sway' } })]).children[0] as THREE.Mesh;
+    const exact = moving.geometry.clone();
+    exact.computeBoundingSphere();
+    expect(moving.geometry.boundingSphere!.radius).toBeCloseTo(exact.boundingSphere!.radius + CULL_MARGIN);
+    expect(still.geometry.boundingSphere).toBeNull(); // three computes the exact one when it first culls
+  });
+});
+
+describe('style kit materials', () => {
+  const standard = () => ({
+    uniforms: {} as Record<string, THREE.IUniform>,
+    vertexShader: THREE.ShaderLib.standard.vertexShader,
+    fragmentShader: THREE.ShaderLib.standard.fragmentShader,
+  });
+  it('both materials get the motion shader and share the motion uniforms', () => {
+    for (const m of [kit.materials.body, kit.materials.glow]) {
+      const s = standard();
+      m.onBeforeCompile(s as never, null as never);
+      expect(s.vertexShader).toContain('attribute vec4 anim;');
+      expect(s.vertexShader).toContain('transformed = motionRest');
+      expect(s.uniforms.uTime).toBe(motionUniforms.uTime);
+    }
+  });
+  it('the two materials never share a compiled program', () => {
+    const { body, glow } = kit.materials;
+    expect(body.customProgramCacheKey()).not.toBe(glow.customProgramCacheKey());
+  });
+  it('the body material draws water (pond glints, pool glow); glow parts never carry water', () => {
+    const body = standard();
+    kit.materials.body.onBeforeCompile(body as never, null as never);
+    expect(body.fragmentShader).toContain('int waterKind');
+    expect(body.uniforms.uMoon).toBe(motionUniforms.uMoon);
+    const glow = standard();
+    kit.materials.glow.onBeforeCompile(glow as never, null as never);
+    expect(glow.fragmentShader).not.toContain('int waterKind');
+    expect(() => kit.box([1, 0.1, 1], [0, 0.05, 0], 'skyBlue', { glow: true, motion: { kind: 'water', water: 'pool' } })).toThrow(/style kit: water/);
+    expect(() => kit.box([1, 0.1, 1], [0, 0.05, 0], 'skyBlue', { motion: { kind: 'water', water: 'pool' } })).not.toThrow();
+  });
+});
+
+describe('style kit light patterns', () => {
+  it('default and steady lights leave anim untouched; patterns pack beside the motion code', () => {
+    const a = (p: ReturnType<typeof kit.box>) => readMotion(p.geometry, 0).anim;
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true }))).toEqual([0, 0, 0, 0]);
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'steady' }))).toEqual([0, 0, 0, 0]);
+    expect(a(kit.box([1, 1, 1], [0, 0, 0], 'lampWarm', { glow: true, light: 'breathe' }))[0]).toBe(LIGHT_STRIDE * LIGHT_CODE.breathe);
+    const both = a(kit.box([1, 1, 1], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } }));
+    expect(both[0]).toBe(MOTION_CODE.swing + LIGHT_STRIDE * LIGHT_CODE.blink);
+    expect(both[1]).toBeGreaterThan(0);
+  });
+  it('window panes get their own phase, repeatable per position', () => {
+    const phase = (x: number) => readMotion(kit.box([1, 1, 1], [x, 1, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' }).geometry, 0).anim[3];
+    expect(phase(0)).toBe(phase(0));
+    expect(phase(0)).not.toBe(phase(1.5));
+  });
+  it('a window pane keeps its hashed phase through the packing (within half a phase step), on top of the part phase', () => {
+    // kit.ts: pane = 6.2831853 * hash2(at.x * 12.9898 + at.z * 78.233, at.y * 37.719)
+    const hash2 = (a: number, b: number) => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v); };
+    for (const at of [[0, 1, 0], [0.37, 2.5, -1.2], [-1.5, 4.9, 1.5], [1.1, 0.2, 0.9]] as Vec3[]) {
+      for (const phase of [0, MOTION_LIMITS.phase, -MOTION_LIMITS.phase]) {
+        const p = kit.box([0.2, 0.2, 0.2], at, 'glassBlue', { glow: 'windowWarm', light: 'window', motion: { kind: 'swing', phase } });
+        const want = phase + 6.2831853 * hash2(at[0] * 12.9898 + at[2] * 78.233, at[1] * 37.719);
+        expect(Math.abs(readMotion(p.geometry, 0).anim[3] - want)).toBeLessThanOrEqual(ANIM_STEP[3] / 2);
+      }
+    }
+  });
+  it('a light on a non-glow part is an error, and a glow-moving part still counts as moving', () => {
+    expect(() => kit.box([1, 1, 1], [0, 0, 0], 'wood', { light: 'blink' })).toThrow(/glow/);
+    const g = kit.finish([kit.box([1, 1, 1], [0, 1, 0], 'lampWarm', { glow: true, light: 'blink', motion: { kind: 'swing' } })]);
+    expect((g.children[0] as THREE.Mesh).geometry.boundingSphere!.radius).toBeGreaterThan(0.86 + CULL_MARGIN - 0.2);
+  });
+  it('the glow shader multiplies the strength by the light pattern', () => {
+    const s = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    kit.materials.glow.onBeforeCompile(s as never, null as never);
+    expect(s.fragmentShader).toContain('glowStrength * vLight');
+  });
+});
+
+describe('light phase per item', () => {
+  it('identical light-only parts in different places get different phase inputs after merging', async () => {
+    const { mergeItems, placementMatrix } = await import('../render/batch');
+    const mk = () => kit.finish([kit.box([0.3, 0.3, 0.1], [0, 0.5, 0], 'glassBlue', { glow: 'windowWarm', light: 'window' })]);
+    const merged = mergeItems(
+      [{ model: mk(), matrix: placementMatrix({ w: 1, d: 1 }, 2, 3, 0) }, { model: mk(), matrix: placementMatrix({ w: 1, d: 1 }, 7, 5, 0) }],
+      kit.materials);
+    const piv = merged.glow!.attributes.pivot;
+    const n = piv.count / 2;
+    expect([piv.getX(0), piv.getZ(0)]).not.toEqual([piv.getX(n), piv.getZ(n)]);
+    expect(piv.getY(0)).toBeCloseTo(0.5);
+    // the same pivot hashes drive the shader phase: world xz differ, so the hashes differ
+    const hash = (x: number, z: number) => { const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return v - Math.floor(v); };
+    expect(hash(piv.getX(0), piv.getZ(0))).not.toBeCloseTo(hash(piv.getX(n), piv.getZ(n)), 3);
+  });
+});
+

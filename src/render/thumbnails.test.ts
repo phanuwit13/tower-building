@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { getStyleKit } from '../models/kit';
+import { advanceMotion, motionUniforms } from '../models/motion';
 import type { ItemModel } from '../models/contract';
+import type { FloorTile } from '../floors/types';
 import { createThumbnailer, type ThumbGl } from './thumbnails';
 
 const kit = getStyleKit();
@@ -46,6 +48,22 @@ describe('thumbnailer', () => {
     kit.setGlowStrength(0);
   });
 
+  it('renders with motion frozen (time 0, motion off) and restores the shared clock', () => {
+    advanceMotion(5000);
+    let seen = { time: -1, motion: -1 };
+    const gl = fakeGl(() => { seen = { time: motionUniforms.uTime.value, motion: motionUniforms.uMotion.value }; });
+    createThumbnailer(kit, () => gl).get(item('swing'));
+    expect(seen).toEqual({ time: 0, motion: 0 });
+    expect(motionUniforms.uTime.value).toBeCloseTo(5);
+    expect(motionUniforms.uMotion.value).toBe(1);
+    // a throwing render restores it too
+    const bad = fakeGl(() => { throw new Error('context lost'); });
+    createThumbnailer(kit, () => bad).get(item('y'));
+    expect(motionUniforms.uTime.value).toBeCloseTo(5);
+    expect(motionUniforms.uMotion.value).toBe(1);
+    motionUniforms.uTime.value = 0;
+  });
+
   it('one failing item returns "" once and does not disable the others; scene is cleaned', () => {
     const gl = fakeGl();
     const t = createThumbnailer(kit, () => gl);
@@ -66,6 +84,19 @@ describe('thumbnailer', () => {
     expect(gl.scene.children).toHaveLength(0);
     expect(kit.getGlowStrength()).toBe(0.5);
     kit.setGlowStrength(0);
+  });
+
+  it('thumbnails floor tiles too (the drawer swatches), cached per tile', () => {
+    const gl = fakeGl();
+    const t = createThumbnailer(kit, () => gl);
+    const tile: FloorTile = {
+      id: 'slab', name: 'แผ่นปูน', group: 'tile',
+      build: (k) => k.finish([k.box([1, 0.02, 1], [0, 0.01, 0], 'cream')]),
+    };
+    const url = t.get(tile);
+    expect(url).toMatch(/^data:image\/png/);
+    expect(t.get(tile)).toBe(url);
+    expect(gl.renders).toBe(1);
   });
 
   it('WebGL init failure disables thumbnails and is tried only once', () => {
