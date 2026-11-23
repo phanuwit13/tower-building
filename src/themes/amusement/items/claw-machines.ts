@@ -39,7 +39,7 @@ export const item: ItemModel = {
         // prize hatch on the +x face
         ...wallPanel(kit, { at: [DECK.x1 - 0.02, 0.14, zc], facing: 'x+', w: 0.3, h: 0.14, depth: 0.02, color: 'charcoal' }),
         // joystick and buttons
-        kit.cylinder(0.014, 0.018, 0.08, [0.4, BASE_H - 0.06 + 0.06, zc - 0.15], 'chrome', { segments: 6 }),
+        kit.cylinder(0.014, 0.018, 0.08, [0.4, BASE_H - 0.02, zc - 0.15], 'chrome', { segments: 6 }),
         kit.sphere(0.04, [0.4, BASE_H + 0.05, zc - 0.15], 'red', { detail: 0 }),
         kit.cylinder(0.035, 0.035, 0.03, [0.42, BASE_H - 0.06 + 0.025, zc + 0.12], 'sunYellow', { segments: 8 }),
         kit.cylinder(0.035, 0.035, 0.03, [0.42, BASE_H - 0.06 + 0.025, zc + 0.24], 'lime', { segments: 8 }),
@@ -71,12 +71,12 @@ export const item: ItemModel = {
       const clawZ = zc + 0.1;
       parts.push(
         kit.box([0.16, 0.06, 0.12], [clawX, top - 0.09, clawZ], 'charcoal'),
-        kit.cylinder(0.012, 0.012, 0.2, [clawX, top - 0.22, clawZ], 'stoneDark', { segments: 4 }),
-        kit.sphere(0.04, [clawX, top - 0.33, clawZ], 'chrome', { detail: 0 }),
+        kit.cylinder(0.012, 0.012, 0.12, [clawX, top - 0.18, clawZ], 'stoneDark', { segments: 4 }),
+        kit.sphere(0.04, [clawX, top - 0.25, clawZ], 'chrome', { detail: 0 }),
       );
       for (let k = 0; k < 3; k++) {
         const a = (k / 3) * Math.PI * 2;
-        parts.push(rod(kit, [clawX + Math.cos(a) * 0.02, top - 0.34, clawZ + Math.sin(a) * 0.02], [clawX + Math.cos(a) * 0.075, top - 0.45, clawZ + Math.sin(a) * 0.075], 0.012, 'chrome', { segments: 4 }));
+        parts.push(rod(kit, [clawX + Math.cos(a) * 0.02, top - 0.26, clawZ + Math.sin(a) * 0.02], [clawX + Math.cos(a) * 0.075, top - 0.37, clawZ + Math.sin(a) * 0.075], 0.012, 'chrome', { segments: 4 }));
       }
       // marquee on top, bulbs that blink
       parts.push(

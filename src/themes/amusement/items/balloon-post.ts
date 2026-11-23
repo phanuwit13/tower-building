@@ -2,7 +2,7 @@ import type { ItemModel } from '../../../models/contract';
 import type { MotionOpts } from '../../../models/motion';
 import type { Part } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
-import { rod } from '../../../models/parts';
+import { aim } from '../../../models/parts';
 
 // A wooden post on a round stone base (1x1) with a bunch of balloons tied to it with strings. The strings and
 // balloons sway together about the knot where they are tied.
@@ -38,7 +38,12 @@ export const item: ItemModel = {
       const bottom = b.y - BALLOON.r * BALLOON.stretch;
       parts.push(
         kit.sphere(BALLOON.r, [b.x, b.y, b.z], b.color, { scale: [1, BALLOON.stretch, 1], motion: SWAY }),
-        rod(kit, [KNOT[0], KNOT[1], KNOT[2]], [b.x, bottom, b.z], 0.007, 'white', { segments: 4 }),
+        // string: a thin cylinder from the knot to the balloon, swaying about the same pivot as the balloon
+        kit.cylinder(0.007, 0.007, Math.hypot(b.x, bottom - KNOT[1], b.z), [b.x / 2, (KNOT[1] + bottom) / 2, b.z / 2], 'white', {
+          segments: 4,
+          rotate: aim([b.x, bottom - KNOT[1], b.z]),
+          motion: SWAY,
+        }),
       );
     }
     return kit.finish(parts);
