@@ -4,7 +4,7 @@ import type { Part } from '../../../models/kit';
 // A folding screen of four pastel panels zig-zagging along z, with a simple picture on each face.
 const PANEL = { w: 0.5, h: 0.95, t: 0.04, foot: 0.1 };
 const ANGLE = 0.55; // yaw of each panel, alternating
-const PITCH = 0.42; // step along z between panel centres
+const PITCH = PANEL.w * Math.cos(ANGLE); // step along z between panel centres: the hinges meet
 const COLS = ['mint', 'pink', 'glassBlue', 'lime'] as const;
 const PICS = ['sunYellow', 'orange', 'purple', 'white'] as const;
 
@@ -20,7 +20,7 @@ export const item: ItemModel = {
       const sgn = i % 2 ? 1 : -1;
       const yaw = sgn * ANGLE;
       const z = (i - 1.5) * PITCH;
-      const x = sgn * 0.12;
+      const x = 0; // one x for every panel, so the hinges meet
       parts.push(
         kit.box([PANEL.t, PANEL.h, PANEL.w], [x, PANEL.foot + PANEL.h / 2, z], COLS[i], { rotate: [0, yaw, 0] }),
         kit.box([PANEL.t + 0.03, 0.05, PANEL.w + 0.02], [x, PANEL.foot + PANEL.h + 0.025, z], 'white', { rotate: [0, yaw, 0] }),

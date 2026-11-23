@@ -66,9 +66,9 @@ export const item: ItemModel = {
     const A = 0.5;
     const PW = 0.3;
     for (let i = 0; i < 3; i++) {
-      const z = -0.76 + i * 0.27;
+      const z = -0.76 + i * PW * Math.cos(A);
       const yaw = i % 2 ? A : -A;
-      const x = SCREEN_X + (i % 2 ? 0.07 : -0.07);
+      const x = SCREEN_X; // one x for every panel, so the hinges meet
       parts.push(
         kit.box([0.04, 0.95, PW], [x, 0.1 + 0.475, z], cols[i], { rotate: [0, yaw, 0] }),
         kit.box([0.06, 0.05, PW + 0.02], [x, 1.07, z], 'white', { rotate: [0, yaw, 0] }),
