@@ -38,7 +38,7 @@ describe('toolbar and shortcuts strings', () => {
 
 describe('one city per theme', () => {
   it('the 🏠 button and the theme select badge, verbatim', () => {
-    expect(T.home).toBe('🏠 เปลี่ยนธีม');
+    expect(T.home).toBe('เปลี่ยนธีม'); // the HUD button draws a house icon before it
     expect(builtLabel(32)).toBe('สร้างแล้ว 32 ชิ้น');
     expect(T.cityDone).toBe('เมืองเสร็จแล้ว');
     expect(T.floorsOnly).toBe('ปูกระเบื้องไว้แล้ว');

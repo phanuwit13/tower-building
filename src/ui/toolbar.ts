@@ -4,6 +4,7 @@ import {
 } from '../game/types';
 import { button, el } from './dom';
 import { focusForKeyboard, focusReturn, trapTab } from './focus';
+import { ICONS, lineIcon } from './icons';
 import { T } from './strings';
 
 export interface ToolbarView { settings: SceneSettings; quality: QualityTier }
@@ -16,8 +17,8 @@ export interface ToolbarHandlers {
 }
 
 /** The time icon shows the current time of day. */
-export const TIME_ICON: Record<TimeId, string> = { dawn: '🌅', day: '☀️', dusk: '🌇', night: '🌙' };
-const QUALITY_ICON: Record<QualityTier, string> = { pretty: '✨', smooth: '⚡' };
+export const TIME_ICON: Record<TimeId, readonly string[]> = { dawn: ICONS.sunrise, day: ICONS.sun, dusk: ICONS.sunset, night: ICONS.moon };
+export const QUALITY_ICON: Record<QualityTier, readonly string[]> = { pretty: ICONS.sparkles, smooth: ICONS.zap };
 const GROUND_COLOUR: Record<GroundId, string> = {
   grass: '#7bc96f', dirt: '#a0724a', concrete: '#9aa0a6', sand: '#e6d08a', snow: '#f4f8fb', wood: '#b98a54', moon: '#b8b8c4',
 };
@@ -30,12 +31,15 @@ export const nextQuality = (q: QualityTier): QualityTier => QUALITY_TIERS[(QUALI
 
 interface Tool { btn: HTMLButtonElement; icon: HTMLElement; label: HTMLElement }
 
-/** An icon button: the emoji is decoration; the Thai name is the aria-label and the title, and shows as a small label on hover, focus and long-press. */
+/** An icon button: the line icon is decoration; the Thai name is the aria-label and the title, and shows as a small label on hover, focus and long-press. */
 function tool(cls: string, onClick: () => void): Tool {
   const icon = el('span', { class: 'tb-icon', attrs: { 'aria-hidden': 'true' } });
   const label = el('span', { class: 'tb-label', attrs: { 'aria-hidden': 'true' } });
   const btn = el('button', { class: `tb-btn ${cls}`, attrs: { type: 'button' }, onClick }, [icon, label]);
   return { btn, icon, label };
+}
+function setIcon(t: Tool, paths: readonly string[]): void {
+  t.icon.replaceChildren(lineIcon(paths));
 }
 function name(t: Tool, text: string): void {
   if (t.btn.getAttribute('aria-label') === text) return;
@@ -59,8 +63,8 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
   const rain = tool('tb-rain', () => h.onWeather(view.settings.weather === 'rain' ? 'sunny' : 'rain'));
   const ground = tool('tb-ground', () => toggle('ground', ground.btn));
   const quality = tool('tb-quality', () => h.onQuality(nextQuality(view.quality)));
-  rain.icon.textContent = '🌧️';
-  ground.icon.textContent = '🗺️';
+  setIcon(rain, ICONS.rain);
+  setIcon(ground, ICONS.groundFill);
   name(rain, T.weather.rain);
   name(ground, T.ground.title);
   ground.btn.setAttribute('aria-haspopup', 'true');
@@ -81,12 +85,12 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
   const items = [h.onRestart ? button(T.restart, () => { closePopovers(); h.onRestart!(); }, 'tb-item tb-restart') : null,
     h.onClear ? button(T.clear, () => { closePopovers(); h.onClear!(); }, 'tb-item tb-clear') : null];
   const morePop = more ? el('div', { class: 'tb-pop tb-pop-more', attrs: { role: 'group', 'aria-label': T.toolbar.more } }, items) : null;
-  if (more) { more.icon.textContent = '⋯'; name(more, T.toolbar.more); more.btn.setAttribute('aria-haspopup', 'true'); }
+  if (more) { setIcon(more, ICONS.more); name(more, T.toolbar.more); more.btn.setAttribute('aria-haspopup', 'true'); }
 
   const shot = h.onScreenshot ? tool('tb-shot', h.onScreenshot) : null;
-  if (shot) { shot.icon.textContent = '📷'; name(shot, T.screenshot); }
+  if (shot) { setIcon(shot, ICONS.camera); name(shot, T.screenshot); }
   const keys = h.onShortcuts ? tool('tb-keys', () => { closePopovers(); h.onShortcuts!(); }) : null;
-  if (keys) { keys.icon.textContent = '⌨️'; name(keys, T.toolbar.shortcuts); }
+  if (keys) { setIcon(keys, ICONS.keyboard); name(keys, T.toolbar.shortcuts); }
 
   const tools = [time, rain, ground, quality, shot, keys, more].filter((t): t is Tool => t !== null);
   const row = el('div', { class: 'tb-row' }, tools.map((t) => t.btn));
@@ -173,11 +177,11 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
       if (same) return;
       drawn = true;
       const { settings, quality: q } = v;
-      time.icon.textContent = TIME_ICON[settings.time];
+      setIcon(time, TIME_ICON[settings.time]);
       name(time, `${T.time.title}: ${T.time[settings.time]}`);
       rain.btn.setAttribute('aria-pressed', String(settings.weather === 'rain'));
       rain.btn.classList.toggle('on', settings.weather === 'rain');
-      quality.icon.textContent = QUALITY_ICON[q];
+      setIcon(quality, QUALITY_ICON[q]);
       name(quality, `${T.quality.title}: ${T.quality[q]}`);
       for (const [id, b] of swatches) {
         b.setAttribute('aria-pressed', String(id === settings.ground));
