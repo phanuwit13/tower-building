@@ -38,12 +38,12 @@ export const item: ItemModel = {
       kit.box([SHOP.w + 0.02, 0.06, SHOP.d + 0.02], [SHOP.x, TOP - 0.1, 0], 'red'),
     ];
     // ball neon: a ring with seam lines on a navy board
-    const ringX = SIGN.x + SIGN.w / 2 + 0.03;
+    const ringX = SIGN.x + SIGN.w / 2 + 0.05;
     parts.push(
       kit.box([SIGN.w, SIGN.h, SIGN.d], [SIGN.x, SIGN.y, 0], 'navy'),
-      kit.torus(BALL_R, 0.03, [ringX, SIGN.y, 0], 'orange', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
-      kit.box([0.04, 0.03, BALL_R * 2], [ringX, SIGN.y, 0], 'orange', { glow: true }),
-      kit.box([0.04, BALL_R * 2, 0.03], [ringX, SIGN.y, 0], 'orange', { glow: true }),
+      kit.torus(BALL_R, 0.05, [ringX, SIGN.y, 0], 'orange', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: true }),
+      kit.box([0.06, 0.05, BALL_R * 2], [ringX, SIGN.y, 0], 'orange', { glow: true }),
+      kit.box([0.06, BALL_R * 2, 0.05], [ringX, SIGN.y, 0], 'orange', { glow: true }),
     );
     // display crate with balls, plus two rackets leaning by the wall
     parts.push(kit.box([0.3, 0.16, 0.6], [0.55, BASE_H + 0.08, -0.52], 'wood'), kit.box([0.32, 0.03, 0.62], [0.55, BASE_H + 0.175, -0.52], 'woodDark'));

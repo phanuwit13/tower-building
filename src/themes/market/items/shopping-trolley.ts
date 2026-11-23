@@ -45,7 +45,12 @@ export const item: ItemModel = {
       kit.box([w - 0.1, 0.03, 0.04], [x, 0.14, 0.2], 'charcoal'),
       rod(kit, [x0 + 0.02, y1, -zh], [x0 - 0.1, y1 + 0.18, -0.2], 0.014, 'stoneDark', { segments: 4 }),
       rod(kit, [x0 + 0.02, y1, zh], [x0 - 0.1, y1 + 0.18, 0.2], 0.014, 'stoneDark', { segments: 4 }),
-      kit.cylinder(0.025, 0.025, 0.46, [x0 - 0.1, y1 + 0.18, 0], 'red', { segments: 6, rotate: [Math.PI / 2, 0, 0] }),
+      kit.cylinder(0.025, 0.025, 0.46, [x0 - 0.1, y1 + 0.18, 0], 'red', { segments: 6, rotate: [Math.PI / 2, 0, 0], glow: true, light: 'breathe' }),
+      // glowing coin lock on the handle and fairy bulbs on the front rail
+      kit.sphere(0.045, [x0 - 0.1, y1 + 0.26, 0], 'sunYellow', { detail: 0, glow: true, light: 'breathe' }),
+      kit.sphere(0.035, [x1, y1, -0.15], 'pink', { detail: 0, glow: true, light: 'breathe' }),
+      kit.sphere(0.035, [x1, y1, 0], 'lime', { detail: 0, glow: true, light: 'breathe' }),
+      kit.sphere(0.035, [x1, y1, 0.15], 'orange', { detail: 0, glow: true, light: 'breathe' }),
     );
     for (const wx of [x0 + 0.08, x1 - 0.08]) {
       for (const wz of [-0.2, 0.2]) {

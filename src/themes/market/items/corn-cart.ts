@@ -10,6 +10,7 @@ const POT = { r: 0.17, h: 0.3, z: 0.3 };
 const POLE_Z = -0.3;
 const COB_R = 0.035;
 const COB_LEN = 0.22;
+const RIM_BULBS = 8;
 
 /** รถเข็นข้าวโพด: a yellow cart with steaming corn and a lamp. */
 export const item: ItemModel = {
@@ -63,8 +64,11 @@ export const item: ItemModel = {
       kit.cone(0.46, 0.2, [0, canopyY, POLE_Z], 'white', { segments: 6, rotate: [0, Math.PI / 6, 0], scale: [0.99, 1.01, 0.99] }),
       kit.sphere(0.06, [0, canopyY + 0.14, POLE_Z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
     );
-    for (const a of [0.4, 2.0, 3.6, 5.2]) {
-      parts.push(kit.sphere(0.035, [0.4 * Math.cos(a), canopyY - 0.12, POLE_Z + 0.4 * Math.sin(a)], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }));
+    // coloured bulbs round the parasol rim, where the camera sees them
+    const rimColors = ['red', 'sunYellow', 'pink', 'lime'] as const;
+    for (let i = 0; i < RIM_BULBS; i++) {
+      const a = (i / RIM_BULBS) * Math.PI * 2;
+      parts.push(kit.sphere(0.04, [0.44 * Math.cos(a), canopyY - 0.08, POLE_Z + 0.44 * Math.sin(a)], rimColors[i % rimColors.length], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: RIM_BULBS } }));
     }
     return kit.finish(parts);
   },

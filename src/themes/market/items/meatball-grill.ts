@@ -11,7 +11,7 @@ const COAL_TOP = TOP + 0.08 + 0.03;
 const SKEWER_Z = [0.1, 0.22, 0.34, 0.46];
 const BALL_X = [-0.15, -0.05, 0.05, 0.15];
 const POLE_Z = -0.3;
-const BULBS = 5;
+const RIM_BULBS = 8;
 
 /** แผงลูกชิ้นปิ้ง: a grilled-meatball cart, skewers over glowing charcoal. */
 export const item: ItemModel = {
@@ -54,9 +54,11 @@ export const item: ItemModel = {
       kit.cone(0.46, 0.2, [0, canopyY, POLE_Z], 'red', { segments: 6, rotate: [0, Math.PI / 6, 0], scale: [0.99, 1.01, 0.99] }),
       kit.sphere(0.06, [0, canopyY + 0.14, POLE_Z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
     );
-    for (let i = 0; i < BULBS; i++) {
-      const a = (i / BULBS) * Math.PI * 2 + 0.3;
-      parts.push(kit.sphere(0.035, [0.4 * Math.cos(a), canopyY - 0.12, POLE_Z + 0.4 * Math.sin(a)], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }));
+    // coloured bulbs round the parasol rim, where the camera sees them
+    const rimColors = ['red', 'sunYellow', 'pink', 'lime'] as const;
+    for (let i = 0; i < RIM_BULBS; i++) {
+      const a = (i / RIM_BULBS) * Math.PI * 2;
+      parts.push(kit.sphere(0.04, [0.44 * Math.cos(a), canopyY - 0.08, POLE_Z + 0.44 * Math.sin(a)], rimColors[i % rimColors.length], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: RIM_BULBS } }));
     }
     return kit.finish(parts);
   },

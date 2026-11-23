@@ -43,6 +43,12 @@ export const item: ItemModel = {
       kit.cylinder(0.05, 0.06, 0.07, [0.03, fy + 0.035, -PAN.z], 'charcoal', { segments: 8 }),
       kit.cylinder(0.035, 0.04, 0.06, [-0.07, fy + 0.03, -PAN.z + 0.03], 'charcoal', { segments: 8 }),
     );
+    // a little lantern on the crate
+    parts.push(
+      kit.cylinder(0.05, 0.05, 0.03, [-0.17, CRATE.h + 0.015, -0.12], 'charcoal', { segments: 8 }),
+      kit.sphere(0.07, [-0.17, CRATE.h + 0.03 + 0.07, -0.12], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
+      kit.cone(0.06, 0.04, [-0.17, CRATE.h + 0.03 + 0.15, -0.12], 'charcoal', { segments: 8 }),
+    );
     // a spare mango sitting on the crate
     parts.push(kit.sphere(0.07, [0.17, CRATE.h + 0.07 * 0.9 * 0.851 + 0.003, 0.17], 'sunYellow', { detail: 0, scale: [1, 0.9, 1.2] }));
     return kit.finish(parts);

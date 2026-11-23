@@ -8,6 +8,7 @@ const POST_X = 0.25;
 const POST_Z = 0.65;
 const ROOF_Y = 1.08;
 const STRIPES = 7;
+const EDGE_BULBS = 8;
 const JUGS = [
   { z: -0.5, color: 'orange' },
   { z: -0.25, color: 'red' },
@@ -67,7 +68,12 @@ export const item: ItemModel = {
       kit.cylinder(0.01, 0.01, 0.16, [0.2, ROOF_Y - 0.12, 0], 'stoneDark', { segments: 4 }),
       kit.sphere(0.075, [0.2, ROOF_Y - 0.25, 0], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }),
     );
-    for (const z of [-0.5, -0.25, 0.25, 0.5]) parts.push(kit.sphere(0.04, [0.2, ROOF_Y - 0.1, z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }));
+    // coloured bulbs along the front roof edge, where the camera sees them
+    const edgeColors = ['red', 'sunYellow', 'pink', 'lime'] as const;
+    for (let i = 0; i < EDGE_BULBS; i++) {
+      const z = -0.62 + (i * 1.24) / (EDGE_BULBS - 1);
+      parts.push(kit.sphere(0.045, [0.43, ROOF_Y - 0.1, z], edgeColors[i % edgeColors.length], { detail: 0, glow: true, light: 'chase', chase: { index: i, count: EDGE_BULBS } }));
+    }
     return kit.finish(parts);
   },
 };
