@@ -8,6 +8,9 @@ const RISE = 0.3;
 const HALF_X = 0.72; // walls at x = -HALF_X (back) ; open on +x
 const HALF_Z = 0.82;
 const FRONT_X = 0.45; // the front posts stand back so the racks show
+const PITCH = Math.atan2(RISE, HALF_Z);
+// slat centre: 0.09 (slab 0.08 + half a slat) off the roof's top face, 0.4 across from the ridge
+const SLAT = { z: 0.4 + 0.09 * Math.sin(PITCH), y: WALL_TOP + RISE - 0.4 * Math.tan(PITCH) + 0.09 * Math.cos(PITCH) };
 const LEVELS = [0.2, 0.43, 0.66];
 const CAPS: PaletteColor[] = ['cream', 'sand', 'orange', 'cream'];
 
@@ -33,7 +36,7 @@ export const item: ItemModel = {
     );
     // slats across the green shade-net roof
     for (let i = 0; i < 5; i++) {
-      for (const sgn of [-1, 1]) parts.push(kit.box([0.05, 0.02, 0.64], [-0.8 + i * 0.28, WALL_TOP + 0.2, sgn * 0.37], 'leaf', { rotate: [sgn * 0.0, 0, 0] }));
+      for (const sgn of [-1, 1]) parts.push(kit.box([0.05, 0.02, 0.64], [-0.8 + i * 0.28, SLAT.y, sgn * SLAT.z], 'leaf', { rotate: [sgn * PITCH, 0, 0] }));
     }
     // two racks of mushroom bags
     for (const rx of [-0.45, 0.12]) {
