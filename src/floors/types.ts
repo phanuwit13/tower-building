@@ -21,5 +21,11 @@ export interface FloorTile {
   id: string;
   name: string;
   group: FloorGroup;
-  build(kit: StyleKit): THREE.Object3D;
+  /**
+   * How many looks the tile has (default 1). Each cell shows the look its position picks
+   * (cellVariant), so a wide area of a loose surface such as sand never repeats one pattern.
+   */
+  variants?: number;
+  /** Draws look `variant` (0 when left out: the thumbnail, the preview). Every look obeys the tile rules. */
+  build(kit: StyleKit, variant?: number): THREE.Object3D;
 }

@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AppState } from '../app/controller';
 import { emptyFloors } from '../game/floors';
 import { GRID_SIZE } from '../game/types';
+import { getFloorTile } from '../floors';
 import { getStyleKit } from '../models/kit';
 import { CHUNKS_PER_SIDE } from './batch';
-import { changedFloorChunks, createFloorLayer, floorChunkOf } from './floors';
+import { cellVariant, changedFloorChunks, createFloorLayer, floorChunkOf } from './floors';
 import type { Stage } from './stage';
 
 const kit = getStyleKit();
@@ -18,6 +19,38 @@ describe('floorChunkOf', () => {
     expect(floorChunkOf(cell(GRID_SIZE - 1, 0))).toBe(CHUNKS_PER_SIDE - 1);
     expect(floorChunkOf(cell(0, GRID_SIZE - 1))).toBe(CHUNKS_PER_SIDE * (CHUNKS_PER_SIDE - 1));
     expect(floorChunkOf(cell(GRID_SIZE - 1, GRID_SIZE - 1))).toBe(CHUNKS_PER_SIDE * CHUNKS_PER_SIDE - 1);
+  });
+});
+
+describe('cellVariant', () => {
+  it('is 0 for a tile with one look; otherwise in range, and always the same for a cell', () => {
+    expect(cellVariant(3, 4, 1)).toBe(0);
+    expect(cellVariant(3, 4, undefined)).toBe(0);
+    for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+      const v = cellVariant(i % GRID_SIZE, Math.floor(i / GRID_SIZE), 5);
+      expect(Number.isInteger(v) && v >= 0 && v < 5).toBe(true);
+      expect(cellVariant(i % GRID_SIZE, Math.floor(i / GRID_SIZE), 5)).toBe(v);
+    }
+  });
+  it('spreads the looks over the map: each shows, most neighbours differ, and no row or column repeats', () => {
+    const n = 5;
+    const v = (x: number, z: number) => cellVariant(x, z, n);
+    const counts = new Array<number>(n).fill(0);
+    let pairs = 0;
+    let same = 0;
+    for (let z = 0; z < GRID_SIZE; z++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        counts[v(x, z)]++;
+        if (x > 0) { pairs++; if (v(x, z) === v(x - 1, z)) same++; }
+        if (z > 0) { pairs++; if (v(x, z) === v(x, z - 1)) same++; }
+      }
+    }
+    for (const c of counts) expect(c).toBeGreaterThan((GRID_SIZE * GRID_SIZE) / n / 2);
+    expect(same / pairs).toBeLessThan(0.3);
+    const row = (z: number) => Array.from({ length: GRID_SIZE }, (_, x) => v(x, z)).join();
+    const col = (x: number) => Array.from({ length: GRID_SIZE }, (_, z) => v(x, z)).join();
+    expect(new Set(Array.from({ length: GRID_SIZE }, (_, z) => row(z))).size).toBe(GRID_SIZE);
+    expect(new Set(Array.from({ length: GRID_SIZE }, (_, x) => col(x))).size).toBe(GRID_SIZE);
   });
 });
 
@@ -119,6 +152,28 @@ describe('floor layer', () => {
     layer.sync(state(f));
     layer.sync(state(null));
     expect(chunkMeshes()).toHaveLength(0);
+  });
+  it('draws a tile with several looks in each cell\'s own look', () => {
+    const { layer, chunkMeshes } = setup();
+    const n = getFloorTile('sand')!.variants!;
+    expect(n).toBeGreaterThan(1);
+    // two cells of the first chunk with different looks
+    const cells: Array<[number, number]> = [];
+    for (let i = 0; i < 25 && cells.length < 2; i++) {
+      const x = i % 5, z = Math.floor(i / 5);
+      if (cells.every(([cx, cz]) => cellVariant(cx, cz, n) !== cellVariant(x, z, n))) cells.push([x, z]);
+    }
+    const shape = ([x, z]: [number, number]) => {
+      const f = emptyFloors();
+      f[cell(x, z)] = 'sand';
+      layer.sync(state(f));
+      const p = chunkMeshes()[0].geometry.attributes.position;
+      const out: string[] = [];
+      for (let i = 0; i < p.count; i++) out.push(`${(p.getX(i) - x).toFixed(3)},${p.getY(i).toFixed(3)},${(p.getZ(i) - z).toFixed(3)}`);
+      return out.join(' ');
+    };
+    expect(shape(cells[0])).not.toBe(shape(cells[1]));
+    expect(shape(cells[0])).toBe(shape(cells[0])); // a cell keeps its look
   });
   it('skips an unknown tile id', () => {
     const { layer, chunkMeshes } = setup();

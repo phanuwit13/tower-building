@@ -4,6 +4,7 @@ import { MAX_TILE_TRIANGLES } from '../floors/validate';
 import type { FloorTile } from '../floors/types';
 import type { StyleKit } from '../models/kit';
 import { button, el } from '../ui/dom';
+import { cellVariant } from './floors';
 import { countTriangles } from './gallery';
 import type { Stage } from './stage';
 
@@ -73,7 +74,7 @@ export function attachFloorGallery(stage: Stage, kit: StyleKit, tiles: readonly 
       let tris = 0;
       for (let dz = 0; dz < PATCH; dz++) {
         for (let dx = 0; dx < PATCH; dx++) {
-          const t = slot.tile.build(kit);
+          const t = slot.tile.build(kit, cellVariant(slot.x + dx, slot.z + dz, slot.tile.variants)); // each cell its own look, as on the map
           t.position.set(slot.x + dx + 0.5, 0, slot.z + dz + 0.5);
           object.add(t);
           if (dx === 0 && dz === 0) tris = countTriangles(t);
