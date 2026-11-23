@@ -57,7 +57,7 @@ export const item: ItemModel = {
     const burner = (x: number, z: number, c: 'red' | 'orange') => {
       parts.push(
         kit.cylinder(0.16, 0.16, 0.02, [x, TOP_Y + 0.01, z], 'charcoal', { segments: 8 }),
-        kit.torus(0.115, 0.03, [x, TOP_Y + 0.035, z], c, { radialSegments: 4, tubularSegments: 8, rotate: [Math.PI / 2, 0, 0], glow: true, light: 'breathe' }),
+        kit.torus(0.12, 0.036, [x, TOP_Y + 0.035, z], c, { radialSegments: 4, tubularSegments: 8, rotate: [Math.PI / 2, 0, 0], glow: true, light: 'breathe' }),
       );
     };
     burner(0.0, -1.15, 'red');
@@ -74,12 +74,7 @@ export const item: ItemModel = {
       kit.cylinder(0.145, 0.145, 0.02, [0.5, TOP_Y + 0.17, -0.55], 'orange', { segments: 10 }),
       kit.box([0.14, 0.03, 0.04], [0.5 + 0.2, TOP_Y + 0.14, -0.55], 'charcoal'),
     );
-    // a flat pan on the third burner
-    parts.push(
-      kit.cylinder(0.17, 0.15, 0.04, [0.0, TOP_Y + 0.05, -0.55], 'charcoal', { segments: 10 }),
-      kit.cylinder(0.13, 0.13, 0.01, [0.0, TOP_Y + 0.072, -0.55], 'sand', { segments: 10 }),
-      kit.box([0.22, 0.025, 0.04], [0.28, TOP_Y + 0.06, -0.55], 'woodDark'),
-    );
+    // the other two burners stay uncovered so their rings glow
 
     // prep area: cutting board, a bowl of fruit, a tray of golden rolls
     parts.push(

@@ -19,20 +19,19 @@ export const item: ItemModel = {
       kit.box([0.02, 0.08, 1.9], [-0.04, 0.4, 0], 'pink'),
       kit.box([0.02, 0.08, 1.9], [-0.04, 0.2, 0], 'sunYellow'),
     ];
-    // blenders: dark base, glass jar with a smoothie, red lid
-    [[-0.65, 'pink'], [0, 'lime'], [0.65, 'orange']].forEach(([z, c]) => {
-      const zz = z as number;
+    // blenders: coloured base, a jar full of bright smoothie, white lid with a red knob
+    ([[-0.65, 'pink', 'white'], [0, 'lime', 'sunYellow'], [0.65, 'orange', 'white']] as const).forEach(([zz, c, base]) => {
       parts.push(
-        kit.box([0.22, 0.1, 0.22], [-0.7, TOP_Y + 0.05, zz], 'charcoal'),
-        kit.cylinder(0.1, 0.075, 0.26, [-0.7, TOP_Y + 0.23, zz], 'glassBlue', { segments: 8 }),
-        kit.cylinder(0.088, 0.07, 0.15, [-0.7, TOP_Y + 0.185, zz], c as 'pink', { segments: 8 }),
-        kit.cylinder(0.105, 0.105, 0.04, [-0.7, TOP_Y + 0.38, zz], 'red', { segments: 8 }),
-        kit.sphere(0.03, [-0.7, TOP_Y + 0.42, zz], 'sunYellow', { detail: 0 }),
-        kit.box([0.02, 0.025, 0.02], [-0.55, TOP_Y + 0.07, zz], 'red'),
+        kit.cylinder(0.12, 0.13, 0.1, [-0.7, TOP_Y + 0.05, zz], base, { segments: 8 }),
+        kit.cylinder(0.1, 0.085, 0.3, [-0.7, TOP_Y + 0.25, zz], c, { segments: 8 }),
+        kit.cylinder(0.085, 0.085, 0.02, [-0.7, TOP_Y + 0.405, zz], 'glassBlue', { segments: 8 }),
+        kit.cylinder(0.105, 0.105, 0.04, [-0.7, TOP_Y + 0.43, zz], 'white', { segments: 8 }),
+        kit.sphere(0.03, [-0.7, TOP_Y + 0.47, zz], 'red', { detail: 0 }),
+        kit.sphere(0.022, [-0.58, TOP_Y + 0.07, zz], 'red', { detail: 0 }),
       );
     });
     // cups with straws on the counter front
-    [[-0.35, 'pink'], [-0.16, 'lime'], [0.34, 'orange'], [0.5, 'purple']].forEach(([z, c]) => {
+    [[-0.42, 'pink'], [-0.26, 'lime'], [0.16, 'sunYellow'], [0.32, 'orange'], [0.48, 'purple']].forEach(([z, c]) => {
       const zz = z as number;
       parts.push(
         kit.cylinder(0.07, 0.055, 0.12, [-0.3, TOP_Y + 0.06, zz], c as 'pink', { segments: 8 }),
