@@ -59,7 +59,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hud button, .hud .card { pointer-events: auto; }
 .hud-top { display: flex; align-items: flex-start; gap: 8px; }
 .hud-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.btn-home { font-size: 18px; white-space: nowrap; }
+.btn-home { font-size: 18px; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
 .hud-cards { display: flex; gap: 8px; }
 .card { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 12px; min-width: 96px; text-align: center; }
 .card-label { font-size: 12px; opacity: 0.7; }
@@ -120,7 +120,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .tb-row { display: flex; gap: 6px; padding: 4px; border-radius: 28px; background: rgb(255 255 255 / 0.55); }
 .tb-btn { position: relative; width: 48px; height: 48px; padding: 0; border-radius: 50%; display: grid; place-items: center; font-size: 24px; line-height: 1; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .tb-btn[aria-pressed='true'], .tb-btn[aria-expanded='true'] { background: var(--selected); color: #fff; }
-.tb-icon { pointer-events: none; }
+.tb-icon { pointer-events: none; display: grid; place-items: center; }
+.tb-icon .line-icon { width: 26px; height: 26px; }
 /* The small label: on hover (mouse), keyboard focus and a long press (touch) */
 .tb-label { position: absolute; top: calc(100% + 8px); right: 0; padding: 4px 10px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 14px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 1; }
 .tb-btn:focus-visible .tb-label, .tb-btn.show-label .tb-label { opacity: 1; }
