@@ -1,9 +1,10 @@
 import type { Catalog } from '../game/types';
 import { amusement } from './amusement';
 import { school } from './school';
+import { zoo } from './zoo';
 import { toCatalog, type ThemeDef } from './types';
 
-export const THEMES: readonly ThemeDef[] = [school, amusement];
+export const THEMES: readonly ThemeDef[] = [school, amusement, zoo];
 
 export function getTheme(id: string): ThemeDef | undefined {
   return THEMES.find((t) => t.id === id);

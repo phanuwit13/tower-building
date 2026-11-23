@@ -13,6 +13,21 @@ describe('parseBatchParam', () => {
   it('keeps `batch-<n>` for the School batches', () => {
     for (let n = 1; n <= 6; n++) expect(parseBatchParam(`batch-${n}`)).toEqual({ theme: 'school', n });
   });
+  it('counts batches per theme from the batch modules', () => {
+    const paths = [1, 2, 3, 4, 5, 6].map((n) => `../themes/school/batches/b${n}.ts`)
+      .concat([1, 2, 3, 4, 5, 6, 7].map((n) => `../themes/zoo/batches/z${n}.ts`));
+    expect(parseBatchParam('zoo-batch-7', paths)).toEqual({ theme: 'zoo', n: 7 });
+    expect(parseBatchParam('zoo-batch-8', paths)).toBeNull();
+    expect(parseBatchParam('zoo-batch-9', paths)).toBeNull();
+    expect(parseBatchParam('batch-7', paths)).toBeNull();
+    expect(parseBatchParam('school-batch-6', paths)).toEqual({ theme: 'school', n: 6 });
+    expect(parseBatchParam('amusement-batch-1', paths)).toBeNull();
+  });
+  it('knows the real zoo has seven batches and School six', () => {
+    expect(parseBatchParam('zoo-batch-7')).toEqual({ theme: 'zoo', n: 7 });
+    expect(parseBatchParam('zoo-batch-8')).toBeNull();
+    expect(parseBatchParam('batch-7')).toBeNull();
+  });
   it('ignores everything else', () => {
     for (const p of [null, '', 'school', 'amusement', 'floors', 'batch-0', 'batch-7', 'batch-10', 'batch-', 'batch-1x', 'Batch-1', ' batch-1',
       'amusement-batch-0', 'amusement-batch-7', 'Amusement-batch-1', '-batch-1', 'amusement-batch', 'amusement_batch-1', 'a-b-batch-1']) {
