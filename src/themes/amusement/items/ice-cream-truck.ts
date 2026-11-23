@@ -4,8 +4,8 @@ import { glassWindow, wallPanel } from '../../../models/parts';
 
 // A pastel van, long side along z with the cab at +z; the serving hatch is on the +x side.
 const CHASSIS = { w: 0.7, h: 0.1, d: 1.6, y: 0.17 }; // dark underframe
-const BODY = { w: 0.72, h: 0.58, d: 0.95, z: -0.33 }; // box body; its floor sits on the chassis
-const CAB = { w: 0.72, h: 0.4, d: 0.5, z: 0.6 };
+const BODY = { w: 0.72, h: 0.58, d: 1.15, z: -0.225 }; // box body; its floor sits on the chassis
+const CAB = { w: 0.72, h: 0.4, d: 0.5, z: 0.6 }; // starts at z 0.35, where the body ends
 const WHEEL = { r: 0.15, w: 0.1, x: 0.34, z: [-0.45, 0.55] };
 const HATCH = { w: 0.5, h: 0.24, y: 0.5, z: -0.33 };
 const CONE = { r: 0.16, h: 0.42 }; // giant cone on the roof, pointing down into the roof

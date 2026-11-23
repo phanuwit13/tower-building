@@ -26,7 +26,7 @@ export const item: ItemModel = {
     for (const [z, y, s] of SPOTS) {
       parts.push(kit.box([0.012, s, s * 0.9], [FACE + 0.006, PAD.h + y, z], 'orange'));
     }
-    // ruler ticks on the +z edge
+    // ruler ticks on the -z edge
     for (let k = 0; k < MARKS; k++) {
       parts.push(kit.box([0.012, 0.07, 0.07], [FACE + 0.006, PAD.h + 0.2 + k * 0.2, -BOARD.d / 2 + 0.06], MARK_COLORS[k % 2]));
     }

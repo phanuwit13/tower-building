@@ -10,10 +10,8 @@ const CAP = { w: 0.5, h: 0.14, roof: 0.3 };
 const RING = { y: 0.55, r: 0.68, h: 0.05 }; // seat platform round the column
 const SEATS = { n: 8, r: 0.78, len: 0.22, w: 0.2, back: 0.2 };
 const SEAT_COLORS: PaletteColor[] = ['red', 'orange'];
-const BULBS = 9; // chase run up each face of the column
+const BULBS = 7; // chase run up each face of the column, one bulb in each gap between the yellow bands
 const BULB_R = 0.033;
-const BULB_FROM = 0.4;
-const BULB_TO = 2.85;
 
 /** หอคอยดิ่ง: a tall tower with a ring of seats near the bottom and chase lights running up all four faces. */
 export const item: ItemModel = {
@@ -56,7 +54,7 @@ export const item: ItemModel = {
     const faces: Array<[number, number]> = [[1, 0], [0, 1], [-1, 0], [0, -1]];
     for (const [fx, fz] of faces) {
       for (let i = 0; i < BULBS; i++) {
-        const y = BULB_FROM + (i / (BULBS - 1)) * (BULB_TO - BULB_FROM);
+        const y = BANDS.from - BANDS.step / 2 + i * BANDS.step; // midway between two bands
         const o = TOWER.w / 2 + BULB_R * 0.6;
         parts.push(kit.sphere(BULB_R, [fx * o, y, fz * o], 'lampWarm', { detail: 0, glow: true, light: 'chase', chase: { index: i, count: BULBS } }));
       }

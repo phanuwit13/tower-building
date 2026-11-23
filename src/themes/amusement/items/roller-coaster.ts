@@ -6,7 +6,7 @@ import { rod } from '../../../models/parts';
 // A closed oval track on posts, long side along z. The height rises to a hump at the +z end and sinks to a dip at the -z end.
 const BASE = { w: 1.92, h: 0.04, d: 2.92 }; // stone pad
 const OVAL = { rx: 0.78, rz: 1.28 }; // track radii (x, z)
-const HEIGHT = { mid: 0.66, amp: 0.44 }; // track centre height: mid + amp * sin(a): hump 1.1 at +z, dip 0.22 at -z
+const HEIGHT = { mid: 1.0, amp: 0.8 }; // track centre height: mid + amp * sin(a): hump 1.8 at +z, dip 0.2 at -z
 const POINTS = 24; // joints round the loop
 const RAIL_R = 0.055;
 const POST = 0.07; // square post section
