@@ -9,9 +9,9 @@ const SWAY: MotionOpts = { kind: 'sway', pivot: [0, BASE, 0], amount: 0.16 };
 
 /** Flowers: [x, z, stem height, petal colour]. */
 const FLOWERS: Array<[number, number, number, PaletteColor]> = [
-  [-0.75, -0.7, 0.3, 'pink'], [-0.35, -0.62, 0.36, 'sunYellow'], [0.1, -0.75, 0.3, 'red'], [0.55, -0.8, 0.34, 'purple'], [0.85, -0.45, 0.3, 'orange'],
+  [-0.75, -0.7, 0.3, 'pink'], [-0.35, -0.62, 0.36, 'sunYellow'], [0.1, -0.75, 0.3, 'red'], [0.55, -0.8, 0.34, 'purple'], [0.76, -0.45, 0.3, 'orange'],
   [-0.8, -0.25, 0.34, 'sunYellow'], [-0.45, -0.35, 0.28, 'purple'], [0.1, -0.3, 0.4, 'pink'], [0.5, -0.2, 0.3, 'sunYellow'],
-  [-0.75, 0.2, 0.3, 'red'], [-0.35, 0.15, 0.4, 'orange'], [0.15, 0.2, 0.3, 'purple'], [0.6, 0.25, 0.36, 'pink'], [0.85, 0.6, 0.3, 'red'],
+  [-0.75, 0.2, 0.3, 'red'], [-0.35, 0.15, 0.4, 'orange'], [0.15, 0.2, 0.3, 'purple'], [0.6, 0.25, 0.36, 'pink'], [0.76, 0.6, 0.3, 'red'],
   [-0.7, 0.7, 0.34, 'purple'], [-0.2, 0.75, 0.3, 'pink'], [0.25, 0.6, 0.4, 'sunYellow'], [0.6, 0.8, 0.28, 'orange'],
 ];
 /** Butterflies sit on flowers (index into FLOWERS): [flower index, wing colour, spot colour]. */
