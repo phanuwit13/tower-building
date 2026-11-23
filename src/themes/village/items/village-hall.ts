@@ -49,13 +49,20 @@ export const item: ItemModel = {
       kit.box([0.01, 0.12, 0.16], [0.94, 0.68, -0.75], 'pink'),
       kit.box([0.01, 0.12, 0.16], [0.94, 0.52, -0.75], 'orange'),
     );
-    // lamps hung from the front eave, where they show from the camera, and two inside
+    // big lamps on the open +x side and the +z end (they show from the camera), and a glowing strip along the front eave
     for (const z of [-0.6, 0.6]) {
       parts.push(
-        kit.cylinder(0.012, 0.012, 0.1, [0.78, 0.94, z], 'stoneDark', { segments: 4 }),
-        kit.sphere(0.08, [0.78, 0.84, z], 'lampWarm', { ...BREATHE }),
+        kit.cylinder(0.015, 0.015, 0.12, [0.78, 0.96, z], 'stoneDark', { segments: 4 }),
+        kit.sphere(0.14, [0.78, 0.76, z], 'lampWarm', { ...BREATHE }),
       );
     }
+    for (const x of [-0.4, 0.4]) {
+      parts.push(
+        kit.cylinder(0.015, 0.015, 0.16, [x, 0.98, 1.3], 'stoneDark', { segments: 4 }),
+        kit.sphere(0.14, [x, 0.76, 1.3], 'lampWarm', { ...BREATHE }),
+      );
+    }
+    parts.push(kit.box([0.05, 0.05, 2.5], [0.86, 0.9, 0], 'lampWarm', { ...BREATHE }));
     for (const z of [-0.6, 0.6]) {
       parts.push(
         kit.cylinder(0.012, 0.012, 0.14, [0, 1.34, z], 'stoneDark', { segments: 4 }),
