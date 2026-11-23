@@ -2,19 +2,21 @@ import type { ItemModel } from '../models/contract';
 import { getTheme } from '../themes/registry';
 import type { ThemeDef } from '../themes/types';
 
-export const BATCH_COUNT = 6;
-
 /** One sculptor batch of one theme. */
 export interface BatchRequest { theme: string; n: number }
 
 /**
- * Pure: `?gallery=<themeId>-batch-<n>` (n = 1..6) -> { theme, n }; the older `batch-<n>` means the
- * School's. null for anything else (a theme id, `floors`, `batch-0`, `batch-7`, `amusement-batch-1x`).
+ * Pure: `?gallery=<themeId>-batch-<n>` -> { theme, n }; the older `batch-<n>` means the School's.
+ * A batch exists when its module does (`batchPaths`: the batch module paths, the DEV glob by default),
+ * so each theme has its own count (School 1-6, Amusement 1-6, Zoo 1-7). null for anything else
+ * (a theme id, `floors`, `batch-0`, `batch-7`, `amusement-batch-1x`).
  */
-export function parseBatchParam(param: string | null): BatchRequest | null {
+export function parseBatchParam(param: string | null, batchPaths: readonly string[] = Object.keys(DEV_SOURCES.batches)): BatchRequest | null {
   const m = param === null ? null : /^(?:([a-z]+)-)?batch-([1-9])$/.exec(param);
-  const n = m ? Number(m[2]) : 0;
-  return m && n >= 1 && n <= BATCH_COUNT ? { theme: m[1] ?? 'school', n } : null;
+  if (!m) return null;
+  const theme = m[1] ?? 'school';
+  const n = Number(m[2]);
+  return batchPaths.some((k) => new RegExp(`^\\.\\./themes/${escape(theme)}/batches/[a-z]${n}\\.ts$`).test(k)) ? { theme, n } : null;
 }
 
 type Loaders = Record<string, () => Promise<unknown>>;
