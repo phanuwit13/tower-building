@@ -12,6 +12,7 @@ const RIM = { h: 0.14, t: 0.06 };
 const POST = { x: 0.88, z: 1.38, r: 0.045, top: 1.0 };
 const BEAM = 0.07;
 const ROOF_Y = 1.02; // centre of the grid beams
+const CAR_SCALE = 1.4; // car size against the first design; the largest car radius is ~0.31, centres are 0.9+ apart
 const BULBS = 24;
 const BULB_Y = ROOF_Y + BEAM / 2 + 0.035;
 /** Car centre x, z, colour, spin direction. Every car stays clear of the rim and the posts while turning. */
@@ -63,13 +64,14 @@ export const item: ItemModel = {
     for (const [cx, cz, color, dir] of CARS) {
       const spin: MotionOpts = { kind: 'spin', pivot: [cx, 0, cz], axis: [0, 1, 0], speed: 0.4 * dir };
       const at = (x: number, y: number, z: number): [number, number, number] => [cx + x, y, cz + z];
+      const k = CAR_SCALE;
       parts.push(
-        kit.box([0.36, 0.05, 0.26], at(0, FLOOR_H + 0.025, 0), 'charcoal', { motion: spin }),
-        kit.box([0.32, 0.1, 0.24], at(0, FLOOR_H + 0.1, 0), color, { motion: spin }),
-        kit.box([0.04, 0.06, 0.3], at(0.19, FLOOR_H + 0.06, 0), 'stone', { motion: spin }),
-        kit.box([0.04, 0.06, 0.3], at(-0.19, FLOOR_H + 0.06, 0), 'stone', { motion: spin }),
-        kit.box([0.16, 0.08, 0.2], at(-0.06, FLOOR_H + 0.19, 0), 'white', { motion: spin }),
-        kit.sphere(0.055, at(-0.06, FLOOR_H + 0.28, 0), 'sand', { detail: 0, motion: spin }),
+        kit.box([0.36 * k, 0.05, 0.26 * k], at(0, FLOOR_H + 0.025, 0), 'charcoal', { motion: spin }),
+        kit.box([0.32 * k, 0.1 * k, 0.24 * k], at(0, FLOOR_H + 0.05 + 0.05 * k, 0), color, { motion: spin }),
+        kit.box([0.04 * k, 0.06 * k, 0.3 * k], at(0.19 * k, FLOOR_H + 0.03 + 0.03 * k, 0), 'stone', { motion: spin }),
+        kit.box([0.04 * k, 0.06 * k, 0.3 * k], at(-0.19 * k, FLOOR_H + 0.03 + 0.03 * k, 0), 'stone', { motion: spin }),
+        kit.box([0.16 * k, 0.08 * k, 0.2 * k], at(-0.06 * k, FLOOR_H + 0.05 + 0.1 * k + 0.04 * k, 0), 'white', { motion: spin }),
+        kit.sphere(0.055 * k, at(-0.06 * k, FLOOR_H + 0.05 + 0.1 * k + 0.08 * k + 0.045 * k, 0), 'sand', { detail: 0, motion: spin }),
       );
     }
     return kit.finish(parts);

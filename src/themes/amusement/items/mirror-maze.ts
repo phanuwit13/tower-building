@@ -38,11 +38,11 @@ export const item: ItemModel = {
     for (const t of [-0.52, 0, 0.52]) {
       parts.push(...win([-H, PANEL.y, t], 'x-'), ...win([t, PANEL.y, H], 'z+'), ...win([t, PANEL.y, -H], 'z-'));
     }
-    // entrance on +x: yellow frame, glowing opening, striped awning
+    // entrance on +x: yellow frame, softly glowing opening, striped awning
     const doorY = PLINTH + DOOR.h / 2;
     parts.push(
       ...wallPanel(kit, { at: [H, doorY, 0], facing: 'x+', w: DOOR.w + 0.12, h: DOOR.h + 0.06, depth: 0.02, color: 'sunYellow' }),
-      kit.box([0.03, DOOR.h, DOOR.w], [H + 0.035, doorY - 0.03, 0], 'lampWarm', { glow: true, light: 'window' }),
+      kit.box([0.03, DOOR.h, DOOR.w], [H + 0.035, doorY - 0.03, 0], 'orange', { glow: true, light: 'window' }),
     );
     (['red', 'white', 'red'] as const).forEach((color, i) => {
       parts.push(kit.wedge([0.12, 0.14, 0.2], [H + 0.06, PLINTH + DOOR.h + 0.12, (i - 1) * 0.2], color, { apex: -0.5 }));
