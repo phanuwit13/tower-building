@@ -61,9 +61,9 @@ export const item: ItemModel = {
       kit.cone(0.05, 0.3, [-0.62, WATER_Y + 0.1, 1.0], 'leaf', { segments: 6 }),
       kit.cone(0.05, 0.22, [-0.52, WATER_Y + 0.06, 1.08], 'lime', { segments: 6 }),
       // a column of bubbles
-      kit.sphere(0.035, [0.65, WATER_Y + 0.08, -0.6], 'glassBlue', { detail: 0 }),
-      kit.sphere(0.045, [0.67, WATER_Y + 0.2, -0.62], 'glassBlue', { detail: 0 }),
-      kit.sphere(0.03, [0.64, WATER_Y + 0.32, -0.58], 'glassBlue', { detail: 0 }),
+      kit.sphere(0.035, [0.65, WATER_Y + 0.005, -0.6], 'glassBlue', { detail: 0 }),
+      kit.sphere(0.045, [0.72, WATER_Y + 0.01, -0.66], 'glassBlue', { detail: 0 }),
+      kit.sphere(0.03, [0.6, WATER_Y, -0.7], 'glassBlue', { detail: 0 }),
     ];
     parts.push(...fish(kit, [0.3, WATER_Y, -0.1], 0.3, 1.3, 'orange', 'sunYellow'));
     parts.push(...fish(kit, [-0.2, WATER_Y, 0.4], 3.6, 1.1, 'pink', 'purple'));

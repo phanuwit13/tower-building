@@ -37,8 +37,8 @@ export const item: ItemModel = {
       kit.sphere(0.015, [0.165, WATER_TOP + 0.1, 0.11], 'charcoal', { detail: 0 }),
       kit.sphere(0.015, [0.165, WATER_TOP + 0.1, 0.01], 'charcoal', { detail: 0 }),
       // bubbles
-      kit.sphere(0.03, [-0.18, WATER_TOP + 0.1, 0.18], 'glassBlue', { detail: 0 }),
-      kit.sphere(0.022, [-0.2, WATER_TOP + 0.18, 0.2], 'glassBlue', { detail: 0 }),
+      kit.sphere(0.03, [-0.18, WATER_TOP + 0.005, 0.18], 'glassBlue', { detail: 0 }),
+      kit.sphere(0.022, [-0.12, WATER_TOP, 0.24], 'glassBlue', { detail: 0 }),
     ];
     return kit.finish(parts);
   },
