@@ -4,7 +4,7 @@ import type { Part } from '../../../models/kit';
 // A long glass cake case on a wooden base. Three stepped shelves (high at the back, low at the front) so
 // every row of cakes is seen from above; the frame is open chrome with lit glass strips inside.
 const BASE_H = 0.24;
-const TOP_Y = 0.64;
+const TOP_Y = 0.62;
 const CASE = { x: 0.62, z: 1.4 }; // half sizes of the glass frame
 const SHELVES = [
   { x: -0.38, y: 0.52 },
@@ -38,12 +38,12 @@ export const item: ItemModel = {
     for (const z of [-0.7, 0, 0.7]) parts.push(kit.box([CASE.x * 2, 0.03, 0.03], [0, TOP_Y, z], 'chrome'));
     // lit glass back (four panes, each a little different) and a low glass front
     for (const z of [-1.05, -0.35, 0.35, 1.05]) {
-      parts.push(kit.box([0.025, 0.3, 0.66], [-CASE.x + 0.03, 0.4, z], 'glassBlue', WINDOW));
-      parts.push(kit.box([0.025, 0.1, 0.66], [CASE.x - 0.01, BASE_H + 0.1, z], 'glassBlue', WINDOW));
+      parts.push(kit.box([0.025, 0.3, 0.66], [-CASE.x + 0.03, 0.4, z], 'skyBlue', WINDOW));
+      parts.push(kit.box([0.025, 0.1, 0.66], [CASE.x - 0.01, BASE_H + 0.1, z], 'skyBlue', WINDOW));
     }
     for (const s of SHELVES) {
       parts.push(kit.box([0.34, 0.03, 2.7], [s.x, s.y - 0.015, 0], 'white'));
-      parts.push(kit.box([0.03, 0.025, 2.7], [s.x + 0.165, s.y - 0.012, 0], 'sunYellow', { glow: 'sunYellow', light: 'window' })); // lit shelf edge
+      parts.push(kit.box([0.03, 0.025, 2.7], [s.x + 0.165, s.y - 0.012, 0], 'sunYellow')); // shelf edge trim
     }
     // cakes: round cake, tart, strawberry cake, chocolate cake, cupcake (rotating per row)
     SHELVES.forEach((s, row) => {

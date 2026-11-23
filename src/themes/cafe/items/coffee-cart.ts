@@ -17,7 +17,7 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [
       kit.box([BODY.w, BODY.h, BODY.d], [0, BODY.y + BODY.h / 2, 0], 'wood'),
-      kit.box([BODY.w + 0.06, 0.04, BODY.d + 0.06], [0, COUNTER_Y + 0.02, 0], 'woodDark'),
+      kit.box([BODY.w + 0.06, 0.04, BODY.d + 0.06], [0, COUNTER_Y - 0.02, 0], 'woodDark'),
       kit.box([0.02, 0.26, 0.9], [BODY.w / 2 + 0.01, 0.4, 0], 'teal'), // front panel
       kit.cylinder(0.06, 0.06, 0.02, [BODY.w / 2 + 0.03, 0.4, 0], 'white', { segments: 10, rotate: [0, 0, Math.PI / 2] }), // cup picture
       kit.cylinder(0.045, 0.045, 0.01, [BODY.w / 2 + 0.04, 0.4, 0], 'bark', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
@@ -37,7 +37,7 @@ export const item: ItemModel = {
     parts.push(kit.box([0.5, 0.06, 0.08], [0, 0.17, -0.45], 'woodDark'));
 
     // espresso machine on the counter, cups and a milk jug on the front edge
-    const my = COUNTER_Y + 0.04;
+    const my = COUNTER_Y;
     parts.push(
       kit.box([0.3, 0.26, 0.36], [-0.12, my + 0.13, -0.3], 'charcoal'),
       kit.box([0.33, 0.03, 0.39], [-0.12, my + 0.275, -0.3], 'chrome'),

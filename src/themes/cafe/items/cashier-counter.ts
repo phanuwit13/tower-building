@@ -19,34 +19,34 @@ export const item: ItemModel = {
     const parts: Part[] = [
       kit.box([BODY.w + 0.04, 0.04, BODY.d + 0.04], [BODY.x, 0.02, 0], 'woodDark'),
       kit.box([BODY.w, TOP_Y - SLAB.t - 0.04, BODY.d], [BODY.x, 0.04 + (TOP_Y - SLAB.t - 0.04) / 2, 0], 'wood'),
-      kit.box([SLAB.w, SLAB.t, SLAB.d], [SLAB.x, TOP_Y - SLAB.t / 2, 0], 'woodDark'),
+      kit.box([SLAB.w, SLAB.t, SLAB.d], [SLAB.x, TOP_Y - SLAB.t / 2, 0], 'teal'),
     ];
     for (const z of [-0.5, 0.5]) parts.push(kit.box([0.02, 0.3, 0.6], [BODY.x + BODY.w / 2 + 0.01, 0.3, z], 'orange'));
 
-    // cash register: body, tilted screen block, button blocks and an open drawer front
+    // cash register: chunky red body, dark screen block with a sky-blue face, big colour keys, yellow drawer
     parts.push(
-      kit.box([0.3, 0.16, 0.34], [-0.5, TOP_Y + 0.08, -0.5], 'charcoal'),
-      kit.box([0.14, 0.12, 0.3], [-0.55, TOP_Y + 0.22, -0.5], 'chrome'),
-      kit.box([0.02, 0.08, 0.22], [-0.475, TOP_Y + 0.22, -0.5], 'mint'),
-      kit.box([0.04, 0.03, 0.26], [-0.34, TOP_Y + 0.175, -0.5], 'stone'),
+      kit.box([0.42, 0.2, 0.46], [-0.5, TOP_Y + 0.1, -0.5], 'red'),
+      kit.box([0.08, 0.16, 0.34], [-0.64, TOP_Y + 0.28, -0.5], 'charcoal'),
+      kit.box([0.02, 0.11, 0.26], [-0.595, TOP_Y + 0.28, -0.5], 'skyBlue'),
+      kit.box([0.04, 0.05, 0.4], [-0.29, TOP_Y + 0.1, -0.5], 'sunYellow'),
     );
-    for (const z of [-0.6, -0.5, -0.4]) {
-      parts.push(kit.box([0.05, 0.02, 0.05], [-0.36, TOP_Y + 0.17, z], 'sunYellow'));
-      parts.push(kit.box([0.05, 0.02, 0.05], [-0.42, TOP_Y + 0.17, z], 'red'));
+    for (const z of [-0.62, -0.5, -0.38]) {
+      parts.push(kit.box([0.08, 0.02, 0.08], [-0.46, TOP_Y + 0.21, z], 'white'));
+      parts.push(kit.box([0.08, 0.02, 0.08], [-0.37, TOP_Y + 0.21, z], 'sunYellow'));
     }
-    // service bell: brass dome on a small base with a knob
+    // service bell: gold dome on a brass base with a knob
     parts.push(
-      kit.cylinder(0.08, 0.09, 0.02, [-0.1, TOP_Y + 0.01, -0.05], 'woodDark', { segments: 10 }),
-      kit.dome(0.075, [-0.1, TOP_Y + 0.02, -0.05], 'brass', { segments: 12 }),
-      kit.sphere(0.02, [-0.1, TOP_Y + 0.105, -0.05], 'sunYellow', { detail: 0 }),
+      kit.cylinder(0.13, 0.14, 0.03, [-0.1, TOP_Y + 0.015, -0.05], 'brass', { segments: 10 }),
+      kit.dome(0.12, [-0.1, TOP_Y + 0.03, -0.05], 'sunYellow', { segments: 12 }),
+      kit.sphere(0.035, [-0.1, TOP_Y + 0.165, -0.05], 'orange', { detail: 0 }),
     );
-    // tip jar: plain glass jar with a lid and a few coins
+    // tip jar: plain glass jar with a red lid and a few coins
     parts.push(
-      kit.cylinder(0.075, 0.075, 0.16, [-0.4, TOP_Y + 0.08, 0.5], 'glassBlue', { segments: 10 }),
-      kit.cylinder(0.082, 0.082, 0.02, [-0.4, TOP_Y + 0.17, 0.5], 'stoneDark', { segments: 10 }),
-      kit.cylinder(0.035, 0.035, 0.01, [-0.4, TOP_Y + 0.185, 0.5], 'sunYellow', { segments: 8 }),
-      kit.cylinder(0.035, 0.035, 0.01, [-0.2, TOP_Y + 0.005, 0.62], 'sunYellow', { segments: 8 }),
-      kit.cylinder(0.035, 0.035, 0.01, [-0.15, TOP_Y + 0.005, 0.52], 'brass', { segments: 8 }),
+      kit.cylinder(0.11, 0.11, 0.22, [-0.4, TOP_Y + 0.11, 0.5], 'skyBlue', { segments: 10 }),
+      kit.cylinder(0.12, 0.12, 0.03, [-0.4, TOP_Y + 0.235, 0.5], 'red', { segments: 10 }),
+      kit.cylinder(0.045, 0.045, 0.015, [-0.4, TOP_Y + 0.255, 0.5], 'sunYellow', { segments: 8 }),
+      kit.cylinder(0.045, 0.045, 0.015, [-0.18, TOP_Y + 0.0075, 0.62], 'sunYellow', { segments: 8 }),
+      kit.cylinder(0.045, 0.045, 0.015, [-0.1, TOP_Y + 0.0075, 0.45], 'brass', { segments: 8 }),
     );
 
     // picture menu stand: board on two legs, three picture rows
