@@ -33,7 +33,7 @@ export const T = {
   toolbar: {
     name: 'เครื่องมือ', more: 'เมนูเพิ่มเติม', shortcuts: 'ปุ่มลัดบนคีย์บอร์ด',
   },
-  /** The ⌨️ panel: every key the game answers to. `?` opens it. */
+  /** The ⌨️ list on the right edge: every key the game answers to. Its header, ⌨️ and `?` fold it away and back. */
   shortcuts: {
     title: 'ปุ่มลัดบนคีย์บอร์ด',
     note: 'ตอนเปิดหน้าปูกระเบื้อง ปุ่มทั้งหมดนี้จะพัก ยกเว้น Esc (ปิด)',
@@ -44,7 +44,7 @@ export const T = {
       { keys: ['Q', 'E'], does: 'หมุนกล้อง' },
       { keys: ['+', '-'], does: 'ซูม' },
       { keys: ['Esc'], does: 'ปิด / ยกเลิก' },
-      { keys: ['?'], does: 'เปิดหน้านี้' },
+      { keys: ['?'], does: 'ซ่อน / แสดงรายการนี้' },
     ],
   },
   /** Back to theme select: every theme keeps its own city, so nothing is lost. */
