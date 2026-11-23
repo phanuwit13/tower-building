@@ -262,6 +262,7 @@ function boot(app: HTMLElement): void {
     shown = { shift, width, height };
     applyViewShift(stage.camera, width, height, shift);
     app.dataset.viewShift = String(shift);
+    stage.controls.dispatchEvent({ type: 'change' }); // the map moved under a still mouse: re-check the hover
   });
 
   const hud = createHud(app, {
