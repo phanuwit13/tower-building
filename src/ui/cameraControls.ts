@@ -88,8 +88,10 @@ export function createCameraControls(
     const value = String(Math.round(rig.zoom() * SLIDER_MAX));
     if (slider.value !== value) slider.value = value;
     const azimuth = controls.getAzimuthalAngle();
-    box.dataset.azimuth = ((azimuth * 180) / Math.PI).toFixed(1);
-    box.dataset.distance = controls.getDistance().toFixed(2);
+    const az = ((azimuth * 180) / Math.PI).toFixed(1);
+    const dist = controls.getDistance().toFixed(2);
+    if (box.dataset.azimuth !== az) box.dataset.azimuth = az;
+    if (box.dataset.distance !== dist) box.dataset.distance = dist;
     if (turned) return;
     const d = azimuth - start.azimuth;
     if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > TURNED_RAD || Math.abs(controls.getPolarAngle() - start.polar) > TURNED_RAD) {

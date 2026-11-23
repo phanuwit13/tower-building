@@ -737,6 +737,26 @@ describe('attachInput: tap the ✓ to place', () => {
     expect(withCheckMark.c.tapTile).not.toHaveBeenCalled();
   });
 
+  it('while something owns the page (a popover, the shortcuts panel) a tap on the map or on the ✓ does nothing', () => {
+    let blocked = true;
+    const mark: CheckMark = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => blocked, undefined, { checkMark: () => mark });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    for (const [id, p] of [[1, at], [2, { x: at.x + 150, y: at.y + 120 }]] as const) {
+      s.canvas.dispatchEvent(ptr('pointerdown', id, p.x, p.y));
+      window.dispatchEvent(ptr('pointerup', id, p.x, p.y));
+    }
+    expect(s.c.place).not.toHaveBeenCalled();
+    expect(s.c.tapTile).not.toHaveBeenCalled();
+    expect(s.c.dragGhostTo).not.toHaveBeenCalled();
+    blocked = false; // closed: the next tap works as before
+    s.canvas.dispatchEvent(ptr('pointerdown', 3, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 3, at.x, at.y));
+    expect(s.c.place).toHaveBeenCalledTimes(1);
+    s.dispose();
+  });
+
   it('a tap away from the ✓ still moves the ghost; with the ✗ (no ✓) a tap there moves it too', () => {
     const { canvas, c, at, hide, dispose } = withCheck();
     canvas.dispatchEvent(ptr('pointerdown', 1, at.x + 150, at.y + 120));

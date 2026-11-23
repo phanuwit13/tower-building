@@ -167,10 +167,19 @@ export function createCameraRig(
   };
   const progress = (start: number, ms: number, t: number): number => clamp01((t - start) / ms);
 
-  controls.addEventListener('start', () => {
-    turning = null;
-    zooming = null;
-  });
+  /** Finish the glides on their exact end (a hand on the map does this: a turn never stops at an odd angle). */
+  const settle = (): void => {
+    if (turning) {
+      turnBy(turning.total - turning.done);
+      turning = null;
+    }
+    if (zooming) {
+      moveTo(zooming.to);
+      zooming = null;
+    }
+    controls.update();
+  };
+  controls.addEventListener('start', settle);
 
   return {
     zoom,
@@ -199,17 +208,7 @@ export function createCameraRig(
       }
       turning = { start: now(), total, done: 0 };
     },
-    settle() {
-      if (turning) {
-        turnBy(turning.total - turning.done);
-        turning = null;
-      }
-      if (zooming) {
-        moveTo(zooming.to);
-        zooming = null;
-      }
-      controls.update();
-    },
+    settle,
     step(t) {
       if (turning) {
         const p = progress(turning.start, TURN_MS, t);

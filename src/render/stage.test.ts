@@ -168,16 +168,16 @@ describe('camera rig: turn', () => {
     expect(rig.zoom()).toBeCloseTo(zoom + ZOOM_STEP);
   });
 
-  it('a hand on the map (controls start) stops a glide where it is', () => {
+  it('a hand on the map (controls start: a press, the wheel, a pinch) finishes a turn on its 45 degree step', () => {
     const { controls, rig, frame } = setup();
     const az = controls.getAzimuthalAngle();
     rig.turn(TURN_STEP);
     frame(1000 + TURN_MS / 2);
-    const mid = controls.getAzimuthalAngle();
+    expect(wrap(controls.getAzimuthalAngle() - az)).toBeLessThan(TURN_STEP);
     controls.dispatchEvent({ type: 'start' });
+    expect(wrap(controls.getAzimuthalAngle() - az)).toBeCloseTo(TURN_STEP, 6);
     frame(10_000);
-    expect(controls.getAzimuthalAngle()).toBeCloseTo(mid, 6);
-    expect(wrap(mid - az)).toBeLessThan(TURN_STEP);
+    expect(wrap(controls.getAzimuthalAngle() - az)).toBeCloseTo(TURN_STEP, 6);
   });
 
   it('a frame stamped a little before the press (rAF time) does not turn backwards', () => {

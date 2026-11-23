@@ -13,6 +13,28 @@ export function focusForKeyboard(el: HTMLElement | null | undefined): void {
   if (el && el.isConnected && keyboardActive()) el.focus();
 }
 
+/**
+ * For something that opens now (a popover, a panel, a drawer, a dialog) and closes later, maybe by Esc:
+ * remembers whether the keyboard opened it, and gives back a function that returns the focus to `el`
+ * only then. A mouse-opened popover closed with Esc leaves the focus on the page, so Space still places.
+ */
+export function focusReturn(el: HTMLElement | null | undefined): () => void {
+  const viaKeyboard = keyboardActive();
+  return () => { if (viaKeyboard && el && el.isConnected) el.focus(); };
+}
+
+/** A simple Tab trap: Tab and Shift+Tab cycle through the buttons and fields inside `box` while it is open. */
+export function trapTab(e: KeyboardEvent, box: HTMLElement): void {
+  if (e.key !== 'Tab') return;
+  const items = [...box.querySelectorAll<HTMLElement>('button, input, [tabindex]')].filter((n) => !(n as HTMLButtonElement).disabled && !n.closest('[hidden]'));
+  if (items.length === 0) { e.preventDefault(); return; }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const inside = box.contains(document.activeElement);
+  if (e.shiftKey && (!inside || document.activeElement === first)) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && (!inside || document.activeElement === last)) { e.preventDefault(); first.focus(); }
+}
+
 const isButtonLike = (e: Element | null): e is HTMLElement =>
   !!e && (e.tagName === 'BUTTON' || (e.tagName === 'INPUT' && (e as HTMLInputElement).type === 'range'));
 

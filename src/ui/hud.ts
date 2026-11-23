@@ -1,5 +1,5 @@
 import { button, el } from './dom';
-import { focusForKeyboard } from './focus';
+import { focusReturn } from './focus';
 import { NEXT_COUNT } from '../app/controller';
 import { placedLabel, T } from './strings';
 
@@ -102,15 +102,17 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   hud.hidden = true;
   root.appendChild(hud);
   let floorMode = false;
+  let restoreFloors: () => void = () => {};
   return {
     update(v) {
       hud.hidden = !v.visible;
       cards.hidden = v.floorMode;
       bottom.hidden = v.floorMode;
+      if (!floorMode && v.floorMode) restoreFloors = focusReturn(floors); // opened by keyboard or by mouse?
       if (floorMode && !v.floorMode) {
         // The drawer took the focus with it (nowhere, or a button now hidden): give it back to [พื้น].
         const a = document.activeElement;
-        if (!a || a === document.body || a.closest('[hidden]')) focusForKeyboard(floors);
+        if (!a || a === document.body || a.closest('[hidden]')) restoreFloors();
       }
       floorMode = v.floorMode;
       cur.set(v.current);

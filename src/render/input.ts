@@ -310,6 +310,8 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     // Runs before OrbitControls sees the press (capture): a new gesture gets the current tool's mapping.
     if (pointers.size === 0) lendCamera(floor?.tool === 'paint');
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // A popover, the shortcuts panel or a dialog is open: this press only closes it. Orbit and pinch stay with the controls.
+    if (opts.isBlocked?.()) { press = null; return; }
     pointers.add(e.pointerId);
     if (pointers.size > 1) {
       multi = true;

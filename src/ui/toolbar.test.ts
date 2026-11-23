@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SceneSettings } from '../game/types';
+import { installPointerFocusReturn } from './focus';
 import { T } from './strings';
 import { createToolbar, LONG_PRESS_MS, nextTime, TIME_ICON, type ToolbarHandlers } from './toolbar';
 
@@ -124,6 +125,53 @@ describe('toolbar', () => {
   it('the gallery gets only the scene switches: no 📷, ⌨️ or ⋯', () => {
     const { root } = setup({ onTime: vi.fn(), onWeather: vi.fn(), onGround: vi.fn(), onQuality: vi.fn() });
     expect([...root.querySelectorAll('.tb-btn')].map((b) => b.className.split(' ')[1])).toEqual(['tb-time', 'tb-rain', 'tb-ground', 'tb-quality']);
+  });
+
+  it('update writes the DOM only when something shown changed', () => {
+    const { root, tb } = setup();
+    const icon = root.querySelector('.tb-time .tb-icon')!;
+    const writes = vi.spyOn(icon, 'textContent', 'set');
+    tb.update({ settings: { ...scene }, quality: 'pretty' });
+    tb.update({ settings: { ...scene }, quality: 'pretty' });
+    expect(writes).not.toHaveBeenCalled();
+    tb.update({ settings: { ...scene, time: 'dusk' }, quality: 'pretty' });
+    expect(writes).toHaveBeenCalledTimes(1);
+  });
+
+  it('Tab stays inside an open popover', () => {
+    const { root, byName } = setup();
+    byName('สีพื้นทั้งแผนที่').click();
+    const swatches = [...root.querySelectorAll<HTMLButtonElement>('.tb-pop-ground button')];
+    swatches[swatches.length - 1].focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(swatches[0]);
+  });
+
+  it('a popover opened with the mouse and closed with Esc leaves the focus on the page', () => {
+    const off = installPointerFocusReturn(); // tracks mouse vs keyboard, as the page does
+    const { byName } = setup();
+    const opener = byName('สีพื้นทั้งแผนที่');
+    opener.focus();
+    document.dispatchEvent(new Event('pointerdown'));
+    opener.click();
+    (document.activeElement as HTMLElement).blur();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    expect(document.activeElement).not.toBe(opener);
+    off();
+  });
+
+  it('a cancelled long press never swallows a later click', () => {
+    vi.useFakeTimers();
+    const { h, byName } = setup();
+    const rain = byName(T.weather.rain);
+    const ptr = (type: string) => rain.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', bubbles: true }));
+    ptr('pointerdown');
+    vi.advanceTimersByTime(LONG_PRESS_MS + 10); // label shown
+    ptr('pointercancel'); // the browser took the finger: no click will follow
+    rain.click(); // a later, real click
+    expect(h.onWeather).toHaveBeenCalledOnce();
   });
 
   it('a long press (touch) shows the label and does not run the action; a short tap does', () => {

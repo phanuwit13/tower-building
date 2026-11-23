@@ -58,13 +58,21 @@ test('the toolbar: time cycles, rain toggles, ground swatches, quality toggles; 
   await page.mouse.click(width * 0.3, height * 0.5);
   await expect(pop).toBeHidden();
   await expect(page.getByText(placed(0))).toBeVisible(); // that tap only closed the popover: no ghost, nothing placed
+  await expect(page.getByText(T.hintTap)).toBeVisible(); // no ghost appeared
+  await expect(button(page, T.place)).toBeDisabled();
 
+  // Quality: start on ลื่น so the automatic drop to ลื่น (a slow machine) cannot race the click
+  await page.evaluate((k) => localStorage.setItem(k, 'smooth'), QUALITY_KEY);
+  await page.reload();
+  await expect(page.getByText(placed(0))).toBeVisible();
   const quality = tool(page, /^คุณภาพภาพ/);
-  const was = (await quality.getAttribute('aria-label'))!;
+  await expect(quality).toHaveAttribute('aria-label', `${T.quality.title}: ${T.quality.smooth}`);
   await quality.click();
-  await expect(quality).not.toHaveAttribute('aria-label', was);
-  const now = (await quality.getAttribute('aria-label'))!;
-  expect(await page.evaluate((k) => localStorage.getItem(k), QUALITY_KEY)).toBe(now.endsWith(T.quality.smooth) ? 'smooth' : 'pretty');
+  await expect(quality).toHaveAttribute('aria-label', `${T.quality.title}: ${T.quality.pretty}`);
+  expect(await page.evaluate((k) => localStorage.getItem(k), QUALITY_KEY)).toBe('pretty');
+  await quality.click();
+  await expect(quality).toHaveAttribute('aria-label', `${T.quality.title}: ${T.quality.smooth}`);
+  expect(await page.evaluate((k) => localStorage.getItem(k), QUALITY_KEY)).toBe('smooth');
 });
 
 test('📷 saves a picture and says so', async ({ page }) => {
@@ -128,6 +136,35 @@ test('⌨️ and ? open the shortcuts panel; ✕, Esc and an outside tap close i
   // and the game's keys work again right after
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
+  await expect(page.getByText(placed(1))).toBeVisible();
+});
+
+test('a mouse-opened popover or panel closed with Esc leaves Space free to place; a destructive confirm starts on ยกเลิก', async ({ page }) => {
+  await startSchool(page);
+  await page.keyboard.press('ArrowRight'); // a ghost
+  const focusIsPage = () => page.evaluate(() => document.activeElement === document.body);
+  await tool(page, T.ground.title).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.tb-pop-ground')).toBeHidden();
+  expect(await focusIsPage()).toBe(true);
+  await tool(page, T.toolbar.shortcuts).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: T.shortcuts.title })).toBeHidden();
+  expect(await focusIsPage()).toBe(true);
+  await page.keyboard.press(' ');
+  await expect(page.getByText(placed(1))).toBeVisible();
+
+  // a keyboard-opened popover still returns to its button
+  await tool(page, T.ground.title).focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(tool(page, T.ground.title)).toBeFocused();
+
+  // the confirm: ยกเลิก has the focus, Space cancels and the city stays
+  await fromMore(page, T.clear);
+  await expect(page.getByRole('dialog').getByRole('button', { name: T.cancel })).toBeFocused();
+  await page.keyboard.press(' ');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText(placed(1))).toBeVisible();
 });
 

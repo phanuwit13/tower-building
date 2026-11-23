@@ -60,6 +60,18 @@ describe('shortcuts panel', () => {
     expect(panel.isOpen()).toBe(true);
   });
 
+  it('says the keys rest while the tile drawer is open, and Tab stays inside the panel', () => {
+    const { root, panel } = setup();
+    expect(root.querySelector('.shortcut-note')!.textContent).toBe(T.shortcuts.note);
+    panel.open();
+    const close = root.querySelector<HTMLButtonElement>('.btn-close')!;
+    close.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true); // the only button: it wraps onto itself
+    expect(document.activeElement).toBe(close);
+  });
+
   it('puts the focus on ✕ when opened and back on the opener when closed (keyboard)', () => {
     const { panel } = setup();
     const opener = document.body.appendChild(document.createElement('button'));

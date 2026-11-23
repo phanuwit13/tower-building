@@ -3,7 +3,7 @@ import {
   type GroundId, type QualityTier, type SceneSettings, type TimeId, type WeatherId,
 } from '../game/types';
 import { button, el } from './dom';
-import { focusForKeyboard } from './focus';
+import { focusForKeyboard, focusReturn, trapTab } from './focus';
 import { T } from './strings';
 
 export interface ToolbarView { settings: SceneSettings; quality: QualityTier }
@@ -53,6 +53,7 @@ function name(t: Tool, text: string): void {
 export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
   update(v: ToolbarView): void; setVisible(v: boolean): void; closePopovers(): void; isOpen(): boolean;
 } {
+  let drawn = false;
   let view: ToolbarView = { settings: { weather: 'sunny', time: 'day', ground: 'grass' }, quality: 'pretty' };
   const time = tool('tb-time', () => h.onTime(nextTime(view.settings.time)));
   const rain = tool('tb-rain', () => h.onWeather(view.settings.weather === 'rain' ? 'sunny' : 'rain'));
@@ -95,25 +96,25 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
   root.appendChild(bar);
 
   // --- popovers
-  let open: { id: 'ground' | 'more'; opener: HTMLButtonElement } | null = null;
+  let open: { id: 'ground' | 'more'; restore: () => void } | null = null;
   const pops = { ground: groundPop, more: morePop };
   function closePopovers(restoreFocus = false): void {
     if (!open) return;
-    const { opener } = open;
+    const { restore } = open;
     open = null;
     groundPop.hidden = true;
     if (morePop) morePop.hidden = true;
     for (const t of tools) t.btn.removeAttribute('aria-expanded');
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('pointerdown', onOutside);
-    if (restoreFocus) focusForKeyboard(opener);
+    if (restoreFocus) restore();
     h.onOpenChange?.(false);
   }
   function toggle(id: 'ground' | 'more', opener: HTMLButtonElement): void {
     if (open?.id === id) { closePopovers(true); return; }
     const was = open !== null;
     if (was) closePopovers();
-    open = { id, opener };
+    open = { id, restore: focusReturn(opener) };
     pops[id]!.hidden = false;
     opener.setAttribute('aria-expanded', 'true');
     document.addEventListener('keydown', onKey);
@@ -123,7 +124,8 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
     h.onOpenChange?.(true);
   }
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') { e.preventDefault(); closePopovers(true); }
+    if (e.key === 'Escape') { e.preventDefault(); closePopovers(true); return; }
+    if (open) trapTab(e, pops[open.id]!);
   };
   // Bubbling phase: the map has already ignored this press (the popover still counted as open), so a tap outside only closes.
   const onOutside = (e: PointerEvent): void => {
@@ -133,6 +135,7 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
   // --- long press: a finger holding a button shows its label, and the click that follows is swallowed
   let held: { btn: HTMLElement; timer: number } | null = null;
   let swallow = false;
+  let down = false; // a finger is on the bar
   const clearHeld = (): void => {
     if (!held) return;
     clearTimeout(held.timer);
@@ -146,9 +149,13 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
     if (!btn) return;
     clearHeld();
     swallow = false;
+    down = true;
     held = { btn, timer: window.setTimeout(() => { btn.classList.add('show-label'); swallow = true; }, LONG_PRESS_MS) };
   });
   for (const type of ['pointerup', 'pointercancel', 'pointerleave'] as const) bar.addEventListener(type, clearHeld);
+  bar.addEventListener('pointerup', () => { down = false; });
+  // The finger was taken away (cancel) or slid off the bar before lifting: no click follows, so never swallow a later one.
+  for (const type of ['pointercancel', 'pointerleave'] as const) bar.addEventListener(type, () => { if (down) swallow = false; down = false; });
   bar.addEventListener('click', (e) => {
     if (!swallow) return;
     swallow = false;
@@ -159,7 +166,12 @@ export function createToolbar(root: HTMLElement, h: ToolbarHandlers): {
 
   return {
     update(v) {
+      // Runs on every state change (a ghost drag too): write the DOM only when something shown changed.
+      const same = view.settings.time === v.settings.time && view.settings.weather === v.settings.weather
+        && view.settings.ground === v.settings.ground && view.quality === v.quality && drawn;
       view = v;
+      if (same) return;
+      drawn = true;
       const { settings, quality: q } = v;
       time.icon.textContent = TIME_ICON[settings.time];
       name(time, `${T.time.title}: ${T.time[settings.time]}`);

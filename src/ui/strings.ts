@@ -17,7 +17,7 @@ export const T = {
     title: 'สีพื้นทั้งแผนที่', grass: 'หญ้า', dirt: 'ดิน', concrete: 'ปูน', sand: 'ทราย', snow: 'หิมะ', wood: 'พื้นไม้', moon: 'พื้นดวงจันทร์',
   },
   quality: { title: 'คุณภาพภาพ', pretty: 'สวย', smooth: 'ลื่น' },
-  /** The floor drawer: [พื้น] opens it; groups and tiles have their own Thai names (src/floors). */
+  /** The floor drawer: [ปูกระเบื้อง] opens it; groups and tiles have their own Thai names (src/floors). */
   floor: {
     open: 'ปูกระเบื้อง', title: 'ปูกระเบื้อง', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
     eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูกระเบื้อง', camera: '✋ ขยับกล้อง',
@@ -36,6 +36,7 @@ export const T = {
   /** The ⌨️ panel: every key the game answers to. `?` opens it. */
   shortcuts: {
     title: 'ปุ่มลัดบนคีย์บอร์ด',
+    note: 'ตอนเปิดหน้าปูกระเบื้อง ปุ่มทั้งหมดนี้จะพัก ยกเว้น Esc (ปิด)',
     rows: [
       { keys: ['Enter', 'Space'], does: 'วาง' },
       { keys: ['R'], does: 'หมุนของ' },
@@ -51,7 +52,7 @@ export const T = {
   /** On a theme select card whose city's round is finished. */
   cityDone: 'เมืองเสร็จแล้ว',
   /** On a theme select card whose city has floor laid but no item yet. */
-  floorsOnly: 'ปูพื้นไว้แล้ว',
+  floorsOnly: 'ปูกระเบื้องไว้แล้ว',
   restart: 'เริ่มใหม่',
   confirmRestart: 'เริ่มเมืองนี้ใหม่ไหม? ของและพื้นที่ปูไว้ในเมืองนี้จะหายไป ส่วนเมืองของธีมอื่นยังอยู่',
   confirmRestartOk: 'เริ่มใหม่',

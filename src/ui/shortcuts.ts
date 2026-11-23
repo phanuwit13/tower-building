@@ -1,5 +1,5 @@
 import { button, el } from './dom';
-import { focusForKeyboard } from './focus';
+import { focusForKeyboard, focusReturn, trapTab } from './focus';
 import { T } from './strings';
 
 /** True on a machine that most likely has a keyboard and a mouse: the ⌨️ button only shows there. */
@@ -28,13 +28,14 @@ export function createShortcutsPanel(root: HTMLElement, o: ShortcutsOptions = {}
   const card = el('div', { class: 'shortcuts-card', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': T.shortcuts.title } }, [
     el('div', { class: 'settings-head' }, [el('h2', { text: T.shortcuts.title }), closeBtn]),
     list,
+    el('p', { class: 'shortcut-note', text: T.shortcuts.note }),
   ]);
   const wrap = el('div', { class: 'shortcuts screen' }, [card]);
   wrap.hidden = true;
   root.appendChild(wrap);
   wrap.addEventListener('pointerdown', (e) => { if (e.target === wrap) close(); });
 
-  let opener: HTMLElement | null = null;
+  let restore: (() => void) | null = null;
   const isOpen = (): boolean => !wrap.hidden;
   const typing = (t: EventTarget | null): boolean => {
     const e = t as HTMLElement | null;
@@ -42,6 +43,7 @@ export function createShortcutsPanel(root: HTMLElement, o: ShortcutsOptions = {}
   };
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === 'Escape' && isOpen()) { e.preventDefault(); close(); return; }
+    if (isOpen()) { trapTab(e, card); if (e.key === 'Tab') return; }
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(e.target)) {
       if (isOpen()) { e.preventDefault(); close(); } else if (o.canOpen?.() ?? true) { e.preventDefault(); open(); }
     }
@@ -50,7 +52,7 @@ export function createShortcutsPanel(root: HTMLElement, o: ShortcutsOptions = {}
 
   function open(): void {
     if (isOpen()) return;
-    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    restore = focusReturn(document.activeElement instanceof HTMLElement ? document.activeElement : null);
     wrap.hidden = false;
     focusForKeyboard(closeBtn);
     o.onOpenChange?.(true);
@@ -58,9 +60,9 @@ export function createShortcutsPanel(root: HTMLElement, o: ShortcutsOptions = {}
   function close(): void {
     if (!isOpen()) return;
     wrap.hidden = true;
-    const back = opener;
-    opener = null;
-    focusForKeyboard(back);
+    const back = restore;
+    restore = null;
+    back?.();
     o.onOpenChange?.(false);
   }
   return { open, close, toggle: () => (isOpen() ? close() : open()), isOpen };
