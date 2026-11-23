@@ -3,7 +3,7 @@ import type { Part } from '../../../models/kit';
 
 // A round flower backdrop in a green ring, with a pink-cushioned bench in front, on a small deck.
 const DECK = 0.04;
-const DISC = { x: -0.8, r: 0.8, cy: 0.87 }; // disc centre height: its ring just touches the ground
+const DISC = { x: -0.8, r: 0.8, cy: 0.89 }; // disc centre height: its ring just touches the ground
 const FLOWERS = ['pink', 'white', 'sunYellow', 'purple', 'orange'] as const;
 
 /** มุมถ่ายรูปกำแพงดอกไม้: a free-standing flower wall arch with a bench in front. */

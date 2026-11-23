@@ -3,7 +3,7 @@ import type { Part } from '../../../models/kit';
 import type { MotionOpts } from '../../../models/motion';
 
 // A copper roaster cabinet (drum, hopper, chimney) beside a round cooling tray whose stirring arm spins.
-const TRAY = { x: 0.4, z: 0.35, r: 0.55, floorY: 0.47 };
+const TRAY = { x: 0.43, z: 0.35, r: 0.55, floorY: 0.47 };
 const ARM_Y = 0.6;
 const SPIN: MotionOpts = { kind: 'spin', pivot: [TRAY.x, ARM_Y, TRAY.z], speed: 0.4 }; // one pivot: the tray's centre
 const CAB = { w: 0.8, h: 0.55, d: 1.4, x: -0.55, z: -0.2 };

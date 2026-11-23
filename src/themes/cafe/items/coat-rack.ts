@@ -46,10 +46,10 @@ export const item: ItemModel = {
     // umbrella hanging by its handle from the -z arm
     const uz = -ARM;
     parts.push(
-      kit.torus(0.035, 0.015, [0, ARM_Y + 0.03, uz], 'woodDark', { radialSegments: 4, tubularSegments: 8, rotate: [0, Math.PI / 2, 0] }),
+      kit.torus(0.035, 0.015, [0, ARM_Y + 0.03, uz], 'woodDark', { radialSegments: 4, tubularSegments: 8 }),
       kit.cylinder(0.02, 0.02, 0.1, [0, ARM_Y - 0.05, uz], 'woodDark', { segments: 6 }),
       kit.cylinder(0.055, 0.02, 0.5, [0, ARM_Y - 0.35, uz], 'blue', { segments: 8 }),
-      kit.cylinder(0.03, 0.055, 0.1, [0, ARM_Y - 0.65, uz], 'navy', { segments: 8 }),
+      kit.cylinder(0.035, 0.018, 0.1, [0, ARM_Y - 0.65, uz], 'navy', { segments: 8 }),
       kit.cylinder(0.052, 0.052, 0.03, [0, ARM_Y - 0.2, uz], 'sunYellow', { segments: 8 }),
     );
     return kit.finish(parts);
