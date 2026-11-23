@@ -6,7 +6,8 @@ import { door, gableRoof, glassWindow, rod, wheel } from '../../../models/parts'
 // bowl neon on a navy board, and a steaming pot cart with a breathing lantern out front.
 const PAD = 0.03;
 const SHOP = { x0: -0.88, x1: 0.05, z: 1.8, wall: 0.8 };
-const SIGN_Y = 0.63;
+const SIGN_Y = 0.64;
+const TUBE = 0.035;
 const CART = { x: 0.65, z: 0.5 };
 
 /** ร้านก๋วยเตี๋ยว: a noodle shop with a steaming pot cart out front and a bowl neon. */
@@ -31,7 +32,7 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [-0.45, 0.4, SHOP.z / 2], facing: 'z+', w: 0.5, h: 0.3 }),
       ...glassWindow(kit, { at: [-0.45, 0.4, -SHOP.z / 2], facing: 'z-', w: 0.5, h: 0.3 }),
       ...glassWindow(kit, { at: [SHOP.x0, 0.4, 0], facing: 'x-', w: 0.7, h: 0.3, panes: 3 }),
-      kit.box([0.05, 0.24, 1.0], [SHOP.x1 + 0.025, SIGN_Y, 0], 'navy'),
+      kit.box([0.05, 0.3, 0.9], [SHOP.x1 + 0.025, SIGN_Y, 0], 'navy'),
       // giant bowl on the roof: red bowl, noodle heap, two chopsticks
       kit.cylinder(0.3, 0.14, 0.22, [cx, ridgeY + 0.11, 0], 'red', { segments: 12 }),
       kit.cylinder(0.31, 0.31, 0.03, [cx, ridgeY + 0.215, 0], 'white', { segments: 12 }),
@@ -40,15 +41,14 @@ export const item: ItemModel = {
       rod(kit, [cx - 0.01, ridgeY + 0.3, 0.1], [cx + 0.2, ridgeY + 0.55, 0.3], 0.018, 'wood', { segments: 4 }),
     ];
     // bowl neon: a half-round bowl, two chopsticks and a steam curl
-    const N = (dy: number, dz: number): [number, number, number] => [SHOP.x1 + 0.06, SIGN_Y + dy, dz];
-    const stroke = (a: [number, number], b: [number, number]) => parts.push(rod(kit, N(...a), N(...b), 0.016, 'orange', { segments: 4, glow: 'orange' }));
-    const bowl: [number, number][] = [[0.0, -0.2], [-0.04, -0.16], [-0.08, -0.08], [-0.095, 0.0], [-0.08, 0.08], [-0.04, 0.16], [0.0, 0.2]];
+    const N = (dy: number, dz: number): [number, number, number] => [SHOP.x1 + 0.08, SIGN_Y + dy, dz];
+    const stroke = (a: [number, number], b: [number, number]) => parts.push(rod(kit, N(...a), N(...b), TUBE, 'orange', { segments: 6, glow: 'orange' }), kit.sphere(TUBE, N(...a), 'orange', { detail: 0, glow: 'orange' }));
+    const bowl: [number, number][] = [[0.02, -0.3], [-0.04, -0.24], [-0.09, -0.12], [-0.11, 0.0], [-0.09, 0.12], [-0.04, 0.24], [0.02, 0.3]];
     for (let i = 0; i < bowl.length - 1; i++) stroke(bowl[i]!, bowl[i + 1]!);
-    stroke([0.0, -0.2], [0.0, 0.2]);
-    stroke([0.0, 0.06], [0.09, 0.14]);
-    stroke([0.0, 0.1], [0.09, 0.18]);
-    stroke([0.01, -0.12], [0.06, -0.14]);
-    stroke([0.06, -0.14], [0.03, -0.17]);
+    stroke([0.02, -0.3], [0.02, 0.3]);
+    stroke([0.02, 0.08], [0.1, 0.18]);
+    stroke([0.02, 0.15], [0.1, 0.25]);
+    stroke([0.05, -0.16], [0.11, -0.2]);
 
     // steaming pot cart
     parts.push(

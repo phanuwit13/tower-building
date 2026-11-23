@@ -10,7 +10,8 @@ const PAD = 0.03;
 const SHOP = { x0: -0.88, x1: 0.25, z: 1.8, wall: 0.78 }; // x range, length along z, wall top
 const POLE = { x: 0.62, z: 0.6, r: 0.1, y0: 0.12, y1: 0.74 };
 const SPIN: MotionOpts = { kind: 'spin', pivot: [POLE.x, 0, POLE.z], speed: 0.4 };
-const SIGN_Y = 0.62;
+const SIGN_Y = 0.63;
+const TUBE = 0.035;
 const DOOR_Z = -0.45;
 
 /** ร้านตัดผม: a barber shop with a spinning striped pole and a scissors neon. */
@@ -34,15 +35,17 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [-0.1, 0.4, -SHOP.z / 2], facing: 'z-', w: 0.5, h: 0.3 }),
       ...glassWindow(kit, { at: [SHOP.x0, 0.4, 0], facing: 'x-', w: 0.7, h: 0.3, panes: 3 }),
       // navy sign board over the door with the scissors neon
-      kit.box([0.05, 0.24, 0.62], [SHOP.x1 + 0.025, SIGN_Y, DOOR_Z], 'navy'),
+      kit.box([0.05, 0.3, 0.78], [SHOP.x1 + 0.025, SIGN_Y, DOOR_Z], 'navy'),
     ];
     // scissors: two crossing blades and two finger rings (diamonds)
-    const S = (dy: number, dz: number): [number, number, number] => [SHOP.x1 + 0.06, SIGN_Y + dy, DOOR_Z + dz];
-    const stroke = (a: [number, number], b: [number, number]) => parts.push(rod(kit, S(...a), S(...b), 0.016, 'teal', { segments: 4, glow: 'teal' }));
-    stroke([-0.06, -0.14], [0.06, 0.1]);
-    stroke([0.06, -0.14], [-0.06, 0.1]);
+    const S = (dy: number, dz: number): [number, number, number] => [SHOP.x1 + 0.08, SIGN_Y + dy, DOOR_Z + dz];
+    const stroke = (a: [number, number], b: [number, number]) => {
+      parts.push(rod(kit, S(...a), S(...b), TUBE, 'teal', { segments: 6, glow: 'teal' }), kit.sphere(TUBE, S(...a), 'teal', { detail: 0, glow: 'teal' }));
+    };
+    stroke([-0.08, -0.18], [0.08, 0.14]);
+    stroke([0.08, -0.18], [-0.08, 0.14]);
     for (const side of [-1, 1]) {
-      const ring: [number, number][] = [[0.0, 0.14 * side], [0.045, 0.19 * side], [0.0, 0.24 * side], [-0.045, 0.19 * side]];
+      const ring: [number, number][] = [[0.0, 0.17 * side], [0.06, 0.25 * side], [0.0, 0.33 * side], [-0.06, 0.25 * side]];
       for (let i = 0; i < 4; i++) stroke(ring[i]!, ring[(i + 1) % 4]!);
     }
 
@@ -61,10 +64,10 @@ export const item: ItemModel = {
         const a0 = offset + (i / STEPS) * Math.PI * 2.5;
         const a1 = offset + ((i + 1) / STEPS) * Math.PI * 2.5;
         const rr = POLE.r + 0.004;
-        const p0: [number, number, number] = [POLE.x + rr * Math.cos(a0), POLE.y0 + 0.02 + i * (pitch - 0.004), POLE.z + rr * Math.sin(a0)];
-        const p1: [number, number, number] = [POLE.x + rr * Math.cos(a1), POLE.y0 + 0.02 + (i + 1) * (pitch - 0.004), POLE.z + rr * Math.sin(a1)];
+        const p0: [number, number, number] = [POLE.x + rr * Math.cos(a0), POLE.y0 + 0.05 + i * (pitch - 0.012), POLE.z + rr * Math.sin(a0)];
+        const p1: [number, number, number] = [POLE.x + rr * Math.cos(a1), POLE.y0 + 0.05 + (i + 1) * (pitch - 0.012), POLE.z + rr * Math.sin(a1)];
         const d: [number, number, number] = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-        parts.push(kit.cylinder(0.025, 0.025, Math.hypot(...d) + 0.02, [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2], color, { segments: 4, rotate: aim(d), motion: SPIN }));
+        parts.push(kit.cylinder(0.025, 0.025, Math.hypot(...d), [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2], color, { segments: 4, rotate: aim(d), motion: SPIN }));
       }
     }
     return kit.finish(parts);

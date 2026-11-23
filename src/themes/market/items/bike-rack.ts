@@ -22,6 +22,8 @@ function bike(kit: StyleKit, z: number, color: PaletteColor): Part[] {
     rod(kit, p(0.15, 0.36), p(0.13, 0.46), 0.018, 'chrome', { segments: 4 }), // stem
     kit.box([0.04, 0.03, 0.2], p(0.13, 0.47), 'chrome'), // handlebar
     kit.box([0.14, 0.035, 0.07], p(-0.08, 0.4), 'charcoal'), // saddle
+    kit.sphere(0.04, p(0.2, 0.48), 'lampWarm', { detail: 0, glow: true }), // front lamp
+    kit.sphere(0.035, p(-0.17, 0.4), 'red', { detail: 0, glow: true }), // rear reflector
   ];
   return parts;
 }
@@ -35,8 +37,12 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [kit.box([0.9, PAD, 1.94], [0, PAD / 2, 0], 'stone')];
     for (const x of [-AXLE_X, AXLE_X]) {
-      parts.push(kit.box([0.04, 0.04, 1.84], [x, PAD + 0.1, 0], 'teal'));
+      parts.push(kit.box([0.04, 0.04, 1.84], [x, PAD + 0.1, 0], 'teal', { glow: 'teal' }));
       for (const z of [-0.9, -0.3, 0.3, 0.9]) parts.push(kit.box([0.04, 0.1, 0.04], [x, PAD + 0.05, z], 'charcoal'));
+    }
+    // a lamp post at each end of the rack
+    for (const z of [-0.93, 0.93]) {
+      parts.push(kit.cylinder(0.02, 0.025, 0.6, [-0.42, PAD + 0.3, z], 'navy', { segments: 6 }), kit.sphere(0.06, [-0.42, PAD + 0.64, z], 'lampWarm', { glow: true, light: 'breathe' }));
     }
     parts.push(...bike(kit, -0.6, 'red'), ...bike(kit, 0, 'blue'), ...bike(kit, 0.6, 'sunYellow'));
     return kit.finish(parts);

@@ -53,15 +53,14 @@ export const item: ItemModel = {
       kit.cylinder(0.03, 0.03, 1.4, [-0.8, SLAB + 0.7, 1.2], 'navy', { segments: 8 }),
       kit.box([0.28, 0.03, 0.05], [-0.68, SLAB + 1.4, 1.2], 'navy'),
       kit.sphere(0.1, [-0.58, SLAB + 1.4, 1.2], 'lampWarm', { glow: true, light: 'breathe' }),
-      kit.cylinder(0.025, 0.025, 0.6, [-0.8, SLAB + 0.3, -1.3], 'navy', { segments: 8 }),
-      kit.cylinder(0.025, 0.025, 0.6, [-0.8, SLAB + 0.3, -0.7], 'navy', { segments: 8 }),
-      kit.box([0.05, 0.4, 0.8], [-0.8, SLAB + 0.75, -1.0], 'navy'),
-      kit.box([0.04, 0.3, 0.7], [-0.77, SLAB + 0.75, -1.0], 'blue'),
+      kit.cylinder(0.025, 0.025, 0.6, [-0.8, SLAB + 0.3, -1.4], 'navy', { segments: 8 }),
+      kit.cylinder(0.025, 0.025, 0.6, [-0.8, SLAB + 0.3, -0.6], 'navy', { segments: 8 }),
+      kit.box([0.06, 0.46, 0.9], [-0.8, SLAB + 0.78, -1.0], 'navy'),
     );
     // neon arrow (pointing along the lane) on the blue board
-    const A = (dy: number, dz: number): [number, number, number] => [-0.74, SLAB + 0.75 + dy, -1.0 + dz];
-    for (const [p, q] of [[A(0, -0.24), A(0, 0.24)], [A(0, 0.24), A(0.1, 0.12)], [A(0, 0.24), A(-0.1, 0.12)]] as const) {
-      parts.push(rod(kit, p, q, 0.017, 'lime', { segments: 4, glow: 'lime' }));
+    const A = (dy: number, dz: number): [number, number, number] => [-0.72, SLAB + 0.78 + dy, -1.0 + dz];
+    for (const [p, q] of [[A(0, -0.32), A(0, 0.32)], [A(0, 0.32), A(0.14, 0.14)], [A(0, 0.32), A(-0.14, 0.14)]] as const) {
+      parts.push(rod(kit, p, q, 0.035, 'teal', { segments: 6, glow: 'teal' }), kit.sphere(0.035, p, 'teal', { detail: 0, glow: 'teal' }));
     }
     return kit.finish(parts);
   },

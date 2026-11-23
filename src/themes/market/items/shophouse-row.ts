@@ -12,19 +12,20 @@ const UNIT_Z = 0.96;
 const FLOOR1 = 0.58;
 const WALL_TOP = 1.12;
 const RISE = 0.2;
-const SIGN_Y = 0.47;
+const SIGN_Y = 0.48;
+const TUBE = 0.035; // neon tube radius
 const END_Z = 0.96 + UNIT_Z / 2; // outer face of the end units
 
 type Pt = [number, number];
 const UNITS: { z: number; wall: PaletteColor; roof: PaletteColor; neon: PaletteColor; icon: Pt[][] }[] = [
-  { z: -0.96, wall: 'cream', roof: 'terracotta', neon: 'sunYellow', icon: [starPts()] },
-  { z: 0, wall: 'mint', roof: 'blue', neon: 'pink', icon: [heartPts()] },
+  { z: -0.96, wall: 'cream', roof: 'terracotta', neon: 'purple', icon: [starPts()] },
+  { z: 0, wall: 'mint', roof: 'blue', neon: 'red', icon: [heartPts()] },
   { z: 0.96, wall: 'sand', roof: 'red', neon: 'blue', icon: cupPts() },
 ];
 
 function starPts(): Pt[] {
   // a five-point star drawn as a pentagram: every second point of five, closed
-  const r = 0.13;
+  const r = 0.105;
   const p = (i: number): Pt => [r * Math.sin(Math.PI / 2 + (i * 4 * Math.PI) / 5), r * Math.cos(Math.PI / 2 + (i * 4 * Math.PI) / 5)];
   return [p(0), p(1), p(2), p(3), p(4), p(0)];
 }
@@ -62,7 +63,9 @@ export const item: ItemModel = {
         kit.box([0.04, 0.03, 0.62], [WALL_X + 0.02, PAD + 0.12, u.z], 'stoneDark'),
         kit.box([0.05, 0.04, 0.68], [WALL_X + 0.025, PAD + 0.02, u.z], 'chrome'),
         // sign board with neon
-        kit.box([0.05, 0.2, 0.7], [WALL_X + 0.025, SIGN_Y, u.z], 'navy'),
+        kit.box([0.05, 0.28, 0.76], [WALL_X + 0.025, SIGN_Y, u.z], 'navy'),
+        // thin neon strip along the top of the first-floor wall
+        kit.box([0.03, 0.035, 0.8], [WALL_X + 0.015, WALL_TOP - 0.03, u.z], u.neon, { glow: u.neon }),
         // balcony: slab, rail and posts on the first floor
         kit.box([0.22, 0.04, 0.82], [WALL_X + 0.11, FLOOR1 + 0.04, u.z], 'stone'),
         kit.box([0.025, 0.04, 0.82], [WALL_X + 0.21, FLOOR1 + 0.15, u.z], 'white'),
@@ -72,10 +75,12 @@ export const item: ItemModel = {
         ...glassWindow(kit, { at: [BACK_X, 0.3, u.z], facing: 'x-', w: 0.4, h: 0.26, panes: 1 }),
       );
       for (const line of u.icon) {
-        for (let i = 0; i < line.length - 1; i++) {
-          const [a, b] = [line[i]!, line[i + 1]!];
-          if (a[0] === b[0] && a[1] === b[1]) continue;
-          parts.push(rod(kit, [WALL_X + 0.06, SIGN_Y + a[0], u.z + a[1]], [WALL_X + 0.06, SIGN_Y + b[0], u.z + b[1]], 0.016, u.neon, { segments: 4, glow: u.neon }));
+        for (let i = 0; i < line.length; i++) {
+          const a = line[i]!;
+          const at = (q: Pt): [number, number, number] => [WALL_X + 0.08, SIGN_Y + q[0], u.z + q[1]];
+          parts.push(kit.sphere(TUBE, at(a), u.neon, { detail: 0, glow: u.neon }));
+          const b = line[i + 1];
+          if (b && !(a[0] === b[0] && a[1] === b[1])) parts.push(rod(kit, at(a), at(b), TUBE, u.neon, { segments: 6, glow: u.neon }));
         }
       }
     }

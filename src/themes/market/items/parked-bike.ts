@@ -37,6 +37,9 @@ export const item: ItemModel = {
       kit.box([0.2, 0.13, 0.02], p(0.35, 0.585, 0.12), 'wood'),
       kit.box([0.2, 0.13, 0.02], p(0.35, 0.585, -0.12), 'wood'),
       rod(kit, p(0.16, 0.5), p(0.28, 0.52), 0.016, 'chrome', { segments: 4 }),
+      kit.sphere(0.04, p(0.2, 0.43), 'lampWarm', { detail: 0, glow: true }), // front lamp
+      kit.sphere(0.03, p(-0.22, 0.42), 'red', { detail: 0, glow: true }), // rear reflector
+      ...[[0.26, 0.12], [0.26, -0.12], [0.44, 0.12], [0.44, -0.12]].map(([x, z]) => kit.sphere(0.025, p(x!, 0.66, z), 'lampWarm', { detail: 0, glow: true })), // basket fairy lights
       // centre stand, two legs behind the rear hub
       rod(kit, p(-0.2, 0.2, 0.06), p(-0.3, 0.025, 0.06), 0.018, 'stoneDark', { segments: 4 }),
       rod(kit, p(-0.2, 0.2, -0.06), p(-0.3, 0.025, -0.06), 0.018, 'stoneDark', { segments: 4 }),
