@@ -40,8 +40,8 @@ export const item: ItemModel = {
     // dipper: a coconut-shell scoop with a long handle, resting on the middle lid
     const LID_Y = NECK_Y + 0.07;
     parts.push(
-      kit.dome(0.065, [0.1, LID_Y + 0.085, 0.02], 'bark', { segments: 8 }),
-      rod(kit, [0.12, LID_Y + 0.115, 0.02], [0.27, LID_Y + 0.045, 0.02], 0.016, 'wood', { segments: 4 }),
+      kit.dome(0.065, [0.06, LID_Y + 0.07, 0.04], 'bark', { segments: 8 }), // scoop on the lid
+      rod(kit, [0.08, LID_Y + 0.1, 0.04], [0.15, LID_Y + 0.085, 0.04], 0.016, 'wood', { segments: 4 }), // short handle resting on the lid
     );
     return kit.finish(parts);
   },
