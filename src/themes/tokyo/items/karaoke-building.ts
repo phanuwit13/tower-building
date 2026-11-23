@@ -1,5 +1,5 @@
 import type { ItemModel } from '../../../models/contract';
-import type { Part, StyleKit } from '../../../models/kit';
+import type { Part } from '../../../models/kit';
 import { door, glassWindow } from '../../../models/parts';
 
 // A slim, colourful party building (2×2): mint and pink storeys, a big purple neon music note (a pair of
@@ -10,13 +10,6 @@ const FLOOR = 0.9;
 const TOP = BASE_H + FLOOR * 3;
 const BOARD = { y: 2.05, w: 1.3, h: 1.3, z: 1.2 }; // z: the board's width along z
 const FACE = W / 2;
-
-function stroke(kit: StyleKit, x: number, a: [number, number], b: [number, number], t: number): Part {
-  const dy = b[0] - a[0];
-  const dz = b[1] - a[1];
-  return kit.box([t, Math.hypot(dy, dz) + t * 0.6, t], [x, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2], 'purple',
-    { rotate: [Math.atan2(dz, dy), 0, 0], glow: 'purple' });
-}
 
 /** ตึกคาราโอเกะ: a slim colourful building with a neon music note. */
 export const item: ItemModel = {
@@ -48,21 +41,11 @@ export const item: ItemModel = {
         ...glassWindow(kit, { at: [0, y, -FACE], facing: 'z-', w: 0.9, h: 0.4 }),
       );
     }
-    // the sign: a dark board and a purple neon pair of eighth notes
-    const bx = FACE + 0.04;
-    const nx = FACE + 0.09;
-    parts.push(kit.box([0.08, BOARD.h, BOARD.z * 1], [bx, BOARD.y, 0], 'charcoal'));
+    // the sign: a dark board and a big purple neon note, on the +x face and the +z face (both seen from the camera)
     const y = BOARD.y;
-    const heads: [number, number][] = [[y - 0.38, -0.3], [y - 0.5, 0.2]];
-    for (const [hy, hz] of heads) {
-      parts.push(kit.sphere(0.14, [nx, hy, hz], 'purple', { scale: [0.3, 0.75, 1], glow: 'purple' }));
-    }
-    const tops: [number, number][] = heads.map(([hy, hz]) => [y + 0.38, hz + 0.12]);
-    heads.forEach(([hy, hz], i) => {
-      parts.push(stroke(kit, nx, [hy + 0.03, hz + 0.12], tops[i], 0.06));
-    });
-    parts.push(stroke(kit, nx, [tops[0][0], tops[0][1] - 0.03], [tops[1][0] - 0.1, tops[1][1] + 0.03], 0.08));
-    // chase bulbs round the board (a ring of 16)
+    const HEAD_U = [-0.3, 0.26]; // across the board
+    const HEAD_Y = y - 0.4;
+    const STEM_TOP = y + 0.5;
     const ring: [number, number][] = [];
     const hz = BOARD.z / 2 - 0.04;
     const hy = BOARD.h / 2 - 0.05;
@@ -71,9 +54,22 @@ export const item: ItemModel = {
     for (let i = 0; i < n; i++) ring.push([y - hy + (2 * hy * i) / n, hz]);
     for (let i = 0; i < n; i++) ring.push([y + hy, hz - (2 * hz * i) / n]);
     for (let i = 0; i < n; i++) ring.push([y + hy - (2 * hy * i) / n, -hz]);
-    ring.forEach(([by, bz], index) => {
-      parts.push(kit.sphere(0.04, [nx, by, bz], 'lampWarm', { detail: 0, glow: true, light: 'chase', chase: { index, count: ring.length } }));
-    });
+    for (const face of ['x', 'z'] as const) {
+      // `at(u, y, d)`: u runs across the board, d out of the wall
+      const at = (u: number, yy: number, d: number): [number, number, number] => (face === 'x' ? [FACE + d, yy, u] : [u, yy, FACE + d]);
+      const dims = (d: number, h: number, w: number): [number, number, number] => (face === 'x' ? [d, h, w] : [w, h, d]);
+      parts.push(kit.box(dims(0.08, BOARD.h, BOARD.z), at(0, y, 0.04), 'charcoal'));
+      for (const u of HEAD_U) {
+        parts.push(kit.sphere(0.2, at(u, HEAD_Y, 0.1), 'purple', { scale: face === 'x' ? [0.25, 0.8, 1] : [1, 0.8, 0.25], glow: 'purple' }));
+        // the stem rises from the right edge of its head
+        parts.push(kit.box(dims(0.06, STEM_TOP - HEAD_Y, 0.07), at(u + 0.18, (STEM_TOP + HEAD_Y) / 2, 0.1), 'purple', { glow: 'purple' }));
+      }
+      // a thick level beam joining the stem tops
+      parts.push(kit.box(dims(0.07, 0.14, HEAD_U[1] - HEAD_U[0] + 0.07), at((HEAD_U[0] + HEAD_U[1]) / 2 + 0.18, STEM_TOP - 0.05, 0.1), 'purple', { glow: 'purple' }));
+      ring.forEach(([by, bu], index) => {
+        parts.push(kit.sphere(0.04, at(bu, by, 0.1), 'lampWarm', { detail: 0, glow: true, light: 'chase', chase: { index, count: ring.length } }));
+      });
+    }
     return kit.finish(parts);
   },
 };

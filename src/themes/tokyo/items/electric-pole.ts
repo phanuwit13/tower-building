@@ -38,22 +38,17 @@ export const item: ItemModel = {
     const top: [number, number, number][] = [-0.4, -0.15, 0.15, 0.4].map((z) => [0, 2.3, z]);
     const low: [number, number, number][] = [-0.3, 0, 0.3].map((z) => [0, 1.98, z]);
     for (const p of [...top, ...low]) parts.push(kit.cylinder(0.025, 0.03, 0.08, [p[0], p[1] - 0.01, p[2]], 'white', { segments: 6 }));
-    // wires: long runs out to the edges of the tile, drooping, crossing and looping between the arms
-    const runs: [[number, number, number], [number, number, number]][] = [
-      [[0, 2.32, -0.4], [0.46, 2.18, -0.45]],
-      [[0, 2.32, -0.15], [-0.46, 2.18, -0.2]],
-      [[0, 2.32, 0.15], [0.46, 2.1, 0.2]],
-      [[0, 2.32, 0.4], [-0.46, 2.15, 0.45]],
-      [[0, 2.0, -0.3], [0.46, 1.84, -0.1]],
-      [[0, 2.0, 0], [-0.46, 1.8, 0.25]],
-      [[0, 2.0, 0.3], [0.46, 1.78, 0.4]],
-      // tangle: diagonals between the arms and down to the transformer
-      [[0, 2.32, -0.15], [0, 2.0, 0.3]],
-      [[0, 2.32, 0.4], [0, 2.0, 0]],
-      [[0.17, 1.8, 0.05], [0, 2.0, 0.3]],
-      [[0.17, 1.8, -0.05], [0, 2.0, -0.3]],
-    ];
-    for (const [a, b] of runs) parts.push(wire(kit, a, b));
+    // wires: neat parallel runs, each sagging in the middle; four from the top arm out to +x, three from the
+    // lower arm out to -x, and two drops from the transformer bushings to the lower arm
+    type V = [number, number, number];
+    const sag = (a: V, b: V, drop: number) => {
+      const m: V = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - drop, (a[2] + b[2]) / 2];
+      parts.push(wire(kit, a, m), wire(kit, m, b));
+    };
+    for (const z of [-0.4, -0.15, 0.15, 0.4]) sag([0, 2.32, z], [0.46, 2.2, z], 0.06);
+    for (const z of [-0.3, 0, 0.3]) sag([0, 2.0, z], [-0.46, 1.9, z], 0.06);
+    sag([0.17, 1.8, 0.05], [0, 2.0, 0.3], 0.05);
+    sag([0.17, 1.8, -0.05], [0, 2.0, -0.3], 0.05);
     return kit.finish(parts);
   },
 };

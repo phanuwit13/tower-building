@@ -23,8 +23,10 @@ const TIERS: Tier[] = [
   { w: 0.8, d: 1.1, y0: 3.7, y1: 4.2, color: 'white', segs: 2 },
 ];
 
-function glassBox(kit: StyleKit, size: [number, number, number], at: [number, number, number]): Part {
-  return kit.box(size, at, 'skyBlue', { glow: 'windowWarm', light: 'window' });
+/** A pane: lit panes (a checkerboard, mostly warm, some teal) glow at night; the rest stay dark blue glass. */
+function glassBox(kit: StyleKit, size: [number, number, number], at: [number, number, number], lit: number): Part {
+  if (lit % 2 !== 0) return kit.box(size, at, 'blue');
+  return kit.box(size, at, 'skyBlue', { glow: lit % 6 === 0 ? 'teal' : 'windowWarm', light: 'window' });
 }
 
 function tower(kit: StyleKit, t: Tier): Part[] {
@@ -42,13 +44,13 @@ function tower(kit: StyleKit, t: Tier): Part[] {
       const len = (t.d - 0.16) / t.segs;
       const z = -t.d / 2 + 0.08 + len * (s + 0.5);
       const gap = 0.04;
-      for (const sx of [-1, 1]) parts.push(glassBox(kit, [0.04, gh, len - gap - 0.06], [sx * (t.w / 2 + 0.01), y, z]));
+      for (const sx of [-1, 1]) parts.push(glassBox(kit, [0.04, gh, len - gap - 0.06], [sx * (t.w / 2 + 0.01), y, z], f + s + (sx > 0 ? 0 : 1)));
     }
     const n = 2; // panes along x on the short sides
     for (let s = 0; s < n; s++) {
       const len = (t.w - 0.16) / n;
       const x = -t.w / 2 + 0.08 + len * (s + 0.5);
-      for (const sz of [-1, 1]) parts.push(glassBox(kit, [len - 0.1, gh, 0.04], [x, y, sz * (t.d / 2 + 0.01)]));
+      for (const sz of [-1, 1]) parts.push(glassBox(kit, [len - 0.1, gh, 0.04], [x, y, sz * (t.d / 2 + 0.01)], f + s + (sz > 0 ? 1 : 0)));
     }
   }
   return parts;
@@ -78,8 +80,8 @@ export const item: ItemModel = {
     parts.push(
       kit.cylinder(0.32, 0.32, 0.04, [0, top + 0.02, 0], 'charcoal', { segments: 12 }),
       kit.torus(0.22, 0.02, [0, top + 0.05, 0], 'sunYellow', { radialSegments: 4, tubularSegments: 12, rotate: [Math.PI / 2, 0, 0] }),
-      kit.cylinder(0.02, 0.02, 0.26, [-0.25, top + 0.17, -0.3], 'stoneDark', { segments: 6 }),
-      kit.sphere(0.04, [-0.25, top + 0.33, -0.3], 'red', { detail: 0, glow: 'red', light: 'blink' }),
+      kit.cylinder(0.02, 0.02, 0.2, [-0.25, top + 0.1, -0.3], 'stoneDark', { segments: 6 }),
+      kit.sphere(0.04, [-0.25, top + 0.2, -0.3], 'red', { detail: 0, glow: 'red', light: 'blink' }),
     );
     return kit.finish(parts);
   },
