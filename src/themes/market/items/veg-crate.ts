@@ -35,7 +35,9 @@ export const item: ItemModel = {
     // lower-left crate: tomatoes, lower-right: cabbages (the upper crate leaves the front/back ends visible)
     parts.push(
       heap(-0.24, -0.3, y1 + 0.05, 'red', 0.1), heap(-0.24, 0.3, y1 + 0.05, 'red', 0.1), heap(-0.3, -0.22, y1 + 0.03, 'redDark', 0.07),
-      heap(0.24, -0.3, y1 + 0.06, 'leaf', 0.11), heap(0.24, 0.3, y1 + 0.06, 'leaf', 0.11), heap(0.2, 0.18, y1 + 0.04, 'lime', 0.09),
+      heap(0.24, -0.3, y1 + 0.1, 'leaf', 0.12), heap(0.24, 0.3, y1 + 0.1, 'leaf', 0.12),
+      kit.cylinder(0.03, 0.03, 0.1, [0.4, y1 + 0.05, 0.4], 'charcoal', { segments: 6 }),
+      kit.sphere(0.06, [0.4, y1 + 0.15, 0.4], 'orange', { detail: 0, glow: true, light: 'breathe' }), // lantern
     );
     // upper crate (runs along x): carrots on one half and aubergines on the other, plus a pepper
     const y2 = topY + CRATE.h - 0.02;

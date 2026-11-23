@@ -37,6 +37,7 @@ export const item: ItemModel = {
           kit.box([0.3, 0.03, 0.72], [s * 0.46, BASE.h + 0.315, z], 'woodDark'),
           kit.box([STALL.w, 0.04, STALL.d], [s * STALL.x, STALL.canopyY, z], canopy, { rotate: [0, 0, s * STALL.tilt] }),
           kit.box([0.03, 0.09, STALL.d], [s * (STALL.x - 0.37), front - 0.06, z], 'white'), // valance
+          kit.box([0.04, 0.04, STALL.d - 0.04], [s * (STALL.x - 0.38), front - 0.01, z], canopy, { glow: true }), // glowing canopy edge
           kit.sphere(0.055, [s * 0.46, BASE.h + 0.37, z - 0.2], GOODS[row][i], { detail: 0 }),
           kit.sphere(0.055, [s * 0.46, BASE.h + 0.37, z + 0.2], GOODS[row][(i + 1) % 3], { detail: 0 }),
           kit.sphere(0.045, [s * 0.5, front - 0.1, z], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }), // hanging lamp
@@ -51,12 +52,12 @@ export const item: ItemModel = {
       parts.push(rod(kit, a, b, 0.012, 'stoneDark', { segments: 4 }));
       for (let index = 0; index < count; index++) {
         const t = (index + 0.5) / count;
-        const p: [number, number, number] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 0.04, a[2] + (b[2] - a[2]) * t];
-        parts.push(kit.sphere(0.04, p, color, { detail: 0, glow: true, light: 'chase', chase: { index, count } }));
+        const p: [number, number, number] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - 0.07, a[2] + (b[2] - a[2]) * t];
+        parts.push(kit.sphere(0.065, p, color, { detail: 0, glow: true, light: 'chase', chase: { index, count } }));
       }
     };
-    for (const s of [-1, 1]) run([s * POLE.x, top, POLE.z[0]], [s * POLE.x, top, POLE.z[3]], 9, s < 0 ? 'lampWarm' : 'sunYellow');
-    const cols: PaletteColor[] = ['pink', 'skyBlue', 'lime', 'orange', 'purple', 'red'];
+    for (const s of [-1, 1]) run([s * POLE.x, top, POLE.z[0]], [s * POLE.x, top, POLE.z[3]], 9, s < 0 ? 'orange' : 'sunYellow');
+    const cols: PaletteColor[] = ['pink', 'blue', 'lime', 'orange', 'purple', 'red'];
     for (let i = 0; i < 3; i++) {
       run([-POLE.x, top, POLE.z[i]], [POLE.x, top, POLE.z[i + 1]], 5, cols[i * 2]);
       run([POLE.x, top, POLE.z[i]], [-POLE.x, top, POLE.z[i + 1]], 5, cols[i * 2 + 1]);

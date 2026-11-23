@@ -36,10 +36,13 @@ export const item: ItemModel = {
       kit.sphere(0.1, [0.0, y + 0.13, 0.0], 'orange', { detail: 0 }),
       kit.sphere(0.06, [-0.02, y + 0.23, 0.02], 'leaf', { detail: 0 }),
     );
-    // a bunch of grapes: small purple balls
-    [[0.18, 0.2], [0.24, 0.12], [0.2, 0.27], [0.27, 0.22], [0.24, 0.32]].forEach(([dx, dz], i) => {
-      parts.push(kit.sphere(0.045, [-0.2 + dx - 0.2 + 0.2, y + 0.12 - i * 0.015, dz - 0.25 + 0.1], 'purple', { detail: 0 }));
-    });
+    // a bunch of grapes heaped on the +x side, big enough to read, and a ring of little warm lights round the rim
+    const GRAPES: Array<[number, number, number]> = [[0.2, 0.0, 0.14], [0.26, 0.07, 0.12], [0.26, -0.07, 0.12], [0.3, 0.0, 0.1], [0.23, 0.0, 0.2]];
+    for (const [x, z, h] of GRAPES) parts.push(kit.sphere(0.06, [x, y + h - 0.04, z], 'purple', { detail: 0 }));
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      parts.push(kit.sphere(0.03, [(BASKET.rTop + 0.02) * Math.cos(a), RIM, (BASKET.rTop + 0.02) * Math.sin(a)], i % 2 ? 'sunYellow' : 'pink', { detail: 0, glow: true, light: 'breathe' }));
+    }
     return kit.finish(parts);
   },
 };

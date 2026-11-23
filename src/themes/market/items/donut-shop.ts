@@ -32,8 +32,9 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [BODY.x, BASE.h + 0.42, -BODY.d / 2], facing: 'z-', w: 0.6, h: 0.38, frame: 'pink' }),
       ...glassWindow(kit, { at: [BODY.x - BODY.w / 2, BASE.h + 0.42, 0], facing: 'x-', w: 0.8, h: 0.38, frame: 'pink' }),
       kit.cylinder(0.025, 0.025, 0.75, [0.8, BASE.h + 0.375, 0.7], 'charcoal', { segments: 6 }),
-      kit.box([0.04, 0.42, 0.42], [0.8, BASE.h + 0.75, 0.7], 'navy'),
-      kit.torus(0.1, 0.035, [0.83, BASE.h + 0.75, 0.7], 'pink', { rotate: [0, Math.PI / 2, 0], radialSegments: 6, tubularSegments: 12, glow: true, light: 'breathe' }),
+      kit.box([0.04, 0.56, 0.56], [0.8, BASE.h + 0.8, 0.7], 'navy'),
+      kit.box([0.05, 0.04, BODY.d + 0.1], [FRONT + 0.05, BASE.h + BODY.top + 0.04, 0], 'pink', { glow: true, light: 'breathe' }), // roof-edge neon strip
+      kit.torus(0.17, 0.045, [0.84, BASE.h + 0.8, 0.7], 'pink', { rotate: [0, Math.PI / 2, 0], radialSegments: 6, tubularSegments: 12, glow: true, light: 'breathe' }),
     ];
     const stripes = 6;
     for (let i = 0; i < stripes; i++) {

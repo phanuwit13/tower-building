@@ -24,6 +24,12 @@ export const item: ItemModel = {
       kit.sphere(0.25, [-0.17, TRUNK_TOP + 0.2, -0.14], 'leafDark', { motion: SWAY }),
       kit.sphere(0.24, [0.0, TRUNK_TOP + 0.55, 0.0], 'lime', { motion: SWAY }),
     ];
+    // fairy lights wound round the crown (still: the crown sways, so they sit on the trunk and low branches)
+    const cols = ['sunYellow', 'pink', 'lime', 'orange'] as const;
+    for (let i = 0; i < 8; i++) {
+      const a = i * 0.8;
+      parts.push(kit.sphere(0.04, [0.4 * Math.cos(a) * (i % 2 ? 0.8 : 1), TRUNK_TOP + 0.12 + (i % 3) * 0.14, 0.4 * Math.sin(a) * (i % 2 ? 0.8 : 1)], cols[i % 4], { detail: 0, glow: true, light: 'breathe', motion: SWAY }));
+    }
     // slots of the grate: pale bars across the frame
     for (const s of [-1, 1]) {
       parts.push(
