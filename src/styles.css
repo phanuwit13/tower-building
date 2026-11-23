@@ -59,6 +59,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .hud button, .hud .card { pointer-events: auto; }
 .hud-top { display: flex; align-items: flex-start; gap: 8px; }
 .hud-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.hud-row { display: flex; align-items: center; gap: 8px; }
 .btn-home { font-size: 18px; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
 .hud-cards { display: flex; gap: 8px; }
 .card { background: rgb(255 255 255 / 0.92); border-radius: 16px; padding: 6px 12px; min-width: 96px; text-align: center; }
@@ -159,7 +160,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 kbd { font: inherit; font-size: 11px; line-height: 18px; min-width: 20px; padding: 0 5px; border-radius: 5px; background: rgb(255 255 255 / 0.9); box-shadow: 0 1px 0 rgb(0 0 0 / 0.25); text-align: center; box-sizing: border-box; }
 /* The note wraps to the list's width instead of widening the panel */
 .sc-note { width: 0; min-width: 100%; margin: 6px 0 0; font-size: 11px; line-height: 1.4; opacity: 0.75; }
-/* Too short to fit above the camera controls: left of the zoom column (centred over ⟲ ⟳, so 88 px in). Held upright: beside the toolbar column, under the placed count */
+/* Too short to fit above the camera controls: left of the zoom column (centred over ⟲ ⟳, so 88 px in). Held upright: beside the toolbar column, under the top row */
 @media (max-height: 719px) { .shortcuts { right: 96px; } }
 @media (orientation: portrait) { .shortcuts { top: 56px; right: 72px; } }
 @media not ((hover: hover) and (pointer: fine)) { .shortcuts { display: none; } }

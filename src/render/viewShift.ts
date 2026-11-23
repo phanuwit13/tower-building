@@ -18,3 +18,31 @@ export function applyViewShift(camera: THREE.PerspectiveCamera, width: number, h
   if (shiftPx > 0 && width > 0 && height > 0) camera.setViewOffset(width, height, 0, shiftPx, width, height);
   else if (camera.view?.enabled) camera.clearViewOffset();
 }
+
+/** How long the view takes to ride up or back down: as long as the drawer's slide (styles.css floor-drawer-up). */
+export const SHIFT_GLIDE_MS = 180;
+
+/**
+ * The lift as it glides to its target (ease-out over SHIFT_GLIDE_MS), so the map moves along with the
+ * drawer instead of jumping when it opens or closes. `instant` (reduced motion) jumps straight there.
+ */
+export function createShiftGlide(ms = SHIFT_GLIDE_MS): { to(target: number, nowMs: number, instant?: boolean): void; at(nowMs: number): number } {
+  let from = 0;
+  let target = 0;
+  let start = 0;
+  let value = 0;
+  return {
+    to(next, nowMs, instant = false) {
+      if (instant) { from = target = value = next; return; }
+      if (next === target) return;
+      from = value;
+      target = next;
+      start = nowMs;
+    },
+    at(nowMs) {
+      const t = ms > 0 ? Math.min(1, Math.max(0, (nowMs - start) / ms)) : 1;
+      value = from + (target - from) * (1 - (1 - t) ** 3);
+      return Math.round(value);
+    },
+  };
+}

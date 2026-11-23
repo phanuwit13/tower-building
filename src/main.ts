@@ -14,7 +14,7 @@ import { getCatalog, getTheme, THEMES } from './themes/registry';
 import { clampNightGlow, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
-import { applyViewShift, viewShiftPx } from './render/viewShift';
+import { applyViewShift, createShiftGlide, viewShiftPx } from './render/viewShift';
 import { placementAtTile } from './app/hover';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
@@ -238,17 +238,32 @@ function boot(app: HTMLElement): void {
   };
 
   // The drawer covers the bottom of the map up to its top (it floats a little above the edge): while it is open
-  // the view rides up by half of that, so the bottom cells stay reachable without the ✋ tool. Re-applied on
-  // resize and when the drawer's height changes.
+  // the view rides up by half of that, so the bottom cells stay reachable without the ✋ tool. The view glides
+  // there as the drawer slides in (and back as it goes), never jumps. The target is re-read on resize and when
+  // the drawer's height changes; each frame applies where the glide is, with the canvas size of that frame.
+  // `data-view-shift` on #app is the lift applied now (e2e waits on it).
   const drawerBox = app.querySelector<HTMLElement>('.floor-drawer');
   const coverPx = (box: HTMLElement): number => box.offsetHeight + (parseFloat(getComputedStyle(box).bottom) || 0);
+  const shiftGlide = createShiftGlide();
+  const reducedMotion = (): boolean => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const syncViewShift = (): void => {
     const open = floorOpen(controller.getState());
-    const shift = open && drawerBox ? viewShiftPx(coverPx(drawerBox), app.clientHeight) : 0;
-    applyViewShift(stage.camera, app.clientWidth, app.clientHeight, shift);
+    const target = open && drawerBox ? viewShiftPx(coverPx(drawerBox), app.clientHeight) : 0;
+    shiftGlide.to(target, performance.now(), reducedMotion());
   };
   new ResizeObserver(syncViewShift).observe(app);
   if (drawerBox) new ResizeObserver(syncViewShift).observe(drawerBox);
+  let shown = { shift: 0, width: 0, height: 0 };
+  stage.onFrame((_dtMs, nowMs) => {
+    const shift = shiftGlide.at(nowMs);
+    const width = app.clientWidth;
+    const height = app.clientHeight;
+    if (shift === shown.shift && width === shown.width && height === shown.height) return;
+    shown = { shift, width, height };
+    applyViewShift(stage.camera, width, height, shift);
+    app.dataset.viewShift = String(shift);
+    stage.controls.dispatchEvent({ type: 'change' }); // the map moved under a still mouse: re-check the hover
+  });
 
   const hud = createHud(app, {
     onRotate: () => controller.rotateGhost(),
