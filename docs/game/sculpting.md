@@ -79,7 +79,11 @@ Items can move and glow in patterns. It is all done on the graphics card from op
 - `'breathe'`: the brightness rises and falls slowly (about 3 s, between 22 % and 100 %). For lamps. The dip is deep on purpose: tone mapping flattens a near-white globe, so a shallower dip would look static on the smooth tier.
 - `'blink'`: on and off, 1.4 s a cycle (on for 55 %, dim when off). For signs and beacons. Blinking is never faster than 3 Hz, so a blink can never flash.
 - `'window'`: steady, but every pane is a slightly different brightness (plus or minus 15 %), so a building's windows are not a flat wall of light. `glassWindow` already does this on every pane; you only write it yourself for your own glass.
-- Lights only animate while the lights are on (dusk and night). In the day they look the same as a plain glow.
+- `'chase'`: running lights. The bulbs of one **run** (a ring round a wheel rim or a roof edge, a line along a rail or up a tower) light in turn: a lit stretch of about a third of the bulbs steps on one bulb at a time, 2.5 steps a second (never more than 3), and the other bulbs glow dim. Give every bulb `light: 'chase'` and its place in the run, `chase: { index, count }`: `index` counts 0, 1, 2 … in the order the lights should run (the stretch moves towards higher indices), `count` is the number of bulbs in the run (2 to 64). Make each bulb its own small part (a sphere, `detail: 0` keeps it cheap). Rules:
+  - A chase bulb is **still or spins**; it cannot sway, wave or swing (that throws). Still bulbs all take the item's own phase, so a run stays in order; each placed copy runs at its own moment.
+  - On a spinning part (a carousel roof), give every bulb of the run the same `motion` as the roof it sits on (same pivot, axis, speed and phase), so the bulbs turn with it and stay in order.
+  - Several runs on one item each count from 0. Any palette colour can glow (`lampWarm` for classic bulbs; `sunYellow`, `red`, `pink` … for coloured ones); keep the bulbs small.
+- Lights only animate while the lights are on (dusk and night). In the day they look the same as a plain glow. With "reduce motion" every light holds steady and fully on (a chase run is all lit).
 
 **Safety rules (kids' game, calm look):**
 
@@ -97,6 +101,17 @@ const SWAY: MotionOpts = { kind: 'sway', pivot: [0, 0.65, 0], amount: 0.06 }; //
 kit.sphere(0.41, [0.03, 1.07, 0.04], 'leaf', { motion: SWAY });
 kit.sphere(0.16, [0, 1.46, 0], 'lampWarm', { glow: true, light: 'breathe' });
 kit.box([w, h, 0.02], at, 'red', { motion: { kind: 'wave', pivot: poleTop, axis: [1, 0, 0] } });
+
+// chase: 12 bulbs round a ring of radius 0.3 at height 1.6, running anticlockwise seen from above
+const BULBS = 12;
+for (let index = 0; index < BULBS; index++) {
+  const a = (index / BULBS) * Math.PI * 2;
+  parts.push(kit.sphere(0.035, [0.3 * Math.cos(a), 1.6, -0.3 * Math.sin(a)], 'lampWarm',
+    { detail: 0, glow: true, light: 'chase', chase: { index, count: BULBS } }));
+}
+// on a spinning roof: the same loop, with the roof's own spin on every bulb (the roof parts use ROOF_SPIN too)
+const ROOF_SPIN: MotionOpts = { kind: 'spin', pivot: [0, 0, 0], speed: 0.4 };
+//   { detail: 0, glow: true, light: 'chase', chase: { index, count: BULBS }, motion: ROOF_SPIN }
 ```
 
 ## 4. Shared building parts (`src/models/parts.ts`)
@@ -251,11 +266,12 @@ Not checked, but expected:
 
 1. `npx vitest run src/themes src/models`. Every item of every theme is validated, and errors name the item and the rule. Also run `npx tsc --noEmit`.
 2. `npm run dev` and open `http://localhost:5173/?gallery=<theme>` (for example `?gallery=school`). Look at your item next to the approved ones, page with ◀ ▶, and orbit to see every side.
+   - Sculpting a batch: `?gallery=<theme>-batch-<n>` (dev server only; for example `?gallery=amusement-batch-1`) shows just your batch, `src/themes/<theme>/batches/<letter><n>.ts`, even before the theme is registered. `?gallery=batch-<n>` still means the School's. Check the batch with its test, `npx vitest run src/themes/<theme>/batches/<letter><n>.test.ts`: every item valid, assigned to your batch, with the Thai name and footprint of the item doc, and (once the batch has an item) all of the batch's items in doc order.
    - Switch to night with ตั้งค่า → ช่วงเวลา → กลางคืน: windows and lamps should glow, and nothing else should.
    - Animated items move in the gallery too: watch for parts that tear apart, clip into the ground or leave the footprint, and check the rest pose still looks right (the thumbnails and "reduce motion" show it).
    - `&item=<id>` (for example `?gallery=school&item=classroom`) shows one item close up. Every label shows a thumbnail and the triangles used against the budget.
 3. Compare with the style references: the same chunkiness, palette and scale. The front (+x) should read in the 3/4 view.
-4. The geometry snapshot (`src/themes/school/geometry.snapshot.json`) fingerprints every item's built geometry (per mesh: triangles, bounding box, sums of positions and colours), so a change to a shared helper can't silently change an approved item. A new item, or a change you meant to make, fails `src/themes/school/geometry.test.ts` until you regenerate the snapshot:
+4. Each registered theme has a geometry snapshot (`src/themes/<theme>/geometry.snapshot.json`, checked by `src/themes/<theme>/geometry.test.ts` through `describeGeometrySnapshot` in `src/themes/geometry.test-helper.ts`) that fingerprints every item's built geometry (per mesh: triangles, bounding box, sums of positions and colours), so a change to a shared helper can't silently change an approved item. A new item, or a change you meant to make, fails the theme's `geometry.test.ts` until you regenerate the snapshot (School shown):
 
    ```bash
    UPDATE_GEOMETRY=1 npx vitest run src/themes/school/geometry.test.ts

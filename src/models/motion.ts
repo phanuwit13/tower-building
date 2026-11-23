@@ -45,8 +45,8 @@ export const MOTION_CODE = { none: 0, sway: 1, wave: 2, spin: 3, swing: 4, pond:
  * move and breathe). The vertex shader decodes it, evaluates the pattern and passes the result to
  * the fragment shader as `vLight`, a multiplier of the glow strength.
  */
-export type LightKind = 'steady' | 'breathe' | 'blink' | 'window';
-export const LIGHT_CODE = { steady: 0, breathe: 1, blink: 2, window: 3 } as const;
+export type LightKind = 'steady' | 'breathe' | 'blink' | 'window' | 'chase';
+export const LIGHT_CODE = { steady: 0, breathe: 1, blink: 2, window: 3, chase: 4 } as const;
 /** Every motion code must stay below this: the light code lives in the digits above it. */
 export const LIGHT_STRIDE = 8;
 if (Object.values(MOTION_CODE).some((c) => c >= LIGHT_STRIDE)) {
@@ -71,26 +71,78 @@ export const WINDOW_VARIATION = 0.15;
 export const LIGHT_MAX_HZ = 3;
 
 /**
- * Glow multiplier of a light pattern: the same maths as the vertex shader (MOTION_VERTEX_SETUP).
- * `phase` is the part's phase (its own plus the item's); `motion` is `uMotion` (0 holds 1.0).
+ * Chase (running lights round a ring or along a line): the bulbs of one run take turns. A lit
+ * stretch of about a third of them (CHASE_LIT_SHARE, at least one bulb: chaseRunLength) steps on
+ * one bulb, towards higher indices, CHASE_STEP_HZ times a second; the rest are dim (CHASE_OFF_LEVEL).
+ * So no bulb changes more often than CHASE_STEP_HZ, whatever the run size. Each bulb knows its
+ * place in the run (ChaseSlot), packed into anim's amount (packChase), which a still or spinning
+ * part does not use. The item's phase moves where the stretch is, so placed copies run out of step.
  */
-export function lightPattern(kind: LightKind, time: number, phase: number, motion = 1): number {
+export const CHASE_STEP_HZ = 2.5;
+export const CHASE_LIT_SHARE = 1 / 3;
+export const CHASE_OFF_LEVEL = 0.1;
+/** The most bulbs in one run (the slot packing below holds up to this). */
+export const CHASE_MAX_COUNT = 64;
+
+/** A chase bulb's place in its run: `index` 0..count-1 in running order, `count` the run's bulbs. */
+export interface ChaseSlot { index: number; count: number }
+
+/** How many bulbs of a run of `count` are lit at once: about a third, at least one. */
+export function chaseRunLength(count: number): number {
+  return Math.max(1, Math.floor(count * CHASE_LIT_SHARE + 0.5));
+}
+
+/**
+ * Glow multiplier of a light pattern: the same maths as the vertex shader (MOTION_VERTEX_SETUP).
+ * `phase` is the part's phase (its own plus the item's); `motion` is `uMotion` (0 holds 1.0);
+ * `chase` is a chase bulb's place in its run (required for `chase`).
+ */
+export function lightPattern(kind: LightKind, time: number, phase: number, motion = 1, chase?: ChaseSlot): number {
   if (kind === 'steady') return 1;
   const tau = TAU;
   const frac = (x: number) => x - Math.floor(x);
   // a window's per-pane variation is a static look, not motion: it stays when motion is off
   if (kind === 'window') return 1 + WINDOW_VARIATION * (2 * frac(phase / tau) - 1);
+  if (kind === 'chase' && !chase) throw new Error('lightPattern: a chase light needs its slot ({ index, count })');
   if (!(motion > 0)) return 1;
   if (kind === 'breathe') return BREATHE_MID + BREATHE_AMP * Math.sin((tau * time) / BREATHE_PERIOD + phase);
   if (kind === 'blink') return frac(time / BLINK_PERIOD + phase / tau) < BLINK_ON ? 1 : BLINK_OFF_LEVEL;
+  if (kind === 'chase' && chase) {
+    // k: how many steps ago the stretch's head passed this bulb (0..count-1); + 0.5 keeps the floor off exact multiples
+    const d = Math.floor(time * CHASE_STEP_HZ + phase / tau * chase.count) - chase.index;
+    const k = d - chase.count * Math.floor((d + 0.5) / chase.count);
+    return k < chaseRunLength(chase.count) ? 1 : CHASE_OFF_LEVEL;
+  }
   return 1;
 }
 
 /** The packed `anim.x` of a motion code and a light kind. */
 export function packLight(motionCode: number, light: LightKind): number {
   const code = LIGHT_CODE[light];
-  if (code === undefined) throw new Error(`style kit: unknown light "${String(light)}" (steady, breathe, blink or window)`);
+  if (code === undefined) throw new Error(`style kit: unknown light "${String(light)}" (steady, breathe, blink, window or chase)`);
   return motionCode + LIGHT_STRIDE * code;
+}
+
+/**
+ * The anim amount that carries a chase bulb's slot: `index + CHASE_MAX_COUNT * count` anim steps,
+ * so it is stored as that whole number and comes back exactly (unpackChase). Throws on a slot that
+ * is not a bulb of a run of 2..CHASE_MAX_COUNT.
+ */
+export function packChase({ index, count }: ChaseSlot): number {
+  if (!Number.isInteger(count) || count < 2 || count > CHASE_MAX_COUNT) {
+    throw new Error(`style kit: chase count must be a whole number from 2 to ${CHASE_MAX_COUNT} (got ${count})`);
+  }
+  if (!Number.isInteger(index) || index < 0 || index >= count) {
+    throw new Error(`style kit: chase index must be a whole number from 0 to count - 1 (got ${index} of ${count})`);
+  }
+  return (index + CHASE_MAX_COUNT * count) * ANIM_STEP[1];
+}
+
+/** A chase bulb's slot from its unpacked anim amount (the shader decodes it the same way). */
+export function unpackChase(amount: number): ChaseSlot {
+  const slot = Math.floor(amount / ANIM_STEP[1] + 0.5);
+  const count = Math.floor((slot + 0.5) / CHASE_MAX_COUNT);
+  return { index: slot - CHASE_MAX_COUNT * count, count };
 }
 
 /** Gentle by default. */
@@ -134,6 +186,10 @@ export const ANIM_STEP = [1, 2 ** -12, 2 ** -10, 2 ** -10] as const;
 export const MOTION_LIMITS = { amount: 4, speed: 16, phase: 16 } as const;
 
 const INT16_MAX = 32767;
+// packing guard: the largest packed anim.x (any motion code with the last light code) and the largest chase slot fit anim
+if (LIGHT_STRIDE * (Math.max(...Object.values(LIGHT_CODE)) + 1) > INT16_MAX || CHASE_MAX_COUNT * (CHASE_MAX_COUNT + 1) > INT16_MAX) {
+  throw new Error('motion: the packed light codes and chase slots must fit anim (Int16)');
+}
 
 /** anim's stored values (whole numbers) for `[code, amount, speed, phase]`; throws on what it cannot hold. */
 export function packAnim(anim: readonly number[]): number[] {
@@ -325,6 +381,19 @@ float motionHash( vec2 p ) {
 `;
 
 /**
+ * A chase bulb's glow (mirrors the chase branch of lightPattern): decode its slot from the amount
+ * (packChase), then light it while it is in the running stretch. Every value is a whole number held
+ * exactly in a float; each floor has 0.5 of margin, so no GPU rounding can tip it.
+ */
+export const CHASE_LIGHT_GLSL = /* glsl */ `
+      float chaseSlot = floor( motionParams.x * ${glslFloat(1 / ANIM_STEP[1])} + 0.5 );
+      float chaseCount = floor( ( chaseSlot + 0.5 ) / ${glslFloat(CHASE_MAX_COUNT)} );
+      float chaseD = floor( uTime * ${glslFloat(CHASE_STEP_HZ)} + motionPhase / ${glslFloat(TAU)} * chaseCount ) - ( chaseSlot - ${glslFloat(CHASE_MAX_COUNT)} * chaseCount );
+      float chaseK = chaseD - chaseCount * floor( ( chaseD + 0.5 ) / chaseCount );
+      vLight = chaseK < max( 1.0, floor( chaseCount * ${glslFloat(CHASE_LIT_SHARE)} + 0.5 ) ) ? 1.0 : ${glslFloat(CHASE_OFF_LEVEL)};
+`;
+
+/**
  * After `beginnormal_vertex`: work out this vertex's motion (a rotation about the pivot and a
  * shift) and turn the normal with it. Positions here are in object space: the world for merged
  * chunks, the item for gallery models; the item's phase comes from its pivot in the world. A still
@@ -347,6 +416,7 @@ if ( motionPacked != 0 ) {
   if ( uMotion > 0.0 ) {
     if ( lightCode == ${LIGHT_CODE.breathe} ) vLight = ${glslFloat(BREATHE_MID)} + ${glslFloat(BREATHE_AMP)} * sin( ${glslFloat(TAU)} * uTime / ${glslFloat(BREATHE_PERIOD)} + motionPhase );
     else if ( lightCode == ${LIGHT_CODE.blink} ) vLight = fract( uTime / ${glslFloat(BLINK_PERIOD)} + motionPhase / ${glslFloat(TAU)} ) < ${glslFloat(BLINK_ON)} ? 1.0 : ${glslFloat(BLINK_OFF_LEVEL)};
+    else if ( lightCode == ${LIGHT_CODE.chase} ) {${CHASE_LIGHT_GLSL}    }
   }
   if ( lightCode == ${LIGHT_CODE.window} ) vLight = 1.0 + ${glslFloat(WINDOW_VARIATION)} * ( 2.0 * fract( motionPhase / ${glslFloat(TAU)} ) - 1.0 );
   motionMoves = uMotion > 0.0 && motionKind >= ${MOTION_CODE.sway} && motionKind <= ${MOTION_CODE.swing};

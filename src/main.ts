@@ -19,7 +19,7 @@ import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
 import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
-import { loadBatch, parseBatchParam } from './render/batchGallery';
+import { loadBatch, parseBatchParam, type BatchRequest } from './render/batchGallery';
 import { attachFloorGallery } from './render/floorGallery';
 import { createFloorLayer } from './render/floors';
 import { FLOOR_GROUPS, FLOOR_TILES, getFloorTile, isFloorTile, type FloorGroup } from './floors';
@@ -351,15 +351,18 @@ function bootGalleryStage(
   apply();
 }
 
-/** DEV only, `?gallery=batch-<n>`: the School theme reduced to one sculptor batch (module loaded lazily). */
-function bootBatchGallery(app: HTMLElement, n: number): void {
-  loadBatch(n)
-    .then((items) => bootGallery(app, { ...school, name: `โรงเรียน · batch ${n}`, items },
-      items.length === 0 ? `batch ${n} is empty: add items to src/themes/school/batches/b${n}.ts` : undefined))
+/**
+ * DEV only, `?gallery=<themeId>-batch-<n>` (`?gallery=batch-<n>` = School): a theme reduced to one
+ * sculptor batch (module loaded lazily; a theme not registered yet works too).
+ */
+function bootBatchGallery(app: HTMLElement, req: BatchRequest): void {
+  const label = `${req.theme} batch ${req.n}`;
+  loadBatch(req)
+    .then(({ theme, file }) => bootGallery(app, theme, theme.items.length === 0 ? `${label} is empty: add items to ${file}` : undefined))
     .catch((e: unknown) => {
       // Covers a failed load and an error thrown while booting the gallery (e.g. an item's build throwing).
-      console.error(`batch ${n} failed`, e);
-      app.append(el('p', { class: 'gallery-dev-note', text: `batch ${n} failed: ${e instanceof Error ? e.message : String(e)}` }));
+      console.error(`${label} failed`, e);
+      app.append(el('p', { class: 'gallery-dev-note', text: `${label} failed: ${e instanceof Error ? e.message : String(e)}` }));
     });
 }
 

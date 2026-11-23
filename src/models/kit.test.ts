@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { getStyleKit, type PartOpts, type Vec3 } from './kit';
-import { ANIM_STEP, CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, motionUniforms, readMotion } from './motion';
+import { ANIM_STEP, CULL_MARGIN, LIGHT_CODE, LIGHT_STRIDE, MOTION_ATTRIBUTES, MOTION_CODE, MOTION_LIMITS, motionUniforms, readMotion, unpackChase, type MotionOpts } from './motion';
 import { PALETTE } from './palette';
 
 const kit = getStyleKit();
@@ -414,6 +414,73 @@ describe('style kit light patterns', () => {
     const s = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
     kit.materials.glow.onBeforeCompile(s as never, null as never);
     expect(s.fragmentShader).toContain('glowStrength * vLight');
+  });
+});
+
+describe('style kit chase lights', () => {
+  /** A ring of `count` still chase bulbs (a light-pole crown), item space. */
+  const ring = (count: number, extra: PartOpts = {}) => Array.from({ length: count }, (_, index) => {
+    const a = (index / count) * Math.PI * 2;
+    return kit.sphere(0.04, [0.3 * Math.cos(a), 1.5, 0.3 * Math.sin(a)], 'lampWarm', { glow: true, light: 'chase', chase: { index, count }, ...extra });
+  });
+
+  it('a chase bulb packs the chase code in anim.x and its slot in the amount (read back exactly)', () => {
+    const bulbs = ring(8);
+    bulbs.forEach((b, index) => {
+      const { anim } = readMotion(b.geometry, 0);
+      expect(anim[0]).toBe(LIGHT_STRIDE * LIGHT_CODE.chase);
+      expect(unpackChase(anim[1])).toEqual({ index, count: 8 });
+      expect([anim[2], anim[3]]).toEqual([0, 0]);
+    });
+  });
+  it('the still bulbs of an item share one pivot, the item origin, so the whole run takes one phase', () => {
+    for (const b of ring(6)) expect(readMotion(b.geometry, 0).pivot).toEqual([0, 0, 0]);
+  });
+  it('a spinning chase bulb keeps its spin (code, speed, phase, pivot, axis) and adds the chase', () => {
+    const SPIN: MotionOpts = { kind: 'spin', pivot: [0, 0, 0], speed: 0.4, phase: 0.5 };
+    for (const [index, b] of ring(4, { motion: SPIN }).entries()) {
+      const m = readMotion(b.geometry, 0);
+      expect(m.anim[0]).toBe(MOTION_CODE.spin + LIGHT_STRIDE * LIGHT_CODE.chase);
+      expect(unpackChase(m.anim[1])).toEqual({ index, count: 4 });
+      expect(Math.abs(m.anim[2] - 0.4)).toBeLessThanOrEqual(ANIM_STEP[2] / 2);
+      expect(Math.abs(m.anim[3] - 0.5)).toBeLessThanOrEqual(ANIM_STEP[3] / 2);
+      expect(m.pivot).toEqual([0, 0, 0]);
+      expect(m.axis).toEqual([0, 1, 0]);
+    }
+    // it still counts as moving (culling margin)
+    const g = kit.finish(ring(4, { motion: SPIN }));
+    expect((g.children[0] as THREE.Mesh).geometry.boundingSphere!.radius).toBeGreaterThan(CULL_MARGIN);
+  });
+  it('rejects a chase without its slot, a slot without chase, a bad slot, a non-glow chase and a chase that sways, waves or swings', () => {
+    const at: Vec3 = [0, 1, 0];
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, light: 'chase' })).toThrow(/chase: \{ index, count \}/);
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, light: 'blink', chase: { index: 0, count: 4 } })).toThrow(/chase/);
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, chase: { index: 0, count: 4 } })).toThrow(/chase/);
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, light: 'chase', chase: { index: 4, count: 4 } })).toThrow(/chase index/);
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, light: 'chase', chase: { index: 0, count: 1 } })).toThrow(/chase count/);
+    expect(() => kit.sphere(0.05, at, 'lampWarm', { light: 'chase', chase: { index: 0, count: 4 } })).toThrow(/glow/);
+    for (const kind of ['sway', 'wave', 'swing'] as const) {
+      expect(() => kit.sphere(0.05, at, 'lampWarm', { glow: true, light: 'chase', chase: { index: 0, count: 4 }, motion: { kind } }), kind)
+        .toThrow(/chase.*still or spin/);
+    }
+  });
+  it('after placing and turning the item, the slot and code are kept and the run still shares one world pivot', async () => {
+    const { mergeItems, placementMatrix } = await import('../render/batch');
+    for (const r of [0, 1, 2, 3] as const) {
+      const matrix = placementMatrix({ w: 1, d: 1 }, 4, 7, r);
+      const merged = mergeItems([{ model: kit.finish(ring(5)), matrix }], kit.materials).glow!;
+      const per = merged.attributes.position.count / 5; // the five bulbs, in order
+      const pivots = new Set<string>();
+      for (let index = 0; index < 5; index++) {
+        const m = readMotion(merged, index * per);
+        expect(m.anim[0]).toBe(LIGHT_STRIDE * LIGHT_CODE.chase);
+        expect(unpackChase(m.anim[1])).toEqual({ index, count: 5 });
+        pivots.add(m.pivot.map((v) => v.toFixed(5)).join());
+      }
+      expect(pivots.size).toBe(1);
+      const origin = new THREE.Vector3().applyMatrix4(matrix);
+      expect([...pivots][0]).toBe(origin.toArray().map((v) => v.toFixed(5)).join());
+    }
   });
 });
 

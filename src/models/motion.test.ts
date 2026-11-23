@@ -6,6 +6,7 @@ import {
   advanceMotion, BLINK_OFF_LEVEL, BREATHE_AMP, BREATHE_MID, BREATHE_MIN, TAU, snapWind, WIND_EASE_SECONDS, BLINK_ON, BLINK_PERIOD, BREATHE_PERIOD, WINDOW_VARIATION, freezeMotion, glslFloat, LIGHT_CODE, LIGHT_MAX_HZ, LIGHT_STRIDE, lightPattern, packLight, MOTION_CODE, MOTION_FRAGMENT_PARS, MOTION_VERTEX_APPLY, MOTION_VERTEX_PARS,
   MOTION_VERTEX_REST, MOTION_VERTEX_SETUP, motionUniforms, patchMotionShader, patchWaterShader, resolveMotion, setMoon, setNight,
   setReducedMotion, setWind, WATER, WATER_FRAGMENT, WATER_FRAGMENT_PARS, waterLight, watchReducedMotion,
+  CHASE_LIGHT_GLSL, CHASE_LIT_SHARE, CHASE_MAX_COUNT, CHASE_OFF_LEVEL, CHASE_STEP_HZ, chaseRunLength, packChase, unpackChase,
 } from './motion';
 
 const reset = () => {
@@ -386,9 +387,147 @@ describe('light patterns', () => {
   });
   it('packs beside the motion code and the shader decodes and uses it', () => {
     expect(packLight(MOTION_CODE.swing, 'blink')).toBe(MOTION_CODE.swing + LIGHT_STRIDE * LIGHT_CODE.blink);
+    expect(packLight(MOTION_CODE.spin, 'chase')).toBe(MOTION_CODE.spin + LIGHT_STRIDE * LIGHT_CODE.chase);
     expect(() => packLight(0, 'flash' as never)).toThrow(/unknown light/);
     expect(MOTION_VERTEX_SETUP).toContain('vLight');
     expect(MOTION_FRAGMENT_PARS).toContain('varying float vLight');
+  });
+  it('every light code packed with every motion code fits anim and decodes back (packing guard)', () => {
+    expect(Object.keys(LIGHT_CODE)).toEqual(['steady', 'breathe', 'blink', 'window', 'chase']);
+    expect(new Set(Object.values(LIGHT_CODE)).size).toBe(Object.keys(LIGHT_CODE).length);
+    for (const light of Object.keys(LIGHT_CODE) as (keyof typeof LIGHT_CODE)[]) {
+      for (const motion of Object.values(MOTION_CODE)) {
+        const x = unpackAnim(packAnim([packLight(motion, light), 0, 0, 0]))[0];
+        expect(Math.floor(x / LIGHT_STRIDE)).toBe(LIGHT_CODE[light]);
+        expect(x % LIGHT_STRIDE).toBe(motion);
+      }
+    }
+  });
+});
+
+describe('chase lights', () => {
+  /** Indices of the lit bulbs of one run of `count` (one phase: one item) at `time`. */
+  const lit = (count: number, time: number, phase = 0.4, motion = 1) =>
+    Array.from({ length: count }, (_, index) => index).filter((index) => lightPattern('chase', time, phase, motion, { index, count }) === 1);
+
+  it('lights about a third of the run, at least one bulb', () => {
+    expect([2, 3, 4, 5, 6, 8, 12, 16, 24, CHASE_MAX_COUNT].map(chaseRunLength)).toEqual([1, 1, 1, 2, 2, 3, 4, 5, 8, 21]);
+    expect(CHASE_LIT_SHARE).toBeCloseTo(1 / 3, 12);
+  });
+  it('each bulb is either on or dim; a lit stretch of chaseRunLength bulbs in a row (round the ring) at every moment', () => {
+    for (const count of [2, 3, 5, 8, 12, 24, CHASE_MAX_COUNT]) {
+      for (let t = 0; t < 6; t += 0.137) {
+        const on = lit(count, t);
+        expect(on.length, `${count} @ ${t}`).toBe(chaseRunLength(count));
+        // in a row: walking up from the first lit bulb after a dim one, every lit bulb follows the last
+        const start = on.find((i) => !on.includes((i - 1 + count) % count)) ?? on[0];
+        expect(on.map((_, k) => (start + k) % count).sort((a, b) => a - b)).toEqual(on);
+        for (let index = 0; index < count; index++) {
+          expect([1, CHASE_OFF_LEVEL]).toContain(lightPattern('chase', t, 0.4, 1, { index, count }));
+        }
+      }
+    }
+  });
+  it('runs one bulb a step towards higher indices, a step every 1 / CHASE_STEP_HZ s', () => {
+    const step = 1 / CHASE_STEP_HZ;
+    for (const count of [3, 12]) {
+      for (const t0 of [0.01, 1.3, 7.77]) {
+        const a = lit(count, t0);
+        const b = lit(count, t0 + step);
+        expect(b, `${count} @ ${t0}`).toEqual(a.map((i) => (i + 1) % count).sort((x, y) => x - y));
+      }
+    }
+  });
+  it('one step is at most 3 Hz, so no bulb ever changes faster than 3 times a second', () => {
+    expect(CHASE_STEP_HZ).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+    for (const count of [2, 3, 12]) {
+      for (let index = 0; index < count; index++) {
+        const hz = 400;
+        let flips = 0;
+        let prev = lightPattern('chase', 0, 1.1, 1, { index, count });
+        for (let i = 1; i < 60 * hz; i++) {
+          const v = lightPattern('chase', i / hz, 1.1, 1, { index, count });
+          if (v !== prev) flips++;
+          prev = v;
+        }
+        expect(flips / 60, `${index} of ${count}`).toBeLessThanOrEqual(LIGHT_MAX_HZ);
+      }
+    }
+  });
+  it('reduced motion holds every bulb fully on, steady', () => {
+    for (const t of [0, 0.3, 5.5, 100]) expect(lit(12, t, 0.4, 0)).toHaveLength(12);
+  });
+  it('the item phase moves where the run is, so placed copies do not run in step', () => {
+    const at = (phase: number) => lit(12, 3.21, phase).join();
+    expect(new Set([0, 0.9, 2.1, 3.3, 4.6].map(at)).size).toBeGreaterThan(1);
+  });
+  it('needs the bulb slot', () => {
+    expect(() => lightPattern('chase', 1, 0)).toThrow(/chase/);
+  });
+  it("a bulb's slot packs into anim's amount and comes back exactly, for every run size (packing guard)", () => {
+    for (let count = 2; count <= CHASE_MAX_COUNT; count++) {
+      for (let index = 0; index < count; index++) {
+        const stored = packAnim([packLight(MOTION_CODE.spin, 'chase'), packChase({ index, count }), 0.4, 1.5]);
+        expect(Math.abs(stored[1])).toBeLessThanOrEqual(32767);
+        expect(unpackChase(unpackAnim(stored)[1])).toEqual({ index, count });
+      }
+    }
+  });
+  it('refuses a slot that is not a bulb of a run of 2..CHASE_MAX_COUNT', () => {
+    for (const bad of [{ index: 0, count: 1 }, { index: 0, count: CHASE_MAX_COUNT + 1 }, { index: 3, count: 3 }, { index: -1, count: 3 },
+      { index: 0.5, count: 3 }, { index: 0, count: 2.5 }, { index: NaN, count: 4 }]) {
+      expect(() => packChase(bad), JSON.stringify(bad)).toThrow(/style kit: chase/);
+    }
+  });
+});
+
+describe('chase light shader', () => {
+  /**
+   * The chase GLSL run as JavaScript: the shader's own text, with only GLSL spellings swapped for JS
+   * ones, so this checks the maths the GPU runs against lightPattern (parity), not a copy of it.
+   */
+  const glslAsJs = new Function('motionParams', 'uTime', 'motionPhase',
+    `let vLight = 1.0;\n${CHASE_LIGHT_GLSL
+      .replace(/\bfloat (\w+) =/g, 'const $1 =')
+      .replace(/\b(floor|max)\(/g, 'Math.$1(')}\nreturn vLight;`) as (p: { x: number }, t: number, phase: number) => number;
+
+  it('runs the same maths as lightPattern (parity)', () => {
+    for (const count of [2, 3, 7, 12, CHASE_MAX_COUNT]) {
+      for (let index = 0; index < count; index += Math.max(1, Math.floor(count / 5))) {
+        // what the shader sees: anim.y unpacked (motionParams.x), the phase with the item hash added
+        const amount = unpackAnim(packAnim([0, packChase({ index, count }), 0, 0]))[1];
+        for (const phase of [0, 0.7, TAU - 0.01, 9.4]) {
+          for (let t = 0; t < 20; t += 0.0913) {
+            expect(glslAsJs({ x: amount }, t, phase), `${index}/${count} t=${t} phase=${phase}`)
+              .toBe(lightPattern('chase', t, phase, 1, { index, count }));
+          }
+        }
+      }
+    }
+  });
+  it('runs only for chase bulbs and only while motion is on (reduced motion keeps vLight 1.0)', () => {
+    const motionOn = MOTION_VERTEX_SETUP.indexOf('if ( uMotion > 0.0 ) {');
+    const branch = MOTION_VERTEX_SETUP.indexOf(`else if ( lightCode == ${LIGHT_CODE.chase} ) {`);
+    expect(motionOn).toBeGreaterThan(0);
+    expect(branch).toBeGreaterThan(motionOn);
+    expect(MOTION_VERTEX_SETUP).toContain(CHASE_LIGHT_GLSL);
+    // the branch sits inside the motion-on block: that block closes after it
+    const block = MOTION_VERTEX_SETUP.slice(motionOn);
+    let depth = 0;
+    let end = -1;
+    for (let k = 0; k < block.length && end < 0; k++) {
+      depth += block[k] === '{' ? 1 : block[k] === '}' ? -1 : 0;
+      if (depth === 0 && block[k] === '}') end = motionOn + k;
+    }
+    expect(branch).toBeLessThan(end);
+    expect(MOTION_VERTEX_SETUP.indexOf(CHASE_LIGHT_GLSL)).toBeLessThan(end);
+  });
+  it('bakes exactly the TS constants', () => {
+    const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hasToken = (src: string, n: number) => new RegExp(`(?<![\\w.])${esc(glslFloat(n))}(?![\\w.])`).test(src);
+    for (const n of [CHASE_STEP_HZ, CHASE_LIT_SHARE, CHASE_OFF_LEVEL, CHASE_MAX_COUNT, 1 / ANIM_STEP[1], TAU]) {
+      expect(hasToken(CHASE_LIGHT_GLSL, n), String(n)).toBe(true);
+    }
   });
 });
 
