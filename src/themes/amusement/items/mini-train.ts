@@ -59,7 +59,7 @@ export const item: ItemModel = {
         kit.box([0.35, 0.03, len + 0.01], [0, chassisY + 0.235, cz], 'white', { scale: [1, 0.5, 1] }),
         kit.box([0.04, 0.03, 0.08], [0, chassisY, c.z1 + 0.03], 'stoneDark'),
       );
-      wheels(c.z0, c.z1);
+      wheels(c.z0, c.z1, 0);
     }
     return kit.finish(parts);
   },

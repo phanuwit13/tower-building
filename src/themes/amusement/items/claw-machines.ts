@@ -58,9 +58,13 @@ export const item: ItemModel = {
         const y = BASE_H + 0.04 + r * 0.85;
         parts.push(
           kit.sphere(r, [cx + dx, y, zc + dz], col, { detail: 0 }),
-          kit.sphere(r * 0.38, [cx + dx - r * 0.15, y + r * 0.95, zc + dz - r * 0.55], col, { detail: 0 }),
-          kit.sphere(r * 0.38, [cx + dx - r * 0.15, y + r * 0.95, zc + dz + r * 0.55], col, { detail: 0 }),
         );
+        if (k % 2 === 0) {
+          parts.push(
+            kit.sphere(r * 0.38, [cx + dx - r * 0.15, y + r * 0.95, zc + dz - r * 0.55], col, { detail: 0 }),
+            kit.sphere(r * 0.38, [cx + dx - r * 0.15, y + r * 0.95, zc + dz + r * 0.55], col, { detail: 0 }),
+          );
+        }
       });
       // the claw: a carriage on the top rail, a rod and three curved prongs
       const clawX = cx + 0.02;
