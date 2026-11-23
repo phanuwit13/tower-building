@@ -43,14 +43,14 @@ export const item: ItemModel = {
       parts.push(kit.sphere(0.05, [sx * (POST.x - 0.03), 0.5, sz * (POST.z - 0.03)], 'leaf', { detail: 0 }));
     }
     const clumps: Array<[number, number, number, 'leaf' | 'leafDark' | 'lime']> = [
-      [0.3, -0.68, 0.14, 'leaf'], [-0.25, -0.5, 0.15, 'leafDark'], [0.15, -0.22, 0.13, 'lime'], [-0.2, 0.05, 0.16, 'leaf'],
-      [0.28, 0.2, 0.15, 'leafDark'], [-0.28, 0.45, 0.14, 'lime'], [0.12, 0.62, 0.16, 'leaf'], [-0.05, -0.3, 0.12, 'leaf'], [0.0, 0.38, 0.12, 'leafDark'],
+      [0.33, -0.62, 0.12, 'leaf'], [-0.33, -0.3, 0.13, 'leafDark'], [0.33, -0.08, 0.11, 'lime'], [-0.33, 0.22, 0.12, 'leaf'],
+      [0.33, 0.4, 0.13, 'leafDark'], [-0.33, 0.68, 0.12, 'lime'], [0.33, 0.8, 0.1, 'leaf'], [-0.33, -0.72, 0.11, 'leaf'],
     ];
     for (const [x, z, r, color] of clumps) {
       parts.push(kit.sphere(r, [x, TOP + 0.1, z], color, { scale: [1.2, 0.7, 1.2], motion: SWAY }));
     }
     // little pink blossoms among the leaves
-    for (const [x, z] of [[0.3, -0.6], [-0.15, 0.1], [0.2, 0.62]] as const) {
+    for (const [x, z] of [[0.33, -0.6], [-0.33, 0.2], [0.33, 0.4]] as const) {
       parts.push(kit.sphere(0.03, [x, TOP + 0.19, z], 'pink', { detail: 0, motion: SWAY }));
     }
     return kit.finish(parts);

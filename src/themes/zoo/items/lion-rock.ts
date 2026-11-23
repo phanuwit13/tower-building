@@ -55,6 +55,10 @@ export const item: ItemModel = {
       // the rock: a wide flat slab on a chunky base, with boulders round its feet
       kit.box([1.0, ROCK.top - GROUND_H - 0.12, 0.9], [ROCK.x, GROUND_H + (ROCK.top - GROUND_H - 0.12) / 2, ROCK.z], 'stoneDark'),
       kit.box([1.2, 0.12, 1.05], [ROCK.x + 0.03, ROCK.top - 0.06, ROCK.z], 'stone'),
+      kit.sphere(0.14, [ROCK.x + 0.63, ROCK.top - 0.06, ROCK.z + 0.5], 'stone', { detail: 0, scale: [1, 0.6, 1] }),
+      kit.sphere(0.14, [ROCK.x + 0.63, ROCK.top - 0.06, ROCK.z - 0.5], 'stone', { detail: 0, scale: [1, 0.6, 1] }),
+      kit.sphere(0.14, [ROCK.x - 0.57, ROCK.top - 0.06, ROCK.z + 0.5], 'stone', { detail: 0, scale: [1, 0.6, 1] }),
+      kit.sphere(0.14, [ROCK.x - 0.57, ROCK.top - 0.06, ROCK.z - 0.5], 'stone', { detail: 0, scale: [1, 0.6, 1] }),
       kit.sphere(0.26, [-0.7, 0.16, -0.55], 'stone', { detail: 0, scale: [1.2, 0.7, 1.1] }),
       kit.sphere(0.2, [-0.55, 0.12, 0.42], 'stoneDark', { detail: 0, scale: [1.2, 0.7, 1] }),
       kit.sphere(0.18, [0.38, 0.11, -0.78], 'stone', { detail: 0, scale: [1.2, 0.7, 1] }),
@@ -64,7 +68,7 @@ export const item: ItemModel = {
       kit.cone(0.04, 0.11, [0.86, GROUND_H + 0.055, -0.22], 'leafDark', { segments: 5 }),
       kit.cone(0.05, 0.13, [-0.85, GROUND_H + 0.065, 0.85], 'leaf', { segments: 5 }),
       ...lyingCat(kit, ROCK.x + 0.02, ROCK.top, ROCK.z - 0.05, 0.3, true),
-      ...lyingCat(kit, 0.35, GROUND_H, 0.4, -0.5, false),
+      ...lyingCat(kit, 0.45, GROUND_H, 0.45, -0.9, false),
     ];
     return kit.finish(parts);
   },
