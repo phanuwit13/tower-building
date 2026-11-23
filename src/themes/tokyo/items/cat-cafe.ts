@@ -10,6 +10,7 @@ const BODY_W = BODY.x1 - BODY.x0;
 const BODY_CX = (BODY.x0 + BODY.x1) / 2;
 const BODY_D = BODY.z * 2;
 const RISE = 0.3;
+const FACE_R = 0.38; // radius of the cat-face sign
 const BAY = { x0: BODY.x1, x1: 0.8, z: 0.45, h: 0.55 };
 
 /** คาเฟ่แมว: a cat café with cat ears on the roof and cat trees in the window. */
@@ -20,18 +21,25 @@ export const item: ItemModel = {
   footprint: { w: 2, d: 2 },
   build: (kit) => {
     const top = BASE.h + BODY.top;
+    const FACE = { r: FACE_R, y: top + RISE + 0.34 }; // centred above the ridge
     const parts: Part[] = [
       kit.box([BASE.w, BASE.h, BASE.w], [0, BASE.h / 2, 0], 'stone'),
       kit.box([BODY_W, BODY.top, BODY_D], [BODY_CX, BASE.h + BODY.top / 2, 0], 'cream'),
       kit.box([BODY_W + 0.02, 0.07, BODY_D + 0.02], [BODY_CX, BASE.h + 0.035, 0], 'woodDark'), // skirting
-      kit.wedge([BODY_W, RISE, BODY_D], [BODY_CX, top + RISE / 2, 0], 'cream', { rotate: [0, 0, 0] }),
       ...gableRoof(kit, { at: [BODY_CX, top, 0], length: BODY_D + 0.1, width: BODY_W, rise: RISE, eave: 0.06, color: 'pink', ridge: 'redDark' }),
-      // giant cat ears on the ridge: orange ears with a pink glowing inside
-      ...[-0.32, 0.32].flatMap((z) => [
-        kit.cone(0.3, 0.6, [BODY_CX, top + RISE + 0.3, z], 'orange', { segments: 4, scale: [0.75, 1, 1] }),
-        kit.cone(0.18, 0.4, [BODY_CX + 0.1, top + RISE + 0.2, z], 'pink', { segments: 4, scale: [0.5, 1, 1], glow: true }),
+      // giant cat-face sign on the ridge, facing +x: round orange face, two big triangular ears (pink glowing inside),
+      // glowing eyes, nose and whiskers
+      kit.cylinder(FACE.r, FACE.r, 0.08, [BODY_CX, FACE.y, 0], 'orange', { segments: 12, rotate: [0, 0, Math.PI / 2] }),
+      kit.sphere(0.16, [BODY_CX + 0.03, FACE.y - 0.13, 0], 'white', { scale: [0.35, 0.8, 1.3] }), // muzzle
+      kit.sphere(0.035, [BODY_CX + 0.07, FACE.y - 0.06, 0], 'pink', { detail: 0, glow: true }), // nose
+      ...[-1, 1].flatMap((s) => [
+        kit.cone(0.26, 0.46, [BODY_CX, FACE.y + FACE.r + 0.04, s * 0.24], 'orange', { segments: 4, scale: [0.3, 1, 1], rotate: [s * 0.3, 0, 0] }),
+        kit.cone(0.15, 0.3, [BODY_CX + 0.04, FACE.y + FACE.r + 0.0, s * 0.24], 'pink', { segments: 4, scale: [0.3, 1, 1], rotate: [s * 0.3, 0, 0], glow: true }),
+        kit.box([0.04, 0.12, 0.08], [BODY_CX + 0.05, FACE.y + 0.1, s * 0.15], 'teal', { glow: true }), // eye
+        ...[-0.05, 0.03].map((dy, i) =>
+          kit.box([0.03, 0.022, 0.22], [BODY_CX + 0.045, FACE.y - 0.1 + dy, s * 0.3], 'lampWarm', { glow: true, rotate: [s * (i === 0 ? 0.2 : -0.15), 0, 0] }),
+        ),
       ]),
-      kit.box([0.12, 0.08, 0.9], [BODY_CX, top + RISE + 0.02, 0], 'orange'), // ear bridge
       // windows and door
       ...door(kit, { at: [BODY.x1, BASE.h + 0.22, 0.6], facing: 'x+', w: 0.2, h: 0.44, color: 'woodDark', knob: 'sunYellow' }),
       ...glassWindow(kit, { at: [BODY.x1, BASE.h + 0.52, 0.6], facing: 'x+', w: 0.18, h: 0.16, frame: 'teal', panes: 1 }),

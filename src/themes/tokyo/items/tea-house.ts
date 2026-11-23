@@ -49,7 +49,6 @@ export const item: ItemModel = {
     // square hip roof: a four-sided cone turned 45 degrees, dark tiles with a ridge cap and a finial
     const ROOF = { r: 0.94, h: 0.5 };
     parts.push(kit.cone(ROOF.r, ROOF.h, [BODY.cx, WALL_TOP + ROOF.h / 2, 0], 'charcoal', { segments: 4, rotate: [0, Math.PI / 4, 0] }));
-    parts.push(kit.cone(ROOF.r * 0.97, ROOF.h * 0.97, [BODY.cx, WALL_TOP + 0.015 + ROOF.h / 2, 0], 'stoneDark', { segments: 4, rotate: [0, Math.PI / 4, 0], scale: [0.6, 0.97, 0.6] }));
     parts.push(kit.sphere(0.06, [BODY.cx, WALL_TOP + ROOF.h + 0.03, 0], 'brass', { detail: 0 }));
     // veranda in front: wood deck, two posts, a small glowing lantern
     parts.push(kit.box([0.3, 0.1, BODY.d + 0.1], [FRONT + 0.15, 0.05 + GARDEN_H / 2, 0], 'wood'));
