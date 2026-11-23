@@ -4,7 +4,7 @@ import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 
 // A market stall under a big striped umbrella (1×2, front on +x): a long table of folded
-// umbrellas, a stand of colourful ones, and a ring of glowing bulbs under the canopy.
+// umbrellas, a stand of colourful ones, and a ring of glowing bulbs round the canopy edge.
 // The canopy sways a little about the top of the pole.
 const TABLE = { x: 0.2, w: 0.32, d: 1.7, h: 0.32 };
 const POLE = { x: -0.02, z: 0, h: 1.1 };
@@ -46,10 +46,11 @@ export const item: ItemModel = {
         kit.cone(0.15, 0.1, [-0.33, 0.55, z], color, { segments: 8 }),
       );
     }
-    // glowing bulbs hung round the pole under the canopy
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      parts.push(kit.sphere(0.04, [POLE.x + 0.3 * Math.cos(a), CANOPY.y - 0.05, POLE.z + 0.3 * Math.sin(a)], 'lampWarm', { detail: 0, glow: true, light: 'breathe' }));
+    // glowing bulbs round the canopy edge, in three colours
+    const BULB_COLORS: PaletteColor[] = ['lampWarm', 'pink', 'skyBlue'];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      parts.push(kit.sphere(0.04, [POLE.x + 0.44 * Math.cos(a), CANOPY.y - 0.01, POLE.z + 0.44 * Math.sin(a)], BULB_COLORS[i % 3], { detail: 0, glow: true, light: 'breathe' }));
     }
     return kit.finish(parts);
   },

@@ -2,7 +2,7 @@ import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 
 // A sale star-burst sign (1×1, facing +x) on a post: a red burst with a smaller golden burst on top
-// whose glow blinks gently. Shape only, no text.
+// whose centre and four bulbs blink gently. Shape only, no text.
 const POST = { h: 0.78 };
 const STAR = { y: 1.05, spikes: 12, rBody: 0.14, long: 0.2, short: 0.12 };
 
@@ -25,9 +25,14 @@ export const item: ItemModel = {
       const mid = STAR.rBody - 0.02 + len / 2;
       const at = (r: number, x: number): [number, number, number] => [x, STAR.y + Math.cos(a) * r, Math.sin(a) * r];
       parts.push(
-        kit.cone(0.075, len, at(mid, 0), 'red', { segments: 6, scale: [0.4, 1, 1], rotate: [-a, 0, 0] }),
-        kit.cone(0.045, len * 0.7, at(mid - len * 0.1, 0.03), 'sunYellow', { segments: 6, scale: [0.4, 1, 1], rotate: [-a, 0, 0], glow: 'sunYellow', light: 'blink' }),
+        kit.cone(0.075, len, at(mid, 0), 'red', { segments: 6, scale: [0.4, 1, 1], rotate: [a, 0, 0] }),
+        kit.cone(0.045, len * 0.7, at(mid - len * 0.1, 0.03), 'sunYellow', { segments: 6, scale: [0.4, 1, 1], rotate: [a, 0, 0], glow: 'sunYellow' }),
       );
+    }
+    // only the star body (the centre disc) and four small bulbs on it blink
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      parts.push(kit.sphere(0.03, [0.045, STAR.y + Math.cos(a) * 0.17, Math.sin(a) * 0.17], 'lampWarm', { detail: 0, glow: true, light: 'blink' }));
     }
     parts.push(
       kit.cylinder(0.1, 0.1, 0.04, [0.04, STAR.y, 0], 'orange', { segments: 12, rotate: [0, 0, Math.PI / 2], glow: 'orange', light: 'blink' }),

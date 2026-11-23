@@ -12,7 +12,7 @@ const H = 1.05; // wall top
 const FRONT = W / 2;
 const TV = { cols: 5, rows: 3, w: 0.36, h: 0.22, pitchZ: 0.4, pitchY: 0.26, z: -0.275, y: 0.59 };
 const SCREEN_COLORS: PaletteColor[] = ['skyBlue', 'pink', 'lime', 'sunYellow', 'purple', 'teal', 'orange', 'blue'];
-const SIGN = { x: 0.5, y: 1.5, halfZ: 1.0, halfY: 0.275, bulbs: 28 };
+const SIGN = { x: 0.5, y: 1.52, halfZ: 1.0, halfY: 0.32, bulbs: 28 };
 
 /** Evenly spaced points round a rectangle in the y–z plane, starting at the top-left corner. */
 function rectPoints(cy: number, cz: number, hy: number, hz: number, n: number): [number, number][] {
@@ -69,9 +69,9 @@ export const item: ItemModel = {
     for (const z of [-0.6, 0.6]) parts.push(kit.box([0.06, boardBottom - (H + 0.08), 0.06], [SIGN.x, (boardBottom + H + 0.08) / 2, z], 'charcoal'));
     parts.push(kit.box([0.06, SIGN.halfY * 2 + 0.06, SIGN.halfZ * 2 + 0.06], [SIGN.x, SIGN.y, 0], 'navy'));
     const bx = SIGN.x + 0.05;
-    const bolt: [number, number][] = [[1.7, 0.14], [1.5, -0.04], [1.54, 0.08], [1.3, -0.14]];
+    const bolt: [number, number][] = [[1.72, 0.25], [1.54, -0.05], [1.57, 0.2], [1.34, -0.25]];
     for (let i = 0; i < bolt.length - 1; i++) {
-      parts.push(rod(kit, [bx, bolt[i][0], bolt[i][1]], [bx, bolt[i + 1][0], bolt[i + 1][1]], 0.03, 'skyBlue', { segments: 4, glow: 'skyBlue' }));
+      parts.push(rod(kit, [bx, bolt[i][0], bolt[i][1]], [bx, bolt[i + 1][0], bolt[i + 1][1]], 0.06, 'skyBlue', { segments: 6, glow: 'skyBlue' }), kit.sphere(0.06, [bx, bolt[i + 1][0], bolt[i + 1][1]], 'skyBlue', { detail: 0, glow: 'skyBlue' }));
     }
     rectPoints(SIGN.y, 0, SIGN.halfY - 0.03, SIGN.halfZ - 0.03, SIGN.bulbs).forEach(([y, z], index) => {
       parts.push(kit.sphere(0.035, [SIGN.x + 0.05, y, z], 'lampWarm', { detail: 0, glow: true, light: 'chase', chase: { index, count: SIGN.bulbs } }));

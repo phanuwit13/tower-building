@@ -6,7 +6,7 @@ import { gableRoof, glassWindow } from '../../../models/parts';
 // A wooden Thai dessert shop (2×2, front on +x): an open counter with trays of colourful sweets
 // under a striped awning, lit windows and a pink flower neon on a post.
 const BASE = 0.05;
-const WALL = { x: -0.4, w: 0.9, d: 1.7, top: 1.05 }; // building: x from -0.9 to 0.0
+const WALL = { x: -0.4, w: 0.9, d: 1.7, top: 1.05 }; // building: x from -0.85 to 0.05
 const FRONT = WALL.x + WALL.w / 2;
 const RISE = 0.33;
 const COUNTER = { x: 0.3, w: 0.4, d: 1.5, h: 0.32 };
@@ -44,6 +44,7 @@ export const item: ItemModel = {
     for (let i = 0; i < strips; i++) {
       parts.push(kit.box([0.36, 0.035, stripZ], [FRONT + 0.16, 0.66, -0.8 + stripZ * (i + 0.5)], i % 2 ? 'white' : 'pink', { rotate: [0, 0, -SLOPE] }));
     }
+    parts.push(kit.box([0.04, 0.05, WALL.d - 0.1], [FRONT + 0.34, 0.6, 0], 'pink', { glow: 'pink' })); // glowing awning edge
     // counter with a pale top and a row of trays
     parts.push(
       kit.box([COUNTER.w, COUNTER.h, COUNTER.d], [COUNTER.x, COUNTER.h / 2, 0], 'woodDark'),
@@ -68,12 +69,13 @@ export const item: ItemModel = {
     parts.push(
       kit.cylinder(0.03, 0.03, 0.9, [sx, BASE + 0.45, sz], 'charcoal', { segments: 6 }),
       kit.box([0.12, BASE, 0.12], [sx, BASE / 2, sz], 'stone'),
-      kit.cylinder(0.28, 0.28, 0.05, [sx, cy, sz], 'charcoal', { segments: 14, rotate: [0, 0, Math.PI / 2] }),
-      kit.sphere(0.06, [sx + 0.05, cy, sz], 'sunYellow', { detail: 0, glow: 'sunYellow' }),
+      kit.cylinder(0.3, 0.3, 0.05, [sx, cy, sz], 'navy', { segments: 14, rotate: [0, 0, Math.PI / 2] }),
+      kit.torus(0.29, 0.035, [sx + 0.03, cy, sz], 'sunYellow', { radialSegments: 4, tubularSegments: 16, rotate: [0, Math.PI / 2, 0], glow: 'sunYellow' }),
+      kit.sphere(0.07, [sx + 0.05, cy, sz], 'sunYellow', { detail: 0, glow: 'sunYellow' }),
     );
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      parts.push(kit.sphere(0.07, [sx + 0.05, cy + Math.cos(a) * 0.13, sz + Math.sin(a) * 0.13], 'pink', { detail: 0, scale: [0.5, 1, 1], glow: 'pink' }));
+      parts.push(kit.sphere(0.09, [sx + 0.05, cy + Math.cos(a) * 0.15, sz + Math.sin(a) * 0.15], 'pink', { detail: 0, scale: [0.5, 1, 1], glow: 'pink' }));
     }
     return kit.finish(parts);
   },

@@ -34,6 +34,11 @@ export const item: ItemModel = {
       kit.sphere(0.12, [BASKET.x - 0.06, RIM_Y + 0.07, 0.07], 'leafDark', { detail: 0, motion: SWAY }),
       kit.sphere(0.11, [BASKET.x + 0.07, RIM_Y + 0.06, -0.06], 'lime', { detail: 0, motion: SWAY }),
     ];
+    // fairy lights wound round the foliage
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      parts.push(kit.sphere(0.03, [BASKET.x + 0.2 * Math.cos(a), RIM_Y + 0.05, 0.2 * Math.sin(a)], i % 2 ? 'lampWarm' : 'pink', { detail: 0, glow: true, light: 'breathe', motion: SWAY }));
+    }
     for (const [x, y, z, color] of BLOOMS) parts.push(kit.sphere(0.045, [BASKET.x + x, RIM_Y + y, z], color, { detail: 0, motion: SWAY }));
     return kit.finish(parts);
   },

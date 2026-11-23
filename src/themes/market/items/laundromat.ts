@@ -8,7 +8,7 @@ import { glassWindow } from '../../../models/parts';
 // out front. Each machine's drum (lit glass and a few clothes) spins about its own centre on an
 // x axis, inside a fixed chrome ring. A purple bubble neon stands on the roof.
 const BASE = 0.04;
-const SHOP = { x: -0.45, w: 0.8, d: 1.8, top: 0.98 }; // x from -0.9 to -0.1
+const SHOP = { x: -0.45, w: 0.8, d: 1.8, top: 0.98 }; // x from -0.85 to -0.05
 const FRONT = SHOP.x + SHOP.w / 2;
 const MACHINE = { x: 0.14, w: 0.5, d: 0.42, h: 0.52, pitch: 0.46 };
 const MACHINE_FRONT = MACHINE.x + MACHINE.w / 2;
@@ -39,7 +39,7 @@ export const item: ItemModel = {
     // four washing machines in a row against the shop front
     for (let i = 0; i < 4; i++) {
       const z = (i - 1.5) * MACHINE.pitch;
-      const spin: MotionOpts = { kind: 'spin', pivot: [MACHINE_FRONT, DRUM.y, z], axis: [1, 0, 0], speed: 0.8 };
+      const spin: MotionOpts = { kind: 'spin', pivot: [MACHINE_FRONT, DRUM.y, z], axis: [1, 0, 0], speed: 0.4 };
       parts.push(
         kit.box([MACHINE.w, MACHINE.h, MACHINE.d - 0.04], [MACHINE.x, BASE + MACHINE.h / 2, z], 'white'),
         kit.box([MACHINE.w + 0.02, 0.07, MACHINE.d - 0.02], [MACHINE.x, BASE + MACHINE.h + 0.035, z], 'blue'),
