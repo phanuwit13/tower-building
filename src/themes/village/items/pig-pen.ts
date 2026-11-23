@@ -34,7 +34,7 @@ export const item: ItemModel = {
       parts.push(kit.box([0.06, h, 0.06], [sx + dx, FLOOR_H + h / 2, sz + dz], 'wood'));
     }
     parts.push(
-      kit.box([0.86, 0.05, 0.92], [sx, FLOOR_H + 0.58, sz], 'terracotta', { rotate: [0, 0, 0.19] }),
+      kit.box([0.86, 0.05, 0.92], [sx, FLOOR_H + 0.6, sz], 'terracotta', { rotate: [0, 0, -0.2] }),
       kit.box([0.5, 0.03, 0.6], [sx, FLOOR_H + 0.015, sz], 'sunYellow'),
     );
     // mud patch, trough

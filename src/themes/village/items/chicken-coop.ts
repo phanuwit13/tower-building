@@ -23,7 +23,6 @@ export const item: ItemModel = {
       kit.wedge([HOUSE.hz * 2 + 0.16, HOUSE.rise, hw + 0.04], [hx, FLOOR_H + HOUSE.wall + HOUSE.rise / 2, 0], 'red', { rotate: [0, Math.PI / 2, 0] }),
       kit.box([0.03, 0.3, 0.26], [HOUSE.x1 + 0.005, FLOOR_H + 0.2, 0], 'woodDark'),
       kit.box([0.14, 0.04, 0.3], [HOUSE.x1 + 0.07, FLOOR_H + 0.02, 0], 'wood'),
-      kit.box([0.04, 0.12, 0.7], [hx, FLOOR_H + 0.44, 0.0], 'woodDark', { scale: [1, 0.0001 + 1, 1] }),
       kit.box([0.3, 0.2, 0.2], [hx, FLOOR_H + 0.15, HOUSE.hz + 0.1], 'woodDark'),
       kit.box([0.34, 0.03, 0.24], [hx, FLOOR_H + 0.265, HOUSE.hz + 0.1], 'redDark'),
     );
@@ -41,7 +40,7 @@ export const item: ItemModel = {
       );
     }
     for (let i = -4; i <= 4; i++) {
-      const w = i * 0.2 + 0.1 * (i > 0 ? -1 : 1) * 0; // evenly spaced wires
+      const w = i * 0.2; // evenly spaced wires
       for (const q of [-E, E]) {
         parts.push(kit.box([0.02, FENCE_H - 0.05, 0.02], [w, FLOOR_H + 0.05 + (FENCE_H - 0.05) / 2, q], 'chrome'));
         if (q === E || Math.abs(w) > 0.05) parts.push(kit.box([0.02, FENCE_H - 0.05, 0.02], [q, FLOOR_H + 0.05 + (FENCE_H - 0.05) / 2, w], 'chrome'));

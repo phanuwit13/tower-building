@@ -13,7 +13,7 @@ export interface QuadSpec {
   head: number; muzzle: PaletteColor; snout?: number;
   ear: 'flop' | 'perk' | 'none'; earColor?: PaletteColor;
   horn?: 'out' | 'up'; hornColor?: PaletteColor;
-  tail?: PaletteColor; beard?: PaletteColor;
+  tail?: PaletteColor; beard?: PaletteColor; collar?: PaletteColor;
   spots?: Spot[]; spotColor?: PaletteColor;
 }
 
@@ -46,6 +46,7 @@ export function quadruped(kit: StyleKit, base: number, a: QuadSpec): Part[] {
     if (a.horn === 'out') parts.push(kit.sphere(hr * 0.28, pt(headF - hr * 0.2, headU + hr * 0.55, sg * hr * 1.15), a.hornColor ?? 'white', { detail: 0, scale: [0.9, 0.6, 2.2], rotate }));
     if (a.horn === 'up') parts.push(kit.cone(hr * 0.2, hr * 0.7, pt(headF - hr * 0.1, headU + hr * 1.0, sg * hr * 0.4), a.hornColor ?? 'white', { segments: 6 }));
   }
+  if (a.collar) parts.push(kit.torus(hr * 0.8, 0.022, pt(L * 0.82, (bodyY + headU) / 2, 0), a.collar, { radialSegments: 4, tubularSegments: 8, rotate: [0, a.yaw + Math.PI / 2, 0] }));
   if (a.beard) parts.push(kit.sphere(hr * 0.18, pt(headF + hr * 0.55, headU - hr * 0.85, 0), a.beard, { detail: 0, scale: [0.8, 1.6, 0.8], rotate }));
   const lc = a.legColor ?? a.color;
   if (!lying) {
@@ -63,7 +64,7 @@ export function quadruped(kit: StyleKit, base: number, a: QuadSpec): Part[] {
   } else {
     const r = a.wid * 0.14;
     for (const sg of [-1, 1]) parts.push(kit.sphere(r, pt(L * 0.75, r * 0.85, sg * W * 0.55), lc, { detail: 0, scale: [2, 0.8, 0.8], rotate }));
-    if (a.tail) parts.push(kit.sphere(0.05, pt(-L - 0.05, 0.05, 0), a.tail, { detail: 0, scale: [1.8, 0.7, 0.7], rotate }));
+    if (a.tail) parts.push(kit.torus(0.07, 0.03, pt(-L - 0.03, 0.1, 0), a.tail, { radialSegments: 4, tubularSegments: 12, arc: Math.PI * 1.5, rotate })); // a curled tail
   }
   for (const sp of a.spots ?? []) {
     const col = a.spotColor ?? 'charcoal';

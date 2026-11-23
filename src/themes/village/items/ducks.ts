@@ -6,7 +6,7 @@ const WATER_H = 0.05; // puddle top, just above the ground
 
 /** A white duck with an orange bill; faces +x at yaw 0. `base` is the ground (or water) level under it. */
 function duck(kit: StyleKit, base: number, x: number, z: number, yaw: number): Part[] {
-  const k = 0.8;
+  const k = 1.05;
   const c = Math.cos(yaw);
   const n = Math.sin(yaw);
   const pt = (f: number, u: number, s = 0): Vec3 => [x + (f * c + s * n) * k, base + u * k, z + (-f * n + s * c) * k];
@@ -32,17 +32,17 @@ export const item: ItemModel = {
   build: (kit) => {
     const parts: Part[] = [
       kit.box([0.98, GROUND_H, 0.98], [0, GROUND_H / 2, 0], 'lime'),
-      kit.cylinder(0.3, 0.3, 0.035, [0, 0.0175 + GROUND_H - 0.0125, 0], 'sand', { segments: 12 }),
-      kit.cylinder(0.25, 0.25, WATER_H, [0, WATER_H / 2, 0], 'navy', { segments: 12, motion: { kind: 'water', water: 'pond' } }),
+      kit.cylinder(0.4, 0.4, 0.04, [0, 0.02, 0], 'sand', { segments: 14 }),
+      kit.cylinder(0.34, 0.34, WATER_H, [0, WATER_H / 2, 0], 'blue', { segments: 14, motion: { kind: 'water', water: 'pond' } }),
     ];
     parts.push(
-      ...duck(kit, GROUND_H, 0.3, 0.2, 0.2),
-      ...duck(kit, GROUND_H, -0.3, 0.3, -2.4),
-      ...duck(kit, WATER_H - 0.03, -0.02, -0.05, 2.5),
+      ...duck(kit, 0.04, 0.22, 0.3, 0.1),
+      ...duck(kit, 0.04, -0.28, 0.3, -2.4),
+      ...duck(kit, WATER_H - 0.03, -0.02, -0.12, 2.5),
     );
     parts.push(
-      kit.sphere(0.1, [0.32, GROUND_H + 0.05, -0.35], 'leaf', { detail: 0, scale: [1.2, 0.8, 1] }),
-      kit.sphere(0.07, [0.4, GROUND_H + 0.04, -0.28], 'leafDark', { detail: 0 }),
+      kit.sphere(0.1, [0.35, GROUND_H + 0.05, -0.38], 'leaf', { detail: 0, scale: [1.2, 0.8, 1] }),
+      kit.sphere(0.07, [0.42, GROUND_H + 0.04, -0.3], 'leafDark', { detail: 0 }),
     );
     return kit.finish(parts);
   },

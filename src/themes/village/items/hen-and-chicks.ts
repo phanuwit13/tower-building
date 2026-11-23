@@ -61,14 +61,14 @@ export const item: ItemModel = {
   category: 'animal',
   footprint: { w: 1, d: 1 },
   build: (kit) => {
-    const parts: Part[] = [kit.box([0.98, FLOOR_H, 0.98], [0, FLOOR_H / 2, 0], 'lime')];
-    parts.push(...bird(kit, FLOOR_H, { x: -0.18, z: -0.05, yaw: -0.3, k: 0.7, kind: 'hen', body: 'white', wing: 'sand', tail: ['sand'] }));
-    for (const [x, z, yaw] of [[0.25, -0.2, 0.4], [0.32, 0.12, -0.2], [0.05, 0.3, -1.1], [-0.2, 0.33, -0.7]] as const) {
-      parts.push(...bird(kit, FLOOR_H, { x, z, yaw, k: 0.5, kind: 'chick', body: 'sunYellow', wing: 'orange', peck: true }));
+    const parts: Part[] = [kit.box([0.98, FLOOR_H, 0.98], [0, FLOOR_H / 2, 0], 'lime'), kit.box([0.84, 0.045, 0.84], [0, 0.0225, 0], 'sunYellow')];
+    parts.push(...bird(kit, FLOOR_H + 0.015, { x: -0.2, z: -0.1, yaw: -0.3, k: 1.0, kind: 'hen', body: 'white', wing: 'sand', tail: ['sand'] }));
+    for (const [x, z, yaw] of [[0.2, -0.3, 0.4], [0.27, 0.05, -0.2], [0.02, 0.3, -1.1], [-0.3, 0.3, -0.7]] as const) {
+      parts.push(...bird(kit, FLOOR_H + 0.015, { x, z, yaw, k: 0.8, kind: 'chick', body: 'sunYellow', wing: 'orange', peck: true }));
     }
     // grains on the ground
     for (const [x, z] of [[0.38, -0.3], [0.42, 0.0], [0.2, 0.22], [0.12, -0.38], [-0.02, 0.38]] as const) {
-      parts.push(kit.sphere(0.018, [x, FLOOR_H + 0.012, z], 'brass', { detail: 0 }));
+      parts.push(kit.sphere(0.018, [x, FLOOR_H + 0.03, z], 'orange', { detail: 0 }));
     }
     return kit.finish(parts);
   },
