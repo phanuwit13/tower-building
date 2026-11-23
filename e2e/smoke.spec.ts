@@ -109,6 +109,7 @@ test('booting removes a fallback message that is already showing', async ({ page
 });
 
 test('gallery shows every item of the theme with its Thai name, and no game', async ({ page }) => {
+  test.setTimeout(60_000); // software WebGL draws every page of 50 items slowly: about 30 s, right at the default
   await page.goto('/?gallery=school');
   await expect(page.getByRole('heading', { name: /โรงเรียน/ })).toBeVisible();
   // every item exactly once, over as many pages as the theme needs
