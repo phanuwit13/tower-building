@@ -199,7 +199,7 @@ test('theme select offers ชายหาดทะเล and its round starts wi
   expect(beach.items.map((i) => i.name)).toContain(name);
 });
 
-test('a saved School city still loads with three themes registered', async ({ page }) => {
+test('a saved School city still loads with every theme registered', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'โรงเรียน' }).click();
   await page.keyboard.press('ArrowRight');
