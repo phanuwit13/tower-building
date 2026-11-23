@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { T } from './strings';
+import { builtLabel, T } from './strings';
 
 describe('boot fallback text', () => {
   it('public/boot-check.js carries exactly T.noWebGL', () => {
@@ -22,6 +22,22 @@ describe('floor strings', () => {
   });
   it('the restart confirm says the floor is cleared too', () => {
     expect(T.confirmRestart).toContain('พื้น');
-    expect(T.confirmRestart).toContain('เริ่มเมืองใหม่ไหม?');
+  });
+});
+
+describe('one city per theme', () => {
+  it('the 🏠 button and the theme select badge, verbatim', () => {
+    expect(T.home).toBe('🏠 เปลี่ยนธีม');
+    expect(builtLabel(32)).toBe('สร้างแล้ว 32 ชิ้น');
+    expect(T.cityDone).toBe('เมืองเสร็จแล้ว');
+    expect(T.floorsOnly).toBe('ปูพื้นไว้แล้ว');
+  });
+  it('เริ่มใหม่ says only this city starts again; the other themes\' cities stay', () => {
+    expect(T.confirmRestart).toContain('เริ่มเมืองนี้ใหม่ไหม?');
+    expect(T.confirmRestart).toContain('ธีมอื่น');
+  });
+  it('เคลียร์ says every city goes', () => {
+    expect(T.confirmClear).toContain('ทุกเมือง');
+    expect(T.confirmClearOk).toContain('ทุกเมือง');
   });
 });

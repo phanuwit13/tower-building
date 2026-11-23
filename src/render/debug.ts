@@ -1,6 +1,6 @@
 import { memoryStore } from '../app/browserStore';
 import { demoFullGame } from '../game/demo';
-import { loadQuality, saveGame, saveQuality, type KeyValueStore } from '../game/save';
+import { loadQuality, saveCities, saveQuality, type KeyValueStore } from '../game/save';
 import type { Catalog, GroundId, QualityTier } from '../game/types';
 import { T } from '../ui/strings';
 import type { Stage } from './stage';
@@ -24,12 +24,14 @@ export function parseDemoParam(search: string): { seed: number; theme: string } 
 }
 
 /**
- * The store a demo round plays in: memory only, holding the demo city (sunny day on grass) and a
- * copy of the player's quality preference. `ground` is the theme's own ground (School: grass). The player's own save and preference are never touched.
+ * The store a demo round plays in: memory only, holding the demo city (sunny day on grass), the
+ * theme being played, and a copy of the player's quality preference. `ground` is the theme's own
+ * ground (School: grass). The player's own cities and preference are never touched.
  */
 export function demoStore(real: KeyValueStore, catalog: Catalog, seed: number, ground: GroundId = 'grass'): KeyValueStore {
   const store = memoryStore({});
-  saveGame(store, demoFullGame(catalog, { weather: 'sunny', time: 'day', ground }, seed));
+  const city = demoFullGame(catalog, { weather: 'sunny', time: 'day', ground }, seed);
+  saveCities(store, { current: city.themeId, cities: { [city.themeId]: city }, unreadable: {} });
   const quality = loadQuality(real);
   if (quality) saveQuality(store, quality);
   return store;

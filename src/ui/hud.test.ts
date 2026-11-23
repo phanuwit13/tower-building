@@ -11,7 +11,7 @@ const view = (o: Partial<HudView> = {}): HudView => ({
 });
 const setup = () => {
   const root = document.createElement('div');
-  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn(), onRestart: vi.fn(), onFloors: vi.fn() };
+  const h = { onRotate: vi.fn(), onPlace: vi.fn(), onSettings: vi.fn(), onScreenshot: vi.fn(), onRestart: vi.fn(), onFloors: vi.fn(), onHome: vi.fn() };
   const hud = createHud(root, h);
   return { root, h, hud };
 };
@@ -118,6 +118,28 @@ describe('hud', () => {
     drawer.remove();
     other.remove();
     root.remove();
+  });
+  it('🏠 เปลี่ยนธีม is there while playing, after the round and with the floor drawer open', () => {
+    const { root, h, hud } = setup();
+    const shown = (e: HTMLElement) => !e.hidden && !e.closest('[hidden]');
+    hud.update(view());
+    const home = btn(root, T.home);
+    expect(home.textContent).toBe(T.home);
+    expect(shown(home)).toBe(true);
+    home.click();
+    expect(h.onHome).toHaveBeenCalledOnce();
+    hud.update(view({ finished: true, canPlace: false, canRotate: false, current: null, next: null }));
+    expect(shown(home)).toBe(true);
+    hud.update(view({ floorMode: true }));
+    expect(shown(home)).toBe(true);
+  });
+  it('🏠 sits top left, above the item cards (never on them)', () => {
+    const { root, hud } = setup();
+    hud.update(view());
+    const left = root.querySelector('.hud-top > .hud-left')!;
+    expect(left).not.toBeNull();
+    expect(left.previousElementSibling).toBeNull(); // first in the top row
+    expect([...left.children].map((c) => c.className)).toEqual(['btn-home', 'hud-cards']);
   });
   it('does not re-assign thumbnail src or text when nothing changed', () => {
     const { root, hud } = setup();

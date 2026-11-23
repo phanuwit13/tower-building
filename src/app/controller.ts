@@ -2,9 +2,7 @@ import { buildOccupancy, canPlace, clampPosition, nearestFreeSpot, rotatedFootpr
 import { paintRect, type FloorRect } from '../game/floors';
 import { placementAtTile } from './hover';
 import { newGame, placeCurrent, restartGame, withSettings } from '../game/game';
-import {
-  clearGame, loadGame, loadQuality, saveGame, saveQuality, type KeyValueStore,
-} from '../game/save';
+import { loadQuality, openCities, saveQuality, type KeyValueStore, type SavedCities } from '../game/save';
 import { GRID_SIZE, type Catalog, type GameState, type QualityTier, type Rotation, type SceneSettings } from '../game/types';
 import type { ThemeDef, ThemeId } from '../themes/types';
 
@@ -16,7 +14,11 @@ export interface AppState {
   rotation: Rotation;
   quality: QualityTier; saveFailed: boolean; // saveFailed is sticky once true
   floor: FloorUiState;
+  /** What the theme select shows: every theme that has a city, keyed by theme id. */
+  cities: Readonly<Record<string, CitySummary>>;
 }
+/** A theme's city at a glance: items placed, floor cells painted, round over. */
+export interface CitySummary { placed: number; floors: number; finished: boolean }
 export interface FloorUiState {
   open: boolean; pick: string | 'eraser'; tool: 'paint' | 'camera'; preview: FloorRect | null;
 }
@@ -29,22 +31,38 @@ export interface ControllerDeps {
 }
 export interface Controller {
   getState(): AppState; subscribe(fn: (s: AppState) => void): () => void;
+  /** Resumes the theme's own city, or starts one when it has none. */
   chooseTheme(id: ThemeId): void;
+  /** 🏠: back to theme select at once, the city kept as it is (no confirm: nothing is lost). */
+  goToThemeSelect(): void;
   tapTile(tx: number, tz: number): void; dragGhostTo(tx: number, tz: number): void;
   moveGhost(dx: number, dz: number): void; rotateGhost(): void; place(): boolean;
   setSettings(patch: Partial<SceneSettings>): void; setQuality(q: QualityTier, source: 'user' | 'auto'): void;
   openFloors(): void; closeFloors(): void; pickFloor(id: string | 'eraser'): void;
   setFloorTool(t: FloorUiState['tool']): void;
   previewFloors(r: FloorRect | null): void; paintFloors(r: FloorRect): void;
-  restart(): void; clearAll(): void; // callers confirm first
+  /** restart: this theme's city only. clearAll: every theme's city. Callers confirm first. */
+  restart(): void; clearAll(): void;
 }
 
 const screenOf = (g: GameState | null): AppState['screen'] =>
   g === null ? 'theme-select' : g.status === 'finished' ? 'finished' : 'playing';
 
+const summarize = (cities: SavedCities['cities']): AppState['cities'] =>
+  Object.fromEntries(Object.entries(cities).map(([id, g]) => [id, {
+    placed: g.placements.length, floors: g.floors.filter((f) => f !== null).length, finished: g.status === 'finished',
+  }]));
+
 export function createController(deps: ControllerDeps): Controller {
   const { store } = deps;
-  const initialGame = loadGame(store, deps.getCatalog, deps.isFloorTile);
+  /**
+   * Every theme's city and the theme being played: the one place cities live (the city being played
+   * is also `state.game`). Re-read before each save and theme change, so another tab's cities are
+   * never reverted; kept in memory too, so switching themes works when saving does not.
+   */
+  const saves = openCities(store, deps.getCatalog, deps.isFloorTile);
+  const loaded = saves.get();
+  const initialGame = loaded.current === null ? null : loaded.cities[loaded.current] ?? null;
   let state: AppState = {
     screen: screenOf(initialGame),
     game: initialGame,
@@ -53,6 +71,7 @@ export function createController(deps: ControllerDeps): Controller {
     quality: loadQuality(store) ?? deps.detectQuality(),
     saveFailed: false,
     floor: { open: false, pick: deps.firstFloorTile ?? 'eraser', tool: 'paint', preview: null },
+    cities: summarize(loaded.cities),
   };
   const listeners = new Set<(s: AppState) => void>();
 
@@ -61,12 +80,21 @@ export function createController(deps: ControllerDeps): Controller {
     for (const fn of [...listeners]) fn(state);
   }
 
-  /** Persist the game, then emit. saveFailed latches once a save fails. */
+  /** Save `current` (and `city` as its theme's city) in one write. The AppState fields that follow; saveFailed latches once a save fails. */
+  function persist(current: string | null, city?: GameState): Pick<AppState, 'cities' | 'saveFailed'> {
+    const ok = saves.save(current, city);
+    return { cities: summarize(saves.get().cities), saveFailed: state.saveFailed || !ok };
+  }
+
+  /** `game` is its theme's city now, and the one being played. */
+  const keepCity = (game: GameState): Pick<AppState, 'game' | 'cities' | 'saveFailed'> =>
+    ({ game, ...persist(game.themeId, game) });
+
+  /** Persist the game, then emit. */
   function commitGame(
     game: GameState, ghost: GhostState | null, screen = screenOf(game), rotation: Rotation = ghost ? ghost.rotation : 0,
   ): void {
-    const ok = saveGame(store, game);
-    emit({ ...state, game, ghost, screen, rotation, saveFailed: state.saveFailed || !ok });
+    emit({ ...state, ...keepCity(game), ghost, screen, rotation });
   }
 
   /** The drawer shut, back on the paint tool, nothing previewed; the pick is kept for next time. */
@@ -112,8 +140,19 @@ export function createController(deps: ControllerDeps): Controller {
       const theme = deps.getTheme(id);
       const catalog = deps.getCatalog(id);
       if (!theme || !catalog) return;
-      const game = newGame(catalog, { weather: 'sunny', time: 'day', ground: theme.defaultGround }, deps.seed());
+      // the freshest copy: another tab may have played this city since
+      const game = saves.refresh().cities[id] ?? newGame(catalog, { weather: 'sunny', time: 'day', ground: theme.defaultGround }, deps.seed());
+      state = { ...state, floor: closedFloor() }; // every city opens with the items (commitGame emits this state)
       commitGame(game, null);
+    },
+    goToThemeSelect() {
+      if (state.screen === 'theme-select') return;
+      // The city is already saved: this records that the child is on theme select (and retries a save that
+      // failed); the badges come from the freshest record.
+      emit({
+        ...state, ...persist(null),
+        game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor(),
+      });
     },
     tapTile: tapLike,
     dragGhostTo: tapLike,
@@ -190,24 +229,20 @@ export function createController(deps: ControllerDeps): Controller {
       if (!game) return;
       const { pick } = state.floor;
       const floors = paintRect(game.floors, r, pick === 'eraser' ? null : pick);
-      const ok = saveGame(store, { ...game, floors });
-      emit({
-        ...state, game: { ...game, floors }, saveFailed: state.saveFailed || !ok,
-        floor: { ...state.floor, preview: null },
-      });
+      emit({ ...state, ...keepCity({ ...game, floors }), floor: { ...state.floor, preview: null } });
     },
     restart() {
       const game = state.game;
       if (!game) return;
       const catalog = deps.getCatalog(game.themeId);
       if (!catalog) return;
-      // A new city starts with the items: the drawer closes (commitGame emits this state).
+      // A new city starts with the items: the drawer closes (commitGame emits this state). Other themes' cities stay.
       state = { ...state, floor: closedFloor() };
       commitGame(restartGame(game, catalog, deps.seed()), null, 'playing');
     },
     clearAll() {
-      clearGame(store);
-      emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor() });
+      saves.clear();
+      emit({ ...state, game: null, ghost: null, rotation: 0, screen: 'theme-select', floor: closedFloor(), cities: {} });
     },
   };
 }

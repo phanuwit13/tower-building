@@ -4,7 +4,7 @@ import { summaryLabel, T } from './strings';
 
 export function createEndScreen(
   root: HTMLElement,
-  h: { onScreenshot(): void; onRestart(): void; onView(): void },
+  h: { onScreenshot(): void; onRestart(): void; onView(): void; onHome(): void },
 ): { show(s: FillStats): void; hide(): void; isVisible(): boolean } {
   const summary = el('p', { class: 'end-summary' });
   const screen = el('section', { class: 'end-screen screen', attrs: { role: 'status' } }, [
@@ -15,6 +15,7 @@ export function createEndScreen(
         button(T.screenshot, h.onScreenshot),
         button(T.restart, h.onRestart),
         button(T.viewCity, h.onView),
+        button(T.home, h.onHome),
       ]),
     ]),
   ]);

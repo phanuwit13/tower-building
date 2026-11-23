@@ -14,6 +14,8 @@ export interface HudHandlers {
   onRotate(): void; onPlace(): void; onSettings(): void; onScreenshot(): void; onRestart(): void;
   /** [พื้น]: open the floor drawer (while playing, and once the round is finished). */
   onFloors(): void;
+  /** 🏠 เปลี่ยนธีม: back to theme select (always there: playing, finished, floor drawer open). */
+  onHome(): void;
 }
 
 function cardView(label: string, cls: string, testId?: string) {
@@ -54,7 +56,8 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   const bottom = el('div', { class: 'hud-bottom' }, [floors, el('div', { class: 'hud-actions' }, [rotate, place, restart])]);
   const hud = el('div', { class: 'hud' }, [
     el('div', { class: 'hud-top' }, [
-      cards,
+      // 🏠 above the item cards, not beside them: a tablet held upright (768 px) has no room for both in one row
+      el('div', { class: 'hud-left' }, [button(T.home, h.onHome, 'btn-home'), cards]),
       placed,
       el('div', { class: 'hud-tools' }, [button(T.screenshot, h.onScreenshot), button(T.settings, h.onSettings)]),
     ]),
