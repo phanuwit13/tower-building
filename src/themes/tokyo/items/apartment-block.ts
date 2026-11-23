@@ -1,7 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
-import { door, glassWindow, rod } from '../../../models/parts';
+import { door, rod, type Facing } from '../../../models/parts';
 
 // A tall apartment block: five storeys, a balcony in front of every window with an air-con unit on
 // its wall and, on some, a laundry pole with clothes. A pink neon heart over the entrance.
@@ -15,6 +15,26 @@ const GROUND_H = 0.5;
 const TOP = PAD + GROUND_H + 4 * FLOOR_H; // 2.85
 const BAYS = [-0.82, 0, 0.82];
 const CLOTHES: PaletteColor[] = ['pink', 'skyBlue', 'sunYellow', 'white', 'lime'];
+
+const GLOWS: PaletteColor[] = ['orange', 'teal', 'windowWarm', 'pink'];
+let winCount = 0;
+/** A window like the stock one, but its night glow cycles through softer colours (orange, teal, warm, pink). */
+function glassWindow(kit: StyleKit, o: { at: [number, number, number]; facing: Facing; w: number; h: number; panes?: number; frame?: PaletteColor }): Part[] {
+  const glow = GLOWS[winCount++ % GLOWS.length];
+  const alongX = o.facing === 'x+' || o.facing === 'x-';
+  const sign = o.facing === 'x+' || o.facing === 'z+' ? 1 : -1;
+  const size = (w: number, h: number, d: number): [number, number, number] => (alongX ? [d, h, w] : [w, h, d]);
+  const pos = (d: number, side = 0): [number, number, number] =>
+    alongX ? [o.at[0] + sign * d, o.at[1], o.at[2] + side] : [o.at[0] + side, o.at[1], o.at[2] + sign * d];
+  const frame = o.frame ?? 'teal';
+  const parts: Part[] = [
+    kit.box(size(o.w + 0.08, o.h + 0.08, 0.02), pos(0.01), frame),
+    kit.box(size(o.w, o.h, 0.03), pos(0.015), 'skyBlue', { glow, light: 'window' }),
+  ];
+  const panes = o.panes ?? 2;
+  for (let i = 1; i < panes; i++) parts.push(kit.box(size(0.02, o.h, 0.04), pos(0.02, (i / panes - 0.5) * o.w), frame));
+  return parts;
+}
 
 /** A balcony on the +x face at height y (slab top), centred on z. */
 function balcony(kit: StyleKit, y: number, z: number, withPole: boolean, seed: number): Part[] {

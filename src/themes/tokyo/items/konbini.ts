@@ -24,9 +24,11 @@ export const item: ItemModel = {
     const parts: Part[] = [
       kit.box([1.9, PAD, 1.9], [0, PAD / 2, 0], 'stone'),
       kit.box([W, WALL_TOP - PAD, L], [BX, (PAD + WALL_TOP) / 2, 0], 'white'),
-      kit.box([W + 0.1, 0.07, L + 0.1], [BX, WALL_TOP + 0.035, 0], 'stoneDark'),
-      kit.box([0.5, 0.2, 0.4], [BX - 0.2, WALL_TOP + 0.17, -0.5], 'chrome'), // air-con on the roof
-      kit.box([0.5, 0.04, 0.4], [BX - 0.2, WALL_TOP + 0.29, -0.5], 'stoneDark'),
+      kit.box([W + 0.1, 0.07, L + 0.1], [BX, WALL_TOP + 0.035, 0], 'teal'),
+      kit.box([W - 0.1, 0.03, L - 0.1], [BX, WALL_TOP + 0.085, 0], 'sunYellow'), // coloured roof top
+      kit.box([0.5, 0.2, 0.4], [BX - 0.25, WALL_TOP + 0.19, -0.5], 'white'), // air-con unit on the roof
+      kit.cylinder(0.12, 0.12, 0.03, [BX - 0.25, WALL_TOP + 0.3, -0.5], 'stoneDark', { segments: 8 }),
+      kit.box([0.5, 0.05, 0.4], [BX - 0.25, WALL_TOP + 0.1, -0.5], 'chrome'),
     ];
     // striped colour band round the top, in 0.2 wide segments
     const n = Math.round(L / 0.2);
@@ -41,15 +43,15 @@ export const item: ItemModel = {
     }
     // front: a long glass front (3 panes) and a sliding door, with a ledge
     parts.push(
-      ...glassWindow(kit, { at: [FRONT, 0.45, -0.3], facing: 'x+', w: 1.0, h: 0.5, panes: 4, frame: 'stoneDark' }),
+      ...glassWindow(kit, { at: [FRONT, 0.47, -0.3], facing: 'x+', w: 1.1, h: 0.58, panes: 4, frame: 'stoneDark' }),
       ...door(kit, { at: [FRONT, 0.28, 0.55], facing: 'x+', w: 0.34, h: 0.5, color: 'skyBlue' }),
-      kit.box([0.04, 0.04, 1.2], [FRONT + 0.02, 0.17, -0.3], 'stoneDark'),
+      kit.box([0.04, 0.04, 1.3], [FRONT + 0.02, 0.14, -0.3], 'stoneDark'),
     );
-    // goods on the lit shelves, seen through the glass
-    const goods: PaletteColor[] = ['red', 'sunYellow', 'lime', 'orange', 'skyBlue', 'pink'];
-    for (let r = 0; r < 2; r++) {
-      parts.push(kit.box([0.06, 0.02, 0.96], [FRONT + 0.05, 0.4 + r * 0.17, -0.3], 'stoneDark'));
-      for (let i = 0; i < 6; i++) parts.push(kit.box([0.05, 0.07, 0.1], [FRONT + 0.06, 0.45 + r * 0.17, -0.74 + i * 0.16], goods[(i + r * 2) % goods.length]));
+    // goods on three lit shelves, seen through the glass
+    const goods: PaletteColor[] = ['red', 'sunYellow', 'lime', 'orange', 'pink', 'purple', 'blue'];
+    for (let r = 0; r < 3; r++) {
+      parts.push(kit.box([0.07, 0.025, 1.08], [FRONT + 0.05, 0.28 + r * 0.17, -0.3], 'lampWarm', { glow: true })); // shelf light strip
+      for (let i = 0; i < 7; i++) parts.push(kit.box([0.07, 0.1, 0.11], [FRONT + 0.06, 0.34 + r * 0.17, -0.77 + i * 0.157], goods[(i + r * 2) % goods.length]));
     }
     // sides
     parts.push(
@@ -69,6 +71,15 @@ export const item: ItemModel = {
       kit.cylinder(0.12, 0.08, 0.2, [px + 0.04, PAD + 1.05, pz], 'teal', { segments: 8, glow: true }),
       kit.torus(0.05, 0.015, [px + 0.04, PAD + 1.05, pz + 0.13], 'teal', { radialSegments: 4, tubularSegments: 8, glow: true, rotate: [0, Math.PI / 2, 0] }),
       kit.cylinder(0.13, 0.13, 0.025, [px + 0.04, PAD + 1.17, pz], 'white', { segments: 8 }),
+    );
+    // neon rice-ball sign on the roof, facing +x: a lime triangle with a dark wrap
+    const sx = FRONT - 0.12;
+    const sy = WALL_TOP + 0.45;
+    parts.push(
+      kit.box([0.05, 0.62, 0.7], [sx, sy, 0.2], 'charcoal'),
+      kit.wedge([0.5, 0.42, 0.04], [sx + 0.045, sy + 0.04, 0.2], 'lime', { rotate: [0, Math.PI / 2, 0], glow: true }),
+      kit.box([0.03, 0.1, 0.2], [sx + 0.05, sy - 0.2, 0.2], 'navy'),
+      kit.cylinder(0.02, 0.02, 0.5, [sx, WALL_TOP + 0.2, 0.5], 'charcoal', { segments: 4 }),
     );
     return kit.finish(parts);
   },

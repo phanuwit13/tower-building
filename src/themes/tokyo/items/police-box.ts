@@ -37,7 +37,7 @@ export const item: ItemModel = {
       ...glassWindow(kit, { at: [0, 0.5, FRONT], facing: 'z+', w: 0.3, h: 0.24, panes: 2 }),
       ...glassWindow(kit, { at: [0, 0.5, -FRONT], facing: 'z-', w: 0.3, h: 0.24, panes: 2 }),
     );
-    // little step and a plain white post lamp at the corner
+    // a little step in front of the door
     parts.push(kit.box([0.14, 0.04, 0.3], [FRONT + 0.07, PAD + 0.02, 0.14], 'stoneDark'));
     return kit.finish(parts);
   },
