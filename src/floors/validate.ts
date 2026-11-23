@@ -7,7 +7,7 @@ import { FLOOR_GROUPS, type FloorTile } from './types';
 /** Tiles lie on the ground: nothing taller than this (relief included). Items' own ground surfaces start at 0.02, so a tile never covers them. */
 export const MAX_TILE_TOP = 0.015;
 export const MAX_TILE_TRIANGLES = 160;
-const TOL = 3e-4; // 0.016 fails; gravel's stones top out at 0.0152 (geometry is frozen by the fingerprint)
+const TOL = 3e-4; // 0.016 fails; gravel's stones top out at 0.0152 (TODO: lower gravel below 0.015, then tighten this to 1e-4)
 
 const triangles = (obj: THREE.Object3D): number => {
   let n = 0;
