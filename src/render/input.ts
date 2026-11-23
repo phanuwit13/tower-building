@@ -144,6 +144,13 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     hoverTx = tx;
     hoverTz = tz;
     opts.onHover?.(tx < 0 ? null : { tx, tz });
+    hoverFloorPreview(tx, tz);
+  };
+  /** Floor mode (🖌, drawer open, no stroke): the free mouse shows the one cell under it, as a tap would paint. */
+  const hoverFloorPreview = (tx: number, tz: number): void => {
+    if (stroke || floorMode()?.tool !== 'paint') return;
+    if (tx >= 0) c.previewFloors({ x0: tx, z0: tz, x1: tx, z1: tz });
+    else if (c.getState().floor.preview) c.previewFloors(null);
   };
   let lastX = 0;
   let lastY = 0;
@@ -344,8 +351,11 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   const onKey = (e: KeyboardEvent) => {
     if (opts.isBlocked?.()) return;
     if (floorMode()) {
-      // The drawer is open: the item keys rest; Escape drops the stroke being dragged.
-      if (e.key === 'Escape' && stroke) { cancelStroke(); e.preventDefault(); }
+      // The drawer is open: the item keys rest. Escape drops the stroke being dragged, else closes the drawer.
+      if (e.key === 'Escape') {
+        if (stroke) cancelStroke(); else c.closeFloors();
+        e.preventDefault();
+      }
       return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;

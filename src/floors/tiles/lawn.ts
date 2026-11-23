@@ -3,7 +3,7 @@ import type { PaletteColor } from '../../models/palette';
 import type { FloorTile } from '../types';
 
 const BASE_H = 0.01;
-const TUFT = { w: 0.09, h: 0.005 } // tufts top out at 0.015, the most a tile may rise;
+const TUFT = { w: 0.09, h: 0.005 }; // tufts top out at 0.015, the most a tile may rise
 /** Tufts and daisies: [x, z, colour]. Kept away from the cell edge so neighbouring lawns never show a seam. */
 const SPECKS: Array<[number, number, PaletteColor]> = [
   [-0.3, -0.28, 'leaf'], [0.22, -0.34, 'leaf'], [0.32, 0.18, 'leaf'], [-0.18, 0.3, 'leaf'], [0.02, -0.02, 'leaf'],

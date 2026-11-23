@@ -322,7 +322,7 @@ export const tile: FloorTile = {
   id: 'lawn',              // lowercase letters, digits, dashes; unique; saved in the player's city, never rename
   name: 'สนามหญ้า',          // Thai, shown in the drawer
   group: 'earth',          // wood | tile | stone | earth | special  (ไม้ | ปูน-กระเบื้อง | หิน-อิฐ | ดิน-หญ้า | พิเศษ)
-  build: (kit) => kit.finish([kit.box([1, 0.02, 1], [0, 0.01, 0], 'lime')]),
+  build: (kit) => kit.finish([kit.box([1, 0.012, 1], [0, 0.006, 0], 'lime')]),
 };
 ```
 

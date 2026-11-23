@@ -177,7 +177,7 @@ describe('controller round end and no-op emits', () => {
     const s = c.getState();
     expect(s.ghost).toBeNull();
     expect(s.game!.status).toBe('finished');
-    const saved = loadGame(store, getCatalog)!;
+    const saved = loadGame(store, getCatalog, () => true)!;
     expect(saved.status).toBe('finished');
     expect(saved.placements.length).toBe(s.game!.placements.length);
   });
@@ -241,8 +241,8 @@ describe('controller storage', () => {
     const c = make(store);
     c.setSettings({ time: 'night' });
     expect(c.getState().screen).toBe('finished');
-    expect(loadGame(store, getCatalog)!.settings.time).toBe('night');
-    expect(loadGame(store, getCatalog)!.status).toBe('finished');
+    expect(loadGame(store, getCatalog, () => true)!.settings.time).toBe('night');
+    expect(loadGame(store, getCatalog, () => true)!.status).toBe('finished');
   });
 });
 
@@ -314,6 +314,26 @@ describe('controller floors', () => {
     expect(c.getState().floor.pick).toBe('t1');
     c.openFloors();
     expect(c.getState().floor).toMatchObject({ open: true, pick: 't1', tool: 'paint' });
+  });
+  it('closeFloors shuts the drawer and resets the tool and the preview, keeping the pick', () => {
+    const { c } = playing();
+    c.openFloors();
+    c.pickFloor('t1');
+    c.setFloorTool('camera');
+    c.previewFloors(rect);
+    c.closeFloors();
+    expect(c.getState().floor).toEqual({ open: false, pick: 't1', tool: 'paint', preview: null });
+  });
+  it('paintFloors with no game is a no-op: nothing saved, no state change', () => {
+    const store = memStore();
+    let saves = 0;
+    const setItem = store.setItem.bind(store);
+    store.setItem = (k, v) => { saves++; setItem(k, v); };
+    const c = createController({ store, getTheme, getCatalog, seed: () => 7, detectQuality: () => 'pretty', isFloorTile: (id) => id.startsWith('t') });
+    const before = c.getState();
+    c.paintFloors(rect);
+    expect(saves).toBe(0);
+    expect(c.getState()).toBe(before);
   });
   it('restart and clear close the drawer (a new city starts with the items)', () => {
     const { c } = playing();

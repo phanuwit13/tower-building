@@ -53,7 +53,7 @@ export function loadQuality(store: KeyValueStore): QualityTier | null {
 export function loadGame(
   store: KeyValueStore,
   getCatalog: (themeId: string) => Catalog | undefined,
-  isFloorTile: (id: string) => boolean = () => true,
+  isFloorTile: (id: string) => boolean,
 ): GameState | null {
   try {
     const raw = store.getItem(SAVE_KEY);

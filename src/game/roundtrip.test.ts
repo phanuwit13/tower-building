@@ -31,7 +31,7 @@ function memStore(): KeyValueStore {
 function roundTrips(state: GameState): void {
   const store = memStore();
   expect(saveGame(store, state)).toBe(true);
-  expect(loadGame(store, getCatalog)).toEqual(state);
+  expect(loadGame(store, getCatalog, () => true)).toEqual(state);
 }
 
 for (const seed of [1, 2, 3, 42, 99]) {

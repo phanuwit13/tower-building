@@ -32,6 +32,7 @@ function memStore(): KeyValueStore & { map: Map<string, string> } {
 const boom = () => { throw new Error('blocked'); };
 const throwingGet: KeyValueStore = { getItem: boom, setItem: boom, removeItem: boom };
 const throwingSet: KeyValueStore = { getItem: () => null, setItem: boom, removeItem: boom };
+const anyTile = () => true;
 
 function playingState(): GameState {
   let s = newGame(catalog, settings, 7);
@@ -44,7 +45,7 @@ function loadWith(mutate: (s: any) => void): GameState | null {
   const s: any = JSON.parse(JSON.stringify(playingState()));
   mutate(s);
   store.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VERSION, state: s }));
-  return loadGame(store, getCatalog);
+  return loadGame(store, getCatalog, anyTile);
 }
 
 describe('round trip', () => {
@@ -52,13 +53,13 @@ describe('round trip', () => {
     const store = memStore();
     const s = playingState();
     expect(saveGame(store, s)).toBe(true);
-    expect(loadGame(store, getCatalog)).toEqual(s);
+    expect(loadGame(store, getCatalog, anyTile)).toEqual(s);
   });
   it('keeps a finished state finished', () => {
     const store = memStore();
     const s: GameState = { ...playingState(), status: 'finished' };
     saveGame(store, s);
-    expect(loadGame(store, getCatalog)?.status).toBe('finished');
+    expect(loadGame(store, getCatalog, anyTile)?.status).toBe('finished');
   });
   it('stores the versioned shape', () => {
     const store = memStore();
@@ -68,30 +69,30 @@ describe('round trip', () => {
 });
 
 describe('loadGame returns null', () => {
-  it('when missing', () => expect(loadGame(memStore(), getCatalog)).toBeNull());
-  it('when getItem throws', () => expect(loadGame(throwingGet, getCatalog)).toBeNull());
+  it('when missing', () => expect(loadGame(memStore(), getCatalog, anyTile)).toBeNull());
+  it('when getItem throws', () => expect(loadGame(throwingGet, getCatalog, anyTile)).toBeNull());
   it('when unparsable', () => {
     const store = memStore();
     store.setItem(SAVE_KEY, '{nope');
-    expect(loadGame(store, getCatalog)).toBeNull();
+    expect(loadGame(store, getCatalog, anyTile)).toBeNull();
   });
   it('when not an object / null / missing state', () => {
     for (const raw of ['null', '5', '[]', '{"v":1}', '{"v":1,"state":null}']) {
       const store = memStore();
       store.setItem(SAVE_KEY, raw);
-      expect(loadGame(store, getCatalog)).toBeNull();
+      expect(loadGame(store, getCatalog, anyTile)).toBeNull();
     }
   });
   it('on a different version', () => {
     const store = memStore();
     store.setItem(SAVE_KEY, JSON.stringify({ v: 3, state: playingState() }));
-    expect(loadGame(store, getCatalog)).toBeNull();
+    expect(loadGame(store, getCatalog, anyTile)).toBeNull();
   });
   it('on unknown theme', () => expect(loadWith((s) => { s.themeId = 'zzz'; })).toBeNull());
   it('when catalog themeId differs from saved', () => {
     const store = memStore();
     saveGame(store, playingState());
-    expect(loadGame(store, () => ({ ...catalog, themeId: 'other' }))).toBeNull();
+    expect(loadGame(store, () => ({ ...catalog, themeId: 'other' }), anyTile)).toBeNull();
   });
   it('on unknown placement item', () => expect(loadWith((s) => { s.placements[0].itemId = 'zz'; })).toBeNull());
   it('on inherited item id like constructor', () => expect(loadWith((s) => { s.current = 'constructor'; })).toBeNull());
@@ -180,7 +181,7 @@ describe('loadGame with a map-size change', () => {
     };
     const store = memStore();
     saveGame(store, state);
-    expect(loadGame(store, getCatalog)).toEqual(state);
+    expect(loadGame(store, getCatalog, anyTile)).toEqual(state);
   });
 });
 
@@ -199,7 +200,7 @@ describe('loadGame status re-check', () => {
     };
     const store = memStore();
     saveGame(store, state);
-    expect(loadGame(store, getCatalog)).toEqual({ ...state, status: 'finished' });
+    expect(loadGame(store, getCatalog, anyTile)).toEqual({ ...state, status: 'finished' });
   });
 });
 

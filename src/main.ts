@@ -13,6 +13,7 @@ import { getCatalog, getTheme, THEMES } from './themes/registry';
 import type { ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
+import { applyViewShift, viewShiftPx } from './render/viewShift';
 import { placementAtTile } from './app/hover';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
@@ -213,6 +214,17 @@ function boot(app: HTMLElement): void {
     });
   };
 
+  // The drawer covers the bottom of the map: while it is open the view rides up by half its height, so the
+  // bottom cells stay reachable without the ✋ tool. Re-applied on resize and when the drawer's height changes.
+  const drawerBox = app.querySelector<HTMLElement>('.floor-drawer');
+  const syncViewShift = (): void => {
+    const open = floorOpen(controller.getState());
+    const shift = open && drawerBox ? viewShiftPx(drawerBox.offsetHeight, app.clientHeight) : 0;
+    applyViewShift(stage.camera, app.clientWidth, app.clientHeight, shift);
+  };
+  new ResizeObserver(syncViewShift).observe(app);
+  if (drawerBox) new ResizeObserver(syncViewShift).observe(drawerBox);
+
   const hud = createHud(app, {
     onRotate: () => controller.rotateGhost(),
     onPlace: () => { controller.place(); },
@@ -245,6 +257,7 @@ function boot(app: HTMLElement): void {
     const game = s.game;
     const playing = s.screen === 'playing' && game !== null;
     showDrawer(s); // before the HUD: leaving floor mode hands the focus back to [พื้น]
+    syncViewShift();
     hud.update({
       visible: s.screen !== 'theme-select',
       current: playing ? card(game.current, game.themeId) : null,

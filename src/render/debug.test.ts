@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isFloorTile } from '../floors';
 import { memoryStore } from '../app/browserStore';
 import { getCatalog } from '../themes/registry';
 import { loadGame, loadQuality, QUALITY_KEY, SAVE_KEY } from '../game/save';
@@ -23,7 +24,7 @@ describe('demoStore', () => {
   it('holds a full demo round and the real quality preference, and never writes to the real store', () => {
     const real = memoryStore({ [QUALITY_KEY]: 'smooth', [SAVE_KEY]: 'the player\'s own city' });
     const store = demoStore(real, getCatalog('school')!, 7);
-    const game = loadGame(store, getCatalog);
+    const game = loadGame(store, getCatalog, isFloorTile);
     expect(game?.placements.length).toBeGreaterThan(100);
     expect(loadQuality(store)).toBe('smooth');
     store.setItem(SAVE_KEY, 'changed');

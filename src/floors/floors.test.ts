@@ -43,6 +43,10 @@ describe('validateFloorTile', () => {
   for (const t of FLOOR_TILES) {
     it(`accepts ${t.id}`, () => expect(validateFloorTile(t, kit)).toEqual([]));
   }
+  it('rejects a tile 0.016 high (the tolerance is float noise, not a free millimetre)', () => {
+    const t = tile({ build: (k) => k.finish([k.box([1, 0.016, 1], [0, 0.008, 0], 'cream')]) });
+    expect(validateFloorTile(t, kit).join('|')).toContain('top is');
+  });
   it('accepts a minimal tile', () => expect(validateFloorTile(tile(), kit)).toEqual([]));
   it('rejects a tile wider than its cell', () => {
     const t = tile({ build: (k) => k.finish([k.box([1.2, 0.01, 1], [0, 0.005, 0], 'cream')]) });

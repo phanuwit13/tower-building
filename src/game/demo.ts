@@ -5,15 +5,6 @@ import { FLOOR_TILES } from '../floors';
 import { emptyFloors, paintRect } from './floors';
 import { GRID_SIZE, type Catalog, type GameState, type Placement, type Rotation, type SceneSettings } from './types';
 
-/**
- * Dev aid for `?demo=full`: a round played to the end, for measuring a full map. Items come
- * from the shuffle bag (so the first 50 are every type once) and go where they touch the most
- * border or neighbours, as a tidy player packs; an item that fits nowhere is skipped, so the
- * small ones fill the last gaps and the map ends 100 % full. The last placement is held back as
- * the current item: the round is still playing, and placing it is the final, heaviest rebuild.
- * The floors cover the whole map with every tile (see demoFloors).
- * Pure and seeded: the same seed gives the same city.
- */
 const PLAZA_W = 4;
 const PLAZA_D = 3;
 
@@ -51,6 +42,15 @@ export function demoFloors(seed: number): (string | null)[] {
   return floors;
 }
 
+/**
+ * Dev aid for `?demo=full`: a round played to the end, for measuring a full map. Items come
+ * from the shuffle bag (so the first 50 are every type once) and go where they touch the most
+ * border or neighbours, as a tidy player packs; an item that fits nowhere is skipped, so the
+ * small ones fill the last gaps and the map ends 100 % full. The last placement is held back as
+ * the current item: the round is still playing, and placing it is the final, heaviest rebuild.
+ * The floors cover the whole map with every tile (see demoFloors).
+ * Pure and seeded: the same seed gives the same city.
+ */
 export function demoFullGame(catalog: Catalog, settings: SceneSettings, seed: number): GameState {
   const occ = new Uint8Array(GRID_SIZE * GRID_SIZE);
   const placements: Placement[] = [];

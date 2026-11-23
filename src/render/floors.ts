@@ -24,7 +24,9 @@ export function changedFloorChunks(prev: readonly (string | null)[], next: reado
   return [...out].sort((a, b) => a - b);
 }
 
-const PREVIEW_Y = 0.01; // just over a tile's top (0.015), under every item's own ground surfaces (0.02+): no z-fighting
+// The preview tiles are lifted 0.01, so a copy spans 0.01 to at most 0.025 (a tile is up to 0.015 tall): its translucent
+// surface stays clear of the real tile under it (no z-fighting) and it is drawn without depth writes, so items still show through.
+const PREVIEW_Y = 0.01;
 const PREVIEW_OPACITY = 0.6;
 const OUTLINE_Y = 0.025;
 
@@ -57,7 +59,7 @@ export function createFloorLayer(stage: Stage, kit: StyleKit, label: HTMLElement
   };
 
   const meshes = new Map<number, THREE.Mesh>();
-  let shown: readonly (string | null)[] = [];
+  let shown: readonly (string | null)[] = EMPTY; // the layer starts empty: the first sync builds only chunks that hold tiles
 
   const rebuildChunk = (chunk: number, floors: readonly (string | null)[]): void => {
     const items: BatchItem[] = [];

@@ -107,7 +107,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   container.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.1, 300);
+  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 0.5, 300);
   camera.position.copy(MAP_CENTER).addScaledVector(CAMERA.direction, CAMERA.distance);
 
   const controls = new OrbitControls(camera, canvas);

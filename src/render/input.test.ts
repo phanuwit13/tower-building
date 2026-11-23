@@ -75,8 +75,9 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
     moveGhost: vi.fn(), rotateGhost: vi.fn(), place: vi.fn(() => true), dragGhostTo: vi.fn(), tapTile: vi.fn(),
     previewFloors: vi.fn((r: FloorUiState['preview']) => { floor.preview = r; }),
     paintFloors: vi.fn(() => { floor.preview = null; }),
+    closeFloors: vi.fn(),
   } as unknown as Controller & {
-    previewFloors: ReturnType<typeof vi.fn>; paintFloors: ReturnType<typeof vi.fn>; tapTile: ReturnType<typeof vi.fn>;
+    previewFloors: ReturnType<typeof vi.fn>; paintFloors: ReturnType<typeof vi.fn>; closeFloors: ReturnType<typeof vi.fn>; tapTile: ReturnType<typeof vi.fn>;
   };
   const dispose = attachInput(stage, c, { isBlocked: blocked, onHover });
   return { canvas, camera, controls, c, floor, dispose };
@@ -428,6 +429,92 @@ describe('attachInput floor mode', () => {
     window.dispatchEvent(ptr('pointerup', 1, 520, 310));
     expect(c.previewFloors).toHaveBeenCalledTimes(1); // only the press
     expect(c.paintFloors).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('Escape closes the drawer when no stroke is active, but only cancels the stroke when one is', () => {
+    const { canvas, c, dispose } = open();
+    const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    canvas.dispatchEvent(ptr('pointerdown', 1, 400, 310));
+    esc();
+    expect(c.closeFloors).not.toHaveBeenCalled();
+    window.dispatchEvent(ptr('pointerup', 1, 400, 310));
+    esc();
+    expect(c.closeFloors).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it('Escape does nothing to the drawer when an overlay owns the keyboard, or when it is shut', () => {
+    let blocked = false;
+    const s = setup(() => blocked);
+    const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    esc(); // shut
+    s.floor.open = true;
+    blocked = true;
+    esc();
+    expect(s.c.closeFloors).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it('a free mouse over the map previews the one cell under it; leaving the canvas clears it', () => {
+    const { canvas, c, floor, dispose } = open();
+    const mv = (x: number, y: number) => canvas.dispatchEvent(ptr('pointermove', 1, x, y, { pointerType: 'mouse', buttons: 0 }));
+    mv(400, 310);
+    expect(c.previewFloors).toHaveBeenLastCalledWith({ x0: 5, z0: 5, x1: 5, z1: 5 });
+    mv(401, 311); // same cell: no new call
+    expect(c.previewFloors).toHaveBeenCalledTimes(1);
+    mv(520, 310);
+    expect(floor.preview).not.toBeNull();
+    expect(c.previewFloors).toHaveBeenCalledTimes(2);
+    canvas.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    expect(floor.preview).toBeNull();
+    dispose();
+  });
+
+  it('the hover preview is mouse only, paint tool only, drawer open only', () => {
+    const touch = open();
+    touch.canvas.dispatchEvent(ptr('pointermove', 1, 400, 310)); // finger
+    expect(touch.c.previewFloors).not.toHaveBeenCalled();
+    touch.dispose();
+    const hand = open('camera');
+    hand.canvas.dispatchEvent(ptr('pointermove', 1, 400, 310, { pointerType: 'mouse', buttons: 0 }));
+    expect(hand.c.previewFloors).not.toHaveBeenCalled();
+    hand.dispose();
+    const shut = setup(() => false);
+    shut.canvas.dispatchEvent(ptr('pointermove', 1, 400, 310, { pointerType: 'mouse', buttons: 0 }));
+    expect(shut.c.previewFloors).not.toHaveBeenCalled();
+    shut.dispose();
+  });
+
+  it('pressing with the mouse swaps the hover for the stroke, and the hover returns after the release', () => {
+    const { canvas, c, floor, dispose } = open();
+    const m = { pointerType: 'mouse' };
+    canvas.dispatchEvent(ptr('pointermove', 1, 400, 310, { ...m, buttons: 0 }));
+    canvas.dispatchEvent(ptr('pointerdown', 1, 400, 310, m));
+    expect(floor.preview).toEqual({ x0: 5, z0: 5, x1: 5, z1: 5 });
+    canvas.dispatchEvent(ptr('pointermove', 1, 520, 310, { ...m, buttons: 1 }));
+    expect(c.previewFloors.mock.calls.at(-1)?.[0]).toMatchObject({ x0: 5, z0: 5 });
+    window.dispatchEvent(ptr('pointerup', 1, 520, 310, m));
+    expect(c.paintFloors).toHaveBeenCalledTimes(1);
+    expect(c.previewFloors.mock.calls.at(-1)?.[0]).toMatchObject({ x0: expect.any(Number) }); // hover back under the cursor
+    dispose();
+  });
+
+  it('picks the right cell while the view is shifted up for the drawer (setViewOffset)', () => {
+    const { canvas, camera, c, dispose } = open();
+    const w = 800, h = 600, shift = 150;
+    const cell = new THREE.Vector3(7.5, 0, 6.5);
+    const atScreen = (): { x: number; y: number } => {
+      const p = cell.clone().project(camera);
+      return { x: ((p.x + 1) / 2) * w, y: ((1 - p.y) / 2) * h };
+    };
+    const before = atScreen();
+    camera.setViewOffset(w, h, 0, shift, w, h);
+    const after = atScreen();
+    expect(after.y).toBeCloseTo(before.y - shift, 3); // the view moved up by the shift
+    canvas.dispatchEvent(ptr('pointerdown', 1, after.x, after.y));
+    expect(c.previewFloors).toHaveBeenLastCalledWith({ x0: 7, z0: 6, x1: 7, z1: 6 });
+    window.dispatchEvent(ptr('pointerup', 1, after.x, after.y));
     dispose();
   });
 
