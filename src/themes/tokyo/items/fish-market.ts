@@ -1,9 +1,10 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, StyleKit } from '../../../models/kit';
 import type { PaletteColor } from '../../../models/palette';
+import { rod } from '../../../models/parts';
 
 // A fish market: a long back stall under a blue-and-white awning, two low ice tables in front. Cartoon fish lie on beds
-// of ice (glassBlue), with a big blue tuna and red crabs. A neon fish (sky blue) glows on top of the awning.
+// of ice (glassBlue), with a big blue tuna and red crabs. A neon fish (thin blue strokes on a dark board) stands on top of the awning.
 const TOP = 0.62;
 
 /** A cartoon fish; head towards +x (yaw 0) or turned by `yaw` about y. */
@@ -54,7 +55,18 @@ export const item: ItemModel = {
     // two lamps under the awning (steady, warm)
     for (const z of [-0.45, 0.45]) parts.push(kit.sphere(0.05, [-0.45, 1.16, z], 'lampWarm', { detail: 0, glow: true }));
     // neon fish on top of the awning
-    parts.push(...fish(kit, [-0.6, 1.56, 0], 0.5, 'skyBlue', Math.PI / 2, true));
+    const nx = -0.68;
+    const sline = (z1: number, y1: number, z2: number, y2: number) => rod(kit, [nx, y1, z1], [nx, y2, z2], 0.014, 'blue', { segments: 4, glow: true });
+    parts.push(kit.box([0.04, 0.42, 0.8], [nx - 0.025, 1.6, 0], 'charcoal'));
+    for (let a = 0; a < 8; a++) {
+      const t1 = (a * Math.PI) / 4;
+      const t2 = t1 + Math.PI / 4;
+      parts.push(sline(0.05 + 0.2 * Math.cos(t1), 1.6 + 0.1 * Math.sin(t1), 0.05 + 0.2 * Math.cos(t2), 1.6 + 0.1 * Math.sin(t2)));
+    }
+    parts.push(
+      sline(-0.15, 1.6, -0.3, 1.7), sline(-0.15, 1.6, -0.3, 1.5), sline(-0.3, 1.7, -0.3, 1.5),
+      kit.sphere(0.025, [nx, 1.64, 0.15], 'blue', { detail: 0, glow: true }),
+    );
     // fish on the back ice
     const row: [number, PaletteColor][] = [[-0.75, 'orange'], [-0.4, 'pink'], [-0.05, 'chrome'], [0.3, 'sunYellow'], [0.7, 'teal']];
     for (const [z, c] of row) {

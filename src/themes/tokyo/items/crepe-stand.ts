@@ -38,17 +38,19 @@ export const item: ItemModel = {
       kit.sphere(0.04, [0.37, TOP + 0.1, -0.4], 'red', { detail: 0 }),
       kit.cylinder(0.06, 0.04, 0.1, [0.42, TOP + 0.07, 0.35], 'sunYellow', { segments: 8 }),
     );
-    // giant crepe: a waffle-coloured cone with cream, strawberries and chocolate
-    const cx = -0.05;
-    const ctop = ROOF_Y + 0.02 + 0.44;
+    // giant crepe: a rolled, wrapped cone tilted towards the camera (+x), filled with cream and strawberries
+    const TILT = 0.6;
+    const dir = [Math.sin(TILT), Math.cos(TILT)] as const;
+    const tip = [-0.15, ROOF_Y + 0.04] as const;
+    const at = (t: number): [number, number, number] => [tip[0] + dir[0] * t, tip[1] + dir[1] * t, 0];
+    const rot: [number, number, number] = [0, 0, -TILT];
     parts.push(
-      kit.cylinder(0.3, 0.06, 0.44, [cx, ROOF_Y + 0.02 + 0.22, 0], 'sand', { segments: 8 }),
-      kit.cylinder(0.32, 0.32, 0.04, [cx, ctop, 0], 'orange', { segments: 8 }),
-      kit.dome(0.26, [cx, ctop + 0.02, 0], 'white', { segments: 8, scale: [1, 0.8, 1] }),
-      kit.sphere(0.07, [cx + 0.1, ctop + 0.2, 0.04], 'red', { detail: 0 }),
-      kit.sphere(0.07, [cx - 0.08, ctop + 0.19, -0.06], 'red', { detail: 0 }),
-      kit.sphere(0.05, [cx, ctop + 0.24, 0.1], 'pink', { detail: 0 }),
-      kit.torus(0.24, 0.022, [cx, ctop + 0.05, 0], 'bark', { radialSegments: 4, tubularSegments: 12, rotate: [Math.PI / 2, 0, 0] }),
+      kit.cylinder(0.17, 0.03, 0.5, at(0.25), 'sand', { segments: 8, rotate: rot }),
+      kit.cylinder(0.18, 0.15, 0.1, at(0.45), 'orange', { segments: 8, rotate: rot }),
+      kit.sphere(0.16, at(0.55), 'white', { detail: 1, scale: [1, 0.85, 1] }),
+      kit.sphere(0.065, [at(0.6)[0] + 0.07, at(0.6)[1] + 0.1, 0.05], 'red', { detail: 0 }),
+      kit.sphere(0.065, [at(0.6)[0] - 0.05, at(0.6)[1] + 0.12, -0.06], 'red', { detail: 0 }),
+      kit.sphere(0.04, [at(0.6)[0] + 0.02, at(0.6)[1] + 0.16, 0.08], 'pink', { detail: 0 }),
     );
     return kit.finish(parts);
   },

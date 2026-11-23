@@ -1,7 +1,7 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 
-// A red-roofed stall; the counter holds an iron plate with 3 x 7 dimples, each holding a golden ball.
+// A red-roofed stall; the counter holds an iron plate with 3 x 6 dimples, each holding a golden ball.
 // Lanterns glow steadily (no animation on this stall); a neon octopus (purple) sits on the roof.
 const TOP = 0.62;
 const COLS = [-0.02, 0.12, 0.26]; // x of the three rows of balls
