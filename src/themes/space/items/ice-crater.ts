@@ -22,7 +22,7 @@ export const item: ItemModel = {
     ];
     // pale ice shards standing in the floor
     const shards: [number, number, number, number][] = [
-      [0.1, -0.35, 0.28, 0.06], [-0.3, 0.2, 0.2, 0.05], [0.28, 0.55, 0.22, 0.05], [-0.15, 0.75, 0.16, 0.045], [0.05, 0.1, 0.14, 0.04],
+      [0.1, -0.35, 0.45, 0.1], [-0.3, 0.2, 0.34, 0.085], [0.28, 0.55, 0.36, 0.085], [-0.15, 0.75, 0.26, 0.07], [0.05, 0.1, 0.24, 0.07],
     ];
     for (const [x, z, h, r] of shards) parts.push(kit.cone(r, h, [x, FLOOR_TOP + h / 2, z], 'glassBlue', { segments: 5 }));
     // rocks on the rim (detail-0 balls rest on y = 0)

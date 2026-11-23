@@ -25,11 +25,11 @@ export const item: ItemModel = {
     // the crack: three thin zig-zag bars over the top of the rock
     const top = M_Y + M_R * 0.9;
     const bars: { at: [number, number, number]; len: number; yaw: number }[] = [
-      { at: [0.0, top - 0.015, 0.0], len: 0.13, yaw: 0.2 },
-      { at: [0.07, top - 0.045, 0.1], len: 0.1, yaw: -0.7 },
-      { at: [-0.06, top - 0.045, -0.09], len: 0.1, yaw: -0.5 },
+      { at: [0.0, top - 0.015, 0.0], len: 0.18, yaw: 0.2 },
+      { at: [0.07, top - 0.045, 0.1], len: 0.14, yaw: -0.7 },
+      { at: [-0.06, top - 0.045, -0.09], len: 0.14, yaw: -0.5 },
     ];
-    for (const b of bars) parts.push(kit.box([b.len, 0.03, 0.03], b.at, 'orange', { rotate: [0, b.yaw, 0], glow: true, light: 'breathe' }));
+    for (const b of bars) parts.push(kit.box([b.len, 0.045, 0.045], b.at, 'orange', { rotate: [0, b.yaw, 0], glow: true, light: 'breathe' }));
     return kit.finish(parts);
   },
 };
