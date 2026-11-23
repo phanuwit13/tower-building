@@ -4,7 +4,7 @@ import type { Part, Vec3 } from '../../../models/kit';
 // A friendly cartoon seahorse (side view in the x-y plane, snout towards +x) curled on a pink scallop-shell plinth.
 const BASE = { r: 0.42, h: 0.08 };
 const SHELL = { r: 0.32, squash: 0.55 };
-const Y0 = BASE.h + SHELL.r * SHELL.squash * 0.85; // the seahorse stands on the shell's crown
+const Y0 = BASE.h + SHELL.r * SHELL.squash * 0.85; // the seahorse stands on the shell's crest
 /** Body spheres from the head down to the curled tail tip: [x, y, radius, [sx, sy, sz]]. */
 const BODY: Array<[number, number, number, Vec3]> = [
   [0.02, 1.0, 0.115, [1, 1, 1]], // head
@@ -40,7 +40,7 @@ export const item: ItemModel = {
     });
     const ny = Y0 - 0.12;
     parts.push(
-      // snout, eyes, crown
+      // snout, eyes, crest
       kit.cylinder(0.035, 0.045, 0.2, [0.17, 0.98 + ny, 0], 'orange', { segments: 8, rotate: [0, 0, Math.PI / 2 + 0.1] }),
       kit.sphere(0.03, [0.06, 1.04 + ny, 0.09], 'white', { detail: 0 }),
       kit.sphere(0.03, [0.06, 1.04 + ny, -0.09], 'white', { detail: 0 }),

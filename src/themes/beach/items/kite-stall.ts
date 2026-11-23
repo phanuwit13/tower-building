@@ -8,7 +8,6 @@ import { gableRoof } from '../../../models/parts';
 const BASE = 0.03;
 const STALL = { x: -0.02, w: 0.7, d: 1.7, post: 0.88 }; // the roof sits on top of the posts
 const POLE = { x: -0.45, h: 2.2, z: 0.7 };
-const SWAY: MotionOpts = { kind: 'sway', pivot: [-0.3, 1.1, 0], amount: 0.08 }; // the kites, cords and tails swing from the roof line
 const KITE = { halfH: 0.17, halfW: 0.12, x: -0.2 };
 /** [pole side (z sign), centre y, colour, tail colours] */
 const KITES: Array<[number, number, PaletteColor, [PaletteColor, PaletteColor]]> = [
@@ -48,14 +47,16 @@ export const item: ItemModel = {
     }
     for (const [sz, cy, color, tail] of KITES) {
       const z = sz * POLE.z;
+      const tipY = cy - KITE.halfH; // each kite is tied at its bottom tip: the tip, cord and tail stay, the top sways
+      const sway: MotionOpts = { kind: 'sway', pivot: [KITE.x, tipY, z], amount: 0.25 };
       parts.push(
         // diamond kite standing in the y-z plane, facing +x
-        kit.cylinder(1, 1, 0.025, [KITE.x, cy, z], color, { segments: 4, scale: [KITE.halfH, 1, KITE.halfW], rotate: [0, 0, Math.PI / 2], motion: SWAY }),
-        kit.box([0.012, KITE.halfH * 1.6, 0.012], [KITE.x + 0.016, cy, z], 'white', { motion: SWAY }),
-        // cord to the pole
-        kit.box([KITE.x - POLE.x - 0.05, 0.016, 0.016], [(KITE.x + POLE.x) / 2, cy, z], 'white', { motion: SWAY }),
-        kit.box([0.04, 0.05, 0.05], [KITE.x, cy - KITE.halfH - 0.05, z], tail[0], { motion: SWAY }),
-        kit.box([0.04, 0.05, 0.05], [KITE.x, cy - KITE.halfH - 0.13, z], tail[1], { motion: SWAY }),
+        kit.cylinder(1, 1, 0.025, [KITE.x, cy, z], color, { segments: 4, scale: [KITE.halfH, 1, KITE.halfW], rotate: [0, 0, Math.PI / 2], motion: sway }),
+        kit.box([0.012, KITE.halfH * 1.6, 0.012], [KITE.x + 0.016, cy, z], 'white', { motion: sway }),
+        // static cord from the pole to the kite's tip, overlapping both
+        kit.box([KITE.x - POLE.x + 0.04, 0.02, 0.02], [(KITE.x + POLE.x) / 2, tipY, z], 'white'),
+        kit.box([0.04, 0.05, 0.05], [KITE.x, tipY - 0.05, z], tail[0]),
+        kit.box([0.04, 0.05, 0.05], [KITE.x, tipY - 0.13, z], tail[1]),
       );
     }
     return kit.finish(parts);

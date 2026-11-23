@@ -42,8 +42,8 @@ export const item: ItemModel = {
       // bollards on the jetty, ropes to the ferry
       ...[-0.9, 0, 0.9].map((z) => kit.cylinder(0.05, 0.06, 0.1, [JETTY.x1 - 0.14, JETTY.h + 0.05, z], 'charcoal', { segments: 8 })),
       ...[-0.7, 0.7].map((z) => rod(kit, [JETTY.x1 - 0.14, JETTY.h + 0.08, z], [HULL.x - HULL.w / 2 + 0.02, hullTop, z], 0.016, 'stoneDark', { segments: 4 })),
-      // life rings on the jetty: a red-and-white pair
-      kit.torus(0.08, 0.03, [-0.6, JETTY.h + 0.03 + 0.08 * 0, 1.2], 'red', { rotate: [Math.PI / 2, 0, 0], tubularSegments: 12 }),
+      // life rings on the jetty: a red ring
+      kit.torus(0.08, 0.03, [-0.6, JETTY.h + 0.03, 1.2], 'red', { rotate: [Math.PI / 2, 0, 0], tubularSegments: 12 }),
       // cargo crates
       kit.box([0.22, 0.2, 0.22], [-0.7, JETTY.h + 0.1, -1.0], 'wood'),
       kit.box([0.2, 0.16, 0.2], [-0.62, JETTY.h + 0.08, -0.72], 'woodDark'),

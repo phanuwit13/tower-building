@@ -57,7 +57,7 @@ export const item: ItemModel = {
     );
     for (const [sx, sz] of [[0.0, 0.32], [0.0, -0.32]] as Array<[number, number]>) {
       parts.push(
-        kit.cylinder(0.02, 0.02, 0.17, [TABLE.x + 0.3 * 0.0 + sx + 0.05, 0.085, TABLE.z + sz], 'woodDark', { segments: 6 }),
+        kit.cylinder(0.02, 0.02, 0.17, [TABLE.x + sx + 0.05, 0.085, TABLE.z + sz], 'woodDark', { segments: 6 }),
         kit.cylinder(0.08, 0.08, 0.04, [TABLE.x + 0.05, 0.19, TABLE.z + sz], 'orange', { segments: 8 }),
       );
     }

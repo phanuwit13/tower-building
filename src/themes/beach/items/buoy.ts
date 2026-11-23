@@ -2,7 +2,7 @@ import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 import type { MotionOpts } from '../../../models/motion';
 
-// A red-and-white buoy bobbing in a small square patch of sea (1×1) edged with a few rocks.
+// A red-and-white buoy floating (only the water shimmers) in a small square patch of sea (1×1) edged with a few rocks.
 const WATER: MotionOpts = { kind: 'water', water: 'pond' };
 const SEA_H = 0.06;
 
