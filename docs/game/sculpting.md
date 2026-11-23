@@ -70,6 +70,7 @@ Items can move and glow in patterns. It is all done on the graphics card from op
 - Pivots and axes are in item space, like `at`; placing and turning the item moves them with it.
 - **Split cloth into strips.** `wave` ripples along the cloth, so a flag made of one box only flaps its free edge. Cut it into 3 or 4 vertical strips (the flagpole uses 4 per stripe), all with the same `pivot` and `axis`.
 - **Water**: `motion: { kind: 'water', water: 'pond' }` (default) or `'pool'` on a body part (not a glow part) makes its top face a water surface: slow highlight bands by day, moonlight glints on a pond at night, a soft cyan glow on a pool at night. Mark every part that is the same water, such as the navy notches of the lily pads, so it all shimmers together.
+- **Limits** (a value outside them throws when the part is built): `|amount|` at most 4, `|speed|` at most 16, `|phase|` at most 16. Real motion is far gentler than that; the limits only catch typos.
 - **Combine freely** with `rotate` and `scale` (a swaying cone, a spinning torus). A part can both move and glow.
 
 **`opts.light`** on glow parts only (a glow part is one with `glow` set; `light` on a part without it throws):
@@ -308,3 +309,33 @@ export const item: ItemModel = {
   },
 };
 ```
+
+## 13. Floor tiles (`src/floors/`)
+
+Besides items, kids paint a floor under the city: one tile per map cell, shared by every theme (wood, bricks, lawn, water...). A tile is built like an item but is flat, so the rules are different. Tiles are not items: they are not in a theme, not counted in the fill %, and items stand on top of them.
+
+**A tile is one file** in `src/floors/tiles/<id>.ts`, exporting `tile: FloorTile`, then added to `FLOOR_TILES` in `src/floors/index.ts`:
+
+```ts
+export const tile: FloorTile = {
+  id: 'lawn',              // lowercase letters, digits, dashes; unique; saved in the player's city, never rename
+  name: 'สนามหญ้า',          // Thai, shown in the drawer
+  group: 'earth',          // wood | tile | stone | earth | special  (ไม้ | ปูน-กระเบื้อง | หิน-อิฐ | ดิน-หญ้า | พิเศษ)
+  build: (kit) => kit.finish([kit.box([1, 0.02, 1], [0, 0.01, 0], 'lime')]),
+};
+```
+
+Rules (checked by `validateFloorTile`, run by `npx vitest run src/floors`):
+
+- **Footprint 1 x 1, centred on the cell** like a 1x1 item: x and z inside [-0.5, 0.5]. The ground is y = 0 and the tile sits on it (lowest point 0).
+- **Flat:** the top is at most 0.05 high (aim for 0.03; a base of about 0.015 to 0.02 plus 0.01 relief is plenty). Items standing on a tile sink into it by that much, so keep it low.
+- **At most 160 triangles** (a box is 12). Tiles are merged per map chunk, so a fully painted map stays at 4 draw calls however many tiles it holds.
+- **Kit and palette only**, body material: no `glow` (floors do not light up), no own materials, 2 meshes at most. The root group is identity.
+- **Make it tile.** Neighbouring cells touch, so the pattern must continue across the edge: put the full 1 x 1 base to the edge, keep specks and details away from the edge, and in a running pattern (bricks, planks) end every row on the cell edge. Check it as a block of cells, not alone.
+- **Water:** put `motion: { kind: 'water', water: 'pond' }` on the surface part (see section 3); a block of water tiles then shimmers as one pool and holds still with "reduce motion". Use `navy` for pond water and `skyBlue` for a tiled pool, like the items.
+- Floors cast no shadow and receive the items' shadows. Do not put anything above the cell that should throw one.
+- Colours: stay at least a little away from the grounds (the grass, sand and so on show around and under the tiles); the usual palette rules apply.
+
+**Checking a tile:** `npm run dev`, open `http://localhost:5173/?gallery=floors`. Every tile is shown as a 3 x 3 block, so seams and patterns are visible, with its Thai name, group and triangles used against the 160 budget. Switch day and night with ตั้งค่า, and orbit to see it from the side.
+
+Examples: `wood-light.ts` (planks along x), `brick-red.ts` (a running bond that tiles), `lawn.ts` (a base with specks away from the edge), `water-shallow.ts` (water).
