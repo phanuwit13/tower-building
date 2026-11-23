@@ -23,7 +23,7 @@ No people; no temple, monk, stupa, spirit house or any religious object; no roya
 | 5 | `water-tower` | แท็งก์น้ำประปาหมู่บ้าน | 2×2 | facility | v1 | — | tall village water tank on four legs with a ladder and pipes |
 | 6 | `bamboo-bench` | แคร่ไม้ไผ่ | 1×2 | seating | v1 | — | low bamboo platform bench with a mat and a fan on it |
 | 7 | `hammock` | เปลญวน | 1×2 | seating | v1 | swing | net hammock between two posts; it swings gently |
-| 8 | `well` | บ่อน้ำ | 1×1 | facility | v1 | — | round brick well with a little roof, a pulley and a bucket |
+| 8 | `well` | บ่อน้ำ | 1×1 | facility | v1 | water | round brick well with a little roof, a pulley and a bucket; the water inside shimmers |
 | 9 | `mailbox` | ตู้ไปรษณีย์ | 1×1 | facility | v1 | — | red round mailbox on a post (no text) |
 | 10 | `rice-paddy` | นาข้าว | 2×3 | nature | v2 | sway, water | flooded paddy with neat rows of green rice and raised mud banks; the rice sways, the water shimmers |
 | 11 | `rice-mill` | โรงสีข้าว | 2×3 | building | v2 | window | small corrugated-roof mill with a hopper, a chute and stacked rice sacks |
