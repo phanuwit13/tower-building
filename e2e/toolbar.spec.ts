@@ -14,6 +14,17 @@ const schoolCity = (page: Page) =>
 const nameOf = (id: string) => getTheme('school')!.items.find((i) => i.id === id)!.name;
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 const distance = async (page: Page) => Number(await page.locator('.cam-controls').getAttribute('data-distance'));
+/** The camera distance once a zoom glide has settled: two reads 200 ms apart agree (a slow runner draws the glide in few frames). */
+async function settledDistance(page: Page): Promise<number> {
+  let last = await distance(page);
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(200);
+    const d = await distance(page);
+    if (Math.abs(d - last) < 0.005) return d;
+    last = d;
+  }
+  return last;
+}
 
 async function startSchool(page: Page): Promise<void> {
   await page.goto('/');
@@ -210,8 +221,7 @@ test('after a mouse click on any button the next key reaches the game (Space pla
   const d0 = await distance(page);
   await button(page, T.camera.zoomIn).click();
   await expect.poll(() => distance(page)).toBeLessThan(d0 - 1);
-  const d1 = await distance(page);
-  await page.waitForTimeout(400);
+  const d1 = await settledDistance(page); // the end of the zoom step, not a frame in the middle of its glide
   expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
   await page.keyboard.press(' ');
   await expect(page.getByText(placed(1))).toBeVisible();
