@@ -32,8 +32,8 @@ export const item: ItemModel = {
     );
     for (const x of [-0.32, 0.32]) for (const z of [Z0 - 0.62, Z0 + 0.62]) {
       parts.push(
-        kit.cylinder(0.08, 0.08, 0.06, [x, 0.0761, z], 'charcoal', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
-        kit.cylinder(0.035, 0.035, 0.07, [x, 0.0761, z], 'sunYellow', { segments: 8, rotate: [0, 0, Math.PI / 2] }),
+        kit.cylinder(0.08, 0.08, 0.06, [x, 0.07608, z], 'charcoal', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
+        kit.cylinder(0.035, 0.035, 0.07, [x, 0.07608, z], 'sunYellow', { segments: 8, rotate: [0, 0, Math.PI / 2] }),
         kit.box([0.04, 0.1, 0.04], [x * 0.95, 0.17, z], 'chrome'),
       );
     }
@@ -48,7 +48,7 @@ export const item: ItemModel = {
     parts.push(
       kit.cylinder(0.22, 0.17, 0.26, [0, TOP_Y + 0.13, bz], 'sunYellow', { segments: 10 }),
       kit.cylinder(0.19, 0.19, 0.02, [0, TOP_Y + 0.25, bz], 'skyBlue', { segments: 10 }),
-      kit.cylinder(0.02, 0.02, 0.85, [0.05, TOP_Y + 0.6, bz], 'wood', { segments: 6 }),
+      kit.cylinder(0.02, 0.02, 0.75, [0.05, TOP_Y + 0.55, bz], 'wood', { segments: 6 }),
       kit.sphere(0.09, [0.05, TOP_Y + 0.3, bz], 'white', { detail: 0, scale: [1, 0.7, 1] }),
     );
     // spray bottles: body, shoulder, trigger head

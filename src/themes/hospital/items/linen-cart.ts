@@ -34,8 +34,8 @@ export const item: ItemModel = {
     // wheels (axis along x): 4 chunky wheels with yellow hubs
     for (const x of [-0.31, 0.31]) for (const z of [BODY.z - 0.62, BODY.z + 0.62]) {
       parts.push(
-        kit.cylinder(0.08, 0.08, 0.06, [x, 0.0761, z], 'charcoal', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
-        kit.cylinder(0.035, 0.035, 0.07, [x, 0.0761, z], 'sunYellow', { segments: 8, rotate: [0, 0, Math.PI / 2] }),
+        kit.cylinder(0.08, 0.08, 0.06, [x, 0.07608, z], 'charcoal', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
+        kit.cylinder(0.035, 0.035, 0.07, [x, 0.07608, z], 'sunYellow', { segments: 8, rotate: [0, 0, Math.PI / 2] }),
         kit.box([0.04, 0.1, 0.04], [x * 0.95, 0.17, z], 'chrome'),
       );
     }

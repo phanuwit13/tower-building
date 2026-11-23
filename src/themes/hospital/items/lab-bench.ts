@@ -7,8 +7,8 @@ import type { PaletteColor } from '../../../models/palette';
 // spins on one pivot; a bottle cupboard stands along the back wall.
 const TOP_Y = 0.62;
 const BENCH = { x: 0.1, z: 0.25, w: 1.6, d: 1.4 };
-const CENT = { x: -0.45, z: 0.2 }; // centrifuge centre
-const LID_Y = TOP_Y + 0.17;
+const CENT = { x: -0.25, z: 0.2 }; // centrifuge centre
+const LID_Y = TOP_Y + 0.17; // the rotor turns just above the drum top (0.77)
 const SPIN: MotionOpts = { kind: 'spin', pivot: [CENT.x, LID_Y, CENT.z], speed: 0.8 };
 const TUBES: PaletteColor[] = ['pink', 'lime', 'orange', 'purple', 'skyBlue'];
 
@@ -66,13 +66,18 @@ export const item: ItemModel = {
       kit.cylinder(0.27, 0.27, 0.15, [CENT.x, TOP_Y + 0.075, CENT.z], 'white', { segments: 12 }),
       kit.cylinder(0.275, 0.275, 0.03, [CENT.x, TOP_Y + 0.1, CENT.z], 'teal', { segments: 12 }),
       kit.box([0.06, 0.05, 0.1], [CENT.x + 0.27, TOP_Y + 0.05, CENT.z], 'orange'),
-      kit.dome(0.22, [CENT.x, TOP_Y + 0.15, CENT.z], 'skyBlue', { segments: 12, motion: SPIN }),
-      kit.cylinder(0.04, 0.04, 0.03, [CENT.x, LID_Y + 0.04, CENT.z], 'red', { segments: 8, motion: SPIN }),
-      kit.box([0.1, 0.03, 0.05], [CENT.x + 0.12, TOP_Y + 0.2, CENT.z], 'sunYellow', { motion: SPIN }),
+      kit.cylinder(0.2, 0.2, 0.02, [CENT.x, TOP_Y + 0.155, CENT.z], 'charcoal', { segments: 12 }),
+      kit.cylinder(0.17, 0.17, 0.03, [CENT.x, TOP_Y + 0.185, CENT.z], 'stone', { segments: 12, motion: SPIN }),
+      kit.cylinder(0.04, 0.04, 0.08, [CENT.x, TOP_Y + 0.24, CENT.z], 'sunYellow', { segments: 8, motion: SPIN }),
     );
+    // open rotor: five bright tube holders round the hub, all on the same pivot
+    TUBES.forEach((c, i) => {
+      const a = (i / 5) * Math.PI * 2;
+      parts.push(kit.cylinder(0.035, 0.035, 0.1, [CENT.x + 0.13 * Math.cos(a), TOP_Y + 0.25, CENT.z - 0.13 * Math.sin(a)], c, { segments: 8, motion: SPIN }));
+    });
 
     // back cupboard with bottles on top
-    const cx = -0.77;
+    const cx = -0.77; // front face x = -0.57, clear of the centrifuge (x -0.52..0.02)
     parts.push(
       kit.box([0.4, 1.0, 1.7], [cx, 0.5, -0.1], 'cream'),
       kit.box([0.44, 0.04, 1.74], [cx, 1.02, -0.1], 'teal'),

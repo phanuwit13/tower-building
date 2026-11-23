@@ -33,7 +33,7 @@ export const item: ItemModel = {
       kit.box([0.14, 0.02, 0.5], [gx + 0.03, TOP_Y + 0.01, 0], 'sunYellow'),
     );
     for (const z of [-1.35, -0.25, 0.25, 1.35]) parts.push(kit.box([0.06, 0.48, 0.06], [gx, TOP_Y + 0.24, z], 'teal'));
-    for (const z of [-0.8, 0.8]) parts.push(kit.box([0.02, 0.45, 1.04], [gx, TOP_Y + 0.25, z], 'skyBlue', { glow: 'windowWarm', light: 'window' }));
+    for (const z of [-0.8, 0.8]) parts.push(kit.box([0.02, 0.45, 1.04], [gx, TOP_Y + 0.25, z], 'skyBlue', { glow: 'brass', light: 'window' }));
 
     // things on the counter, in front of the window: colourful boxes and bottles
     const front = [0.6, 0.8];
