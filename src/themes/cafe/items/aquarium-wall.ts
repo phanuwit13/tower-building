@@ -31,7 +31,6 @@ export const item: ItemModel = {
   category: 'animal',
   footprint: { w: 2, d: 3 },
   build: (kit) => {
-    const lit = { glow: 'windowWarm', light: 'window' } as const;
     const parts: Part[] = [
       // cabinet, white top plate and two doors on the +x face
       kit.box([CAB.w, CAB.h, CAB.d], [0, CAB.h / 2, 0], 'woodDark'),
@@ -42,15 +41,18 @@ export const item: ItemModel = {
       kit.sphere(0.04, [CAB.w / 2 + 0.035, 0.3, -0.08], 'sunYellow', { detail: 0 }),
       // water
       kit.box([TANK.x * 2 - 0.04, WATER_Y - TANK.base - 0.02, TANK.z * 2 - 0.04], [0, (WATER_Y + TANK.base) / 2 + 0.01, 0], 'skyBlue', { motion: WATER }),
-      // lit glass sides and a charcoal top frame
-      kit.box([0.03, TANK.top - TANK.base, TANK.z * 2], [TANK.x, (TANK.top + TANK.base) / 2, 0], 'glassBlue', lit),
-      kit.box([0.03, TANK.top - TANK.base, TANK.z * 2], [-TANK.x, (TANK.top + TANK.base) / 2, 0], 'glassBlue', lit),
-      kit.box([TANK.x * 2, TANK.top - TANK.base, 0.03], [0, (TANK.top + TANK.base) / 2, TANK.z], 'glassBlue', lit),
-      kit.box([TANK.x * 2, TANK.top - TANK.base, 0.03], [0, (TANK.top + TANK.base) / 2, -TANK.z], 'glassBlue', lit),
+      // glass sides and a charcoal top frame
+      kit.box([0.03, TANK.top - TANK.base, TANK.z * 2], [TANK.x, (TANK.top + TANK.base) / 2, 0], 'skyBlue'),
+      kit.box([0.03, TANK.top - TANK.base, TANK.z * 2], [-TANK.x, (TANK.top + TANK.base) / 2, 0], 'skyBlue'),
+      kit.box([TANK.x * 2, TANK.top - TANK.base, 0.03], [0, (TANK.top + TANK.base) / 2, TANK.z], 'skyBlue'),
+      kit.box([TANK.x * 2, TANK.top - TANK.base, 0.03], [0, (TANK.top + TANK.base) / 2, -TANK.z], 'skyBlue'),
       kit.box([0.08, 0.04, TANK.z * 2 + 0.08], [TANK.x, TANK.top + 0.02, 0], 'charcoal'),
       kit.box([0.08, 0.04, TANK.z * 2 + 0.08], [-TANK.x, TANK.top + 0.02, 0], 'charcoal'),
       kit.box([TANK.x * 2 - 0.08, 0.04, 0.08], [0, TANK.top + 0.02, TANK.z], 'charcoal'),
       kit.box([TANK.x * 2 - 0.08, 0.04, 0.08], [0, TANK.top + 0.02, -TANK.z], 'charcoal'),
+      // inside light: two thin teal strips just above the water (the only glow; the glass sides stay plain)
+      kit.box([0.04, 0.02, TANK.z * 2 - 0.2], [TANK.x - 0.06, WATER_Y + 0.02, 0], 'teal', { glow: 'teal' }),
+      kit.box([0.04, 0.02, TANK.z * 2 - 0.2], [-TANK.x + 0.06, WATER_Y + 0.02, 0], 'teal', { glow: 'teal' }),
       // seaweed, coral and a rock poking out of the water
       kit.cone(0.06, 0.4, [-0.6, WATER_Y + 0.12, -1.1], 'leaf', { segments: 6 }),
       kit.cone(0.05, 0.3, [-0.5, WATER_Y + 0.08, -1.0], 'leafDark', { segments: 6 }),
