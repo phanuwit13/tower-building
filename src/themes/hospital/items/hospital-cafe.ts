@@ -35,7 +35,7 @@ export const item: ItemModel = {
       kit.box([0.05, 0.25, 0.05], [BOARD.x, 0.745, 0.9], 'charcoal'),
       kit.box([0.06, BOARD.h, BOARD.len], [BOARD.x, BOARD.y, 0], 'charcoal'),
     );
-    CARD_Z.forEach((z) => parts.push(kit.box([0.02, 0.4, 0.34], [CARD_X, BOARD.y, z], 'cream', { glow: 'windowWarm', light: 'window' })));
+    CARD_Z.forEach((z) => parts.push(kit.box([0.02, 0.4, 0.34], [CARD_X, BOARD.y, z], 'teal', { glow: 'teal', light: 'window' })));
     parts.push(
       // apple
       kit.sphere(0.09, [ICON_X, 1.1, -0.8], 'red', { detail: 0 }),

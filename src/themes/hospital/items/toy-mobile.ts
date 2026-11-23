@@ -32,7 +32,7 @@ export const item: ItemModel = {
       kit.box([0.11, 0.11, 0.11], [0.36, 0.055, 0.3], 'red', { rotate: [0, 0.4, 0] }),
       kit.box([0.11, 0.11, 0.11], [0.3, 0.055, -0.33], 'blue', { rotate: [0, 0.2, 0] }),
       kit.box([0.11, 0.11, 0.11], [-0.35, 0.055, 0.3], 'sunYellow', { rotate: [0, 0.7, 0] }),
-      // turning: two crossed arms
+      // turning: two crossed arms (everything that turns hangs off an arm, clear of the still pole)
       kit.box([ARM * 2, 0.03, 0.03], [0, POLE_TOP, 0], 'wood', { motion: SPIN }),
       kit.box([0.03, 0.03, ARM * 2], [0, POLE_TOP, 0], 'wood', { motion: SPIN }),
     ];
@@ -49,9 +49,6 @@ export const item: ItemModel = {
       if (h.moon) parts.push(kit.torus(0.055, 0.025, at, h.c, { arc: 4.5, tubularSegments: 12, motion: SPIN, rotate: [0, Math.PI / 2, Math.PI * 0.2] }));
       else parts.push(...star(kit, at, h.c));
     }
-    // a centre star
-    parts.push(kit.cylinder(0.008, 0.008, 0.2, [0, POLE_TOP - 0.1, 0], 'stoneDark', { segments: 4, motion: SPIN }));
-    parts.push(...star(kit, [0, POLE_TOP - 0.25, 0], 'orange'));
     return kit.finish(parts);
   },
 };
