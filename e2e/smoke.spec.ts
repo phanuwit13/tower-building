@@ -11,6 +11,7 @@ import { village } from '../src/themes/village';
 import { park } from '../src/themes/park';
 import { hospital } from '../src/themes/hospital';
 import { space } from '../src/themes/space';
+import { tokyo } from '../src/themes/tokyo';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -314,6 +315,16 @@ test('theme select offers อวกาศ and its round starts with a space item
   const name = await page.getByTestId('current-name').textContent();
   expect(space.items.map((i) => i.name)).toContain(name);
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+});
+
+test('theme select offers เมืองโตเกียว and its round starts with a Tokyo item, with the bright neon night', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'เมืองโตเกียว' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(tokyo.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+  await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1.5');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {
