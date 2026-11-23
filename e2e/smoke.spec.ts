@@ -10,6 +10,7 @@ import { cafe } from '../src/themes/cafe';
 import { village } from '../src/themes/village';
 import { park } from '../src/themes/park';
 import { hospital } from '../src/themes/hospital';
+import { space } from '../src/themes/space';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -304,6 +305,15 @@ test('theme select offers โรงพยาบาล: its round starts indoors 
   await page.getByRole('button', { name: T.home }).click();
   await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
   await expect(page.locator('#app')).toHaveAttribute('data-room', 'cafe');
+});
+
+test('theme select offers อวกาศ and its round starts with a space item on the moon ground, outdoors', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'อวกาศ' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(space.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {
