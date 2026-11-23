@@ -19,6 +19,20 @@ const controlsBox = (page: Page) => page.locator('.cam-controls');
 /** The camera as the game reports it: azimuth in degrees, distance to the orbit target. */
 const azimuth = async (page: Page) => Number(await controlsBox(page).getAttribute('data-azimuth'));
 const distance = async (page: Page) => Number(await controlsBox(page).getAttribute('data-distance'));
+/**
+ * Wait until the camera has stopped: the azimuth and the distance read the same twice, 200 ms apart. A
+ * poll on the azimuth alone can pass while a turn's glide is still settling the distance, and a zoom
+ * key pressed then is overtaken by the turn landing (a slow CI runner draws a glide in few frames).
+ */
+async function settled(page: Page): Promise<void> {
+  let last = `${await azimuth(page)}|${await distance(page)}`;
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(200);
+    const now = `${await azimuth(page)}|${await distance(page)}`;
+    if (now === last) return;
+    last = now;
+  }
+}
 const slider = (page: Page) => page.getByRole('slider', { name: T.camera.zoom });
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 /** Degrees from `a` to `b`, the short way round. */
@@ -120,14 +134,17 @@ test('Q / E turn and + / - zoom from the keyboard, but not while a toolbar popov
   await page.keyboard.press('e');
   await page.keyboard.press('e');
   await expect.poll(async () => turnOf(a0, await azimuth(page))).toBeCloseTo(45, 0);
+  await settled(page);
 
   const d0 = await distance(page);
   await page.keyboard.press('+');
   await expect.poll(() => distance(page)).toBeLessThan(d0 - 1);
+  await settled(page);
   const d1 = await distance(page);
   await page.keyboard.press('-');
   await page.keyboard.press('-');
   await expect.poll(() => distance(page)).toBeGreaterThan(d1 + 1);
+  await settled(page);
   const d2 = await distance(page);
   await page.keyboard.press('=');
   await expect.poll(() => distance(page)).toBeLessThan(d2 - 1);

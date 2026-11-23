@@ -11,7 +11,7 @@ import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
 import { seenHints } from './app/hints';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
-import { clampNightGlow, type ThemeDef } from './themes/types';
+import { clampNightGlow, roomLookOf, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { applyViewShift, createShiftGlide, viewShiftPx } from './render/viewShift';
@@ -127,27 +127,29 @@ function boot(app: HTMLElement): void {
   const fpsMonitor = new FpsMonitor();
   attachFpsOverlay(stage, () => tier, () => cityView.lastBuildMs());
 
-  // Scene: re-applied when settings, tier (rain counts are per tier), the theme's night glow or its
-  // indoor flag (the café's room, pavement and dry floor) change.
+  // Scene: re-applied when settings, tier (rain counts are per tier), the theme's night glow, its
+  // indoor flag (the room, pavement and dry floor) or its room's look change.
   const applyScene = (s: AppState): void => {
     const settings = s.game?.settings ?? BACKDROP;
     const theme = s.game ? getTheme(s.game.themeId) : undefined;
     const nightGlow = clampNightGlow(theme?.nightGlow);
     const indoor = theme?.indoor === true;
+    const look = roomLookOf(theme);
     if (s.quality !== tier) {
       tier = s.quality;
       stage.setQuality(tier);
       fpsMonitor.reset();
       appliedKey = ''; // force environment.apply below
     }
-    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}|${indoor}`;
+    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}|${indoor}|${look}`;
     if (key === appliedKey) return;
     appliedKey = key;
     environment.apply(settings, tier, nightGlow, indoor);
     app.dataset.nightGlow = String(nightGlow); // what the environment was given (the e2e reads it)
     app.dataset.indoor = String(indoor); // likewise: the room shown, rain only outside
+    app.dataset.room = look ?? 'none'; // and which room
     ground.setGround(settings.ground, settings.weather === 'rain', indoor);
-    room.setShown(indoor);
+    room.setShown(look);
   };
 
   // Screens
@@ -368,11 +370,11 @@ function bootFloorGallery(app: HTMLElement): void {
 
 /**
  * The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch.
- * `look`: the shown theme's ground, night glow and indoor flag, so a batch is reviewed under its
- * theme's real night (and the café's in its room, with rain only outside).
+ * `look`: the shown theme's ground, night glow, indoor flag and room, so a batch is reviewed under
+ * its theme's real night (and an indoor theme's in its own room, with rain only outside).
  */
 function bootGalleryStage(
-  app: HTMLElement, look: Pick<ThemeDef, 'defaultGround' | 'nightGlow' | 'indoor'>,
+  app: HTMLElement, look: Pick<ThemeDef, 'defaultGround' | 'nightGlow' | 'indoor' | 'room'>,
   attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
 ): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
@@ -381,7 +383,7 @@ function bootGalleryStage(
   const stage = createStage(app, quality);
   const groundLayer = createGround(stage);
   const indoor = look.indoor === true;
-  createRoom(stage, kit).setShown(indoor);
+  createRoom(stage, kit).setShown(roomLookOf(look));
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
   attach(stage, kit);
