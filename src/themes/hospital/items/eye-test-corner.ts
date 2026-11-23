@@ -36,8 +36,8 @@ export const item: ItemModel = {
       kit.box([0.26, 0.16, 0.34], [TABLE.x - 0.02, m + 0.08, TABLE.z], 'teal'),
       kit.box([0.14, 0.12, 0.3], [TABLE.x + 0.12, m + 0.2, TABLE.z], 'blue'),
       kit.box([0.1, 0.08, 0.34], [TABLE.x - 0.1, m + 0.22, TABLE.z], 'teal'),
-      kit.cylinder(0.075, 0.075, 0.04, [TABLE.x + 0.2, m + 0.2, TABLE.z - 0.08], 'skyBlue', { segments: 10, rotate: [0, 0, Math.PI / 2], glow: true, light: 'window' }),
-      kit.cylinder(0.075, 0.075, 0.04, [TABLE.x + 0.2, m + 0.2, TABLE.z + 0.08], 'skyBlue', { segments: 10, rotate: [0, 0, Math.PI / 2], glow: true, light: 'window' }),
+      kit.cylinder(0.075, 0.075, 0.04, [TABLE.x + 0.2, m + 0.2, TABLE.z - 0.08], 'skyBlue', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
+      kit.cylinder(0.075, 0.075, 0.04, [TABLE.x + 0.2, m + 0.2, TABLE.z + 0.08], 'skyBlue', { segments: 10, rotate: [0, 0, Math.PI / 2] }),
       kit.sphere(0.04, [TABLE.x + 0.1, m + 0.07, TABLE.z + 0.26], 'red', { detail: 0 }), // a button
     );
     // picture chart: feet, frame, board

@@ -33,8 +33,8 @@ export const item: ItemModel = {
       kit.cylinder(0.05, 0.07, 1.5, [-0.55, 0.75, -0.8], 'stoneDark', { segments: 8 }),
       kit.cylinder(0.2, 0.2, 0.05, [-0.55, 0.025, -0.8], 'stoneDark', { segments: 8 }),
       kit.box([0.1, 0.08, 0.8], [-0.55, 1.5, -0.42], 'stone'),
-      kit.cylinder(0.26, 0.14, 0.16, [-0.55, 1.4, -0.05], 'teal', { segments: 10 }),
-      kit.cylinder(0.2, 0.2, 0.03, [-0.55, 1.31, -0.05], 'lampWarm', { segments: 10, glow: true, light: 'window' }),
+      kit.cylinder(0.24, 0.14, 0.16, [-0.62, 1.42, -0.1], 'teal', { segments: 10, rotate: [-0.5, 0, 0] }),
+      kit.cylinder(0.19, 0.19, 0.03, [-0.62, 1.33, -0.18], 'lampWarm', { segments: 10, glow: true, light: 'window', rotate: [-0.5, 0, 0] }), // tilted to face the camera
       // tray on a post at the +z side: cups, a big toothbrush
       kit.cylinder(0.04, 0.04, 0.55, [0.1, 0.29, 0.78], 'chrome', { segments: 8 }),
       kit.cylinder(0.14, 0.18, 0.05, [0.1, MAT + 0.025, 0.78], 'stoneDark', { segments: 8 }),
