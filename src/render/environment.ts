@@ -5,6 +5,7 @@ import { GRID_SIZE, type QualityTier, type SceneSettings, type TimeId, type Weat
 import type { StyleKit } from '../models/kit';
 import { glslFloat, setMoon, setNight, setWind } from '../models/motion';
 import { SURROUND_FADE } from './ground';
+import { ROOM_REACH } from './room';
 import { BLOOM, setShadowTier, type BloomSettings, type Stage } from './stage';
 
 type Vec3 = [number, number, number];
@@ -388,9 +389,17 @@ function createStars(): THREE.Points {
 }
 
 /**
+ * Indoors (ThemeDef.indoor) no rain falls inside the room: drops whose x/z lie within this square,
+ * the walls included, are not drawn. Min x, min z, max x, max z.
+ */
+const ROOM_DRY: readonly [number, number, number, number] = [-ROOM_REACH, -ROOM_REACH, GRID_SIZE + ROOM_REACH, GRID_SIZE + ROOM_REACH];
+
+/**
  * Rain: line segments whose fall is done in the vertex shader (no per-frame buffer upload).
  * Both ends of a drop share one position; `aTail` lowers the tail end, and `uFall` scrolls every
- * drop down, wrapping inside the box so drops never stretch across it.
+ * drop down, wrapping inside the box so drops never stretch across it. `uDry` is a rectangle in
+ * x/z (min x, min z, max x, max z; all zeros: none) where no drop is drawn: both ends of such a
+ * drop collapse to one point far below the ground, so it draws nothing.
  */
 function createRain() {
   const positions = new Float32Array(RAIN.pretty * 6);
@@ -408,12 +417,16 @@ function createRain() {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('aTail', new THREE.BufferAttribute(tails, 1));
   const fall = { value: 0 };
+  const dry = { value: new THREE.Vector4(0, 0, 0, 0) };
   const material = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.32, depthWrite: false });
   material.onBeforeCompile = (s) => {
     s.uniforms.uFall = fall;
-    s.vertexShader = 'uniform float uFall;\nattribute float aTail;\n' + s.vertexShader.replace(
+    s.uniforms.uDry = dry;
+    s.vertexShader = 'uniform float uFall;\nuniform vec4 uDry;\nattribute float aTail;\n' + s.vertexShader.replace(
       '#include <begin_vertex>',
-      `vec3 transformed = vec3( position );\ntransformed.y = mod( position.y - uFall, ${RAIN.height.toFixed(1)} ) - aTail;`);
+      `vec3 transformed = vec3( position );
+      transformed.y = mod( position.y - uFall, ${RAIN.height.toFixed(1)} ) - aTail;
+      if ( all( greaterThan( position.xz, uDry.xy ) ) && all( lessThan( position.xz, uDry.zw ) ) ) transformed = vec3( position.x, -1000.0, position.z );`);
   };
   const lines = new THREE.LineSegments(geometry, material);
   lines.frustumCulled = false;
@@ -423,21 +436,27 @@ function createRain() {
     update(dtMs: number) {
       if (lines.visible) fall.value = (fall.value + (RAIN.speed * dtMs) / 1000) % RAIN.height;
     },
-    set(on: boolean, q: QualityTier, tint: number) {
+    /** `indoor`: no drops inside the room (ROOM_DRY). */
+    set(on: boolean, q: QualityTier, tint: number, indoor: boolean) {
       lines.visible = on;
       geometry.setDrawRange(0, RAIN[q] * 2);
       material.color.setHex(tint);
+      if (indoor) dry.value.set(...ROOM_DRY);
+      else dry.value.set(0, 0, 0, 0);
     },
   };
 }
 
 /**
  * Lights, sky dome, stars, fog and rain. Call `apply` whenever the settings, the quality tier *or
- * the shown theme's night glow* change: the smooth tier's fog colour, the rain density and a city
- * night's glow depend on the tier, a city theme's dusk and night on its `nightGlow` (see envPreset;
- * default 1).
+ * the shown theme's night glow or indoor flag* change: the smooth tier's fog colour, the rain
+ * density and a city night's glow depend on the tier, a city theme's dusk and night on its
+ * `nightGlow` (see envPreset; default 1). `indoor` (ThemeDef.indoor, default false): rain falls
+ * only outside the room round the map (ROOM_DRY), at no per-frame cost.
  */
-export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: SceneSettings, q: QualityTier, nightGlow?: number): void } {
+export function createEnvironment(stage: Stage, kit: StyleKit): {
+  apply(s: SceneSettings, q: QualityTier, nightGlow?: number, indoor?: boolean): void;
+} {
   const { scene } = stage;
 
   const hemi = new THREE.HemisphereLight();
@@ -471,7 +490,7 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
 
   const linear = new THREE.Color();
   return {
-    apply(s, q, nightGlow = 1) {
+    apply(s, q, nightGlow = 1, indoor = false) {
       const p = envPreset(s.time, s.weather, nightGlow, q);
       hemi.color.setHex(p.hemiSky);
       hemi.groundColor.setHex(p.hemiGround);
@@ -490,7 +509,7 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
       sky.set(p.sky, p.fog);
       stars.visible = p.stars;
       moon.set(p.moon, q, p.bloom.threshold / BLOOM.threshold);
-      rain.set(s.weather === 'rain', q, greyed(p.hemiSky, 0.45, 0.9)); // drops pick up the sky light, softened
+      rain.set(s.weather === 'rain', q, greyed(p.hemiSky, 0.45, 0.9), indoor); // drops pick up the sky light, softened
       kit.setGlowStrength(p.glowStrength);
       stage.setBloom(p.bloom); // every apply, so another theme or time puts the standard bloom back
       setWind(s.weather === 'rain' ? RAIN_WIND : 1);

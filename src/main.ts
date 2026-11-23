@@ -18,6 +18,7 @@ import { applyViewShift, createShiftGlide, viewShiftPx } from './render/viewShif
 import { placementAtTile } from './app/hover';
 import { createEnvironment } from './render/environment';
 import { createGround } from './render/ground';
+import { createRoom } from './render/room';
 import { attachFpsOverlay, demoStore, parseDemoParam } from './render/debug';
 import { attachGallery } from './render/gallery';
 import { loadBatch, parseBatchParam, type BatchRequest } from './render/batchGallery';
@@ -92,6 +93,7 @@ function boot(app: HTMLElement): void {
   const kit = getStyleKit();
   const stage = createStage(app, tier);
   const ground = createGround(stage);
+  const room = createRoom(stage, kit);
   const environment = createEnvironment(stage, kit);
   const floorCount = el('div', { class: 'floor-count' });
   document.body.append(floorCount);
@@ -125,22 +127,27 @@ function boot(app: HTMLElement): void {
   const fpsMonitor = new FpsMonitor();
   attachFpsOverlay(stage, () => tier, () => cityView.lastBuildMs());
 
-  // Scene: re-applied when settings, tier (rain counts are per tier) or the theme's night glow change.
+  // Scene: re-applied when settings, tier (rain counts are per tier), the theme's night glow or its
+  // indoor flag (the café's room, pavement and dry floor) change.
   const applyScene = (s: AppState): void => {
     const settings = s.game?.settings ?? BACKDROP;
-    const nightGlow = clampNightGlow(s.game ? getTheme(s.game.themeId)?.nightGlow : undefined);
+    const theme = s.game ? getTheme(s.game.themeId) : undefined;
+    const nightGlow = clampNightGlow(theme?.nightGlow);
+    const indoor = theme?.indoor === true;
     if (s.quality !== tier) {
       tier = s.quality;
       stage.setQuality(tier);
       fpsMonitor.reset();
       appliedKey = ''; // force environment.apply below
     }
-    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}`;
+    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}|${indoor}`;
     if (key === appliedKey) return;
     appliedKey = key;
-    environment.apply(settings, tier, nightGlow);
+    environment.apply(settings, tier, nightGlow, indoor);
     app.dataset.nightGlow = String(nightGlow); // what the environment was given (the e2e reads it)
-    ground.setGround(settings.ground, settings.weather === 'rain');
+    app.dataset.indoor = String(indoor); // likewise: the room shown, rain only outside
+    ground.setGround(settings.ground, settings.weather === 'rain', indoor);
+    room.setShown(indoor);
   };
 
   // Screens
@@ -361,10 +368,11 @@ function bootFloorGallery(app: HTMLElement): void {
 
 /**
  * The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch.
- * `look`: the shown theme's ground and night glow, so a batch is reviewed under its theme's real night.
+ * `look`: the shown theme's ground, night glow and indoor flag, so a batch is reviewed under its
+ * theme's real night (and the café's in its room, with rain only outside).
  */
 function bootGalleryStage(
-  app: HTMLElement, look: Pick<ThemeDef, 'defaultGround' | 'nightGlow'>,
+  app: HTMLElement, look: Pick<ThemeDef, 'defaultGround' | 'nightGlow' | 'indoor'>,
   attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
 ): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
@@ -372,13 +380,15 @@ function bootGalleryStage(
   const kit = getStyleKit();
   const stage = createStage(app, quality);
   const groundLayer = createGround(stage);
+  const indoor = look.indoor === true;
+  createRoom(stage, kit).setShown(indoor);
   const environment = createEnvironment(stage, kit);
   attachFpsOverlay(stage, () => quality);
   attach(stage, kit);
 
   const apply = (): void => {
-    environment.apply(scene, quality, look.nightGlow);
-    groundLayer.setGround(scene.ground, scene.weather === 'rain');
+    environment.apply(scene, quality, look.nightGlow, indoor);
+    groundLayer.setGround(scene.ground, scene.weather === 'rain', indoor);
   };
   const toolbar = createToolbar(app, {
     onWeather: (weather) => change({ weather }),
