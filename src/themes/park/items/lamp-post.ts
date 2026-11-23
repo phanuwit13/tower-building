@@ -1,8 +1,8 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part } from '../../../models/kit';
 
-const BREATHE = { glow: true, light: 'breathe' } as const;
-const LANTERN = { y: 1.36, w: 0.26, h: 0.34 }; // the lit glass box on top of the pole
+const BREATHE = { glow: 'sunYellow', light: 'breathe' } as const; // warm yellow light, not white
+const LANTERN = { y: 1.38, w: 0.32, h: 0.4 }; // the lit glass box on top of the pole
 
 /** เสาไฟสวน: an old-style park lamp post: charcoal fluted pole on a stepped base and a square lantern that glows warm at night. */
 export const item: ItemModel = {
@@ -24,7 +24,8 @@ export const item: ItemModel = {
       kit.cylinder(0.15, 0.05, 0.08, [0, lanternBottom - 0.04, 0], 'charcoal', { segments: 8 }),
       // lantern: warm glass with four corner posts, a pyramid cap and a ball on top
       kit.box([LANTERN.w, LANTERN.h, LANTERN.w], [0, LANTERN.y, 0], 'lampWarm', BREATHE),
-      kit.cone(0.235, 0.13, [0, lanternTop + 0.065, 0], 'charcoal', { segments: 4, rotate: [0, Math.PI / 4, 0] }),
+      kit.cone(0.29, 0.13, [0, lanternTop + 0.065, 0], 'charcoal', { segments: 4, rotate: [0, Math.PI / 4, 0] }),
+      kit.sphere(0.14, [0, LANTERN.y, 0], 'lampWarm', BREATHE), // bigger glowing core inside the glass
       kit.sphere(0.035, [0, lanternTop + 0.16, 0], 'brass', { detail: 0 }),
     ];
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {

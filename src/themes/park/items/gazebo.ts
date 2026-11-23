@@ -11,7 +11,7 @@ const EAVE = 1.0; // top of the posts / underside of the roof beam
 const RING = { r: 0.9, h: 0.08 }; // white beam ring the roof sits on
 const ROOF = { r: 0.96, h: 0.55 };
 const SEAT_Y = 0.31;
-const BREATHE = { glow: true, light: 'breathe' } as const;
+const BREATHE = { glow: 'sunYellow', light: 'breathe' } as const; // warm yellow light, not white
 
 const at = (a: number, r: number): [number, number] => [r * Math.sin(a), r * Math.cos(a)];
 
@@ -36,8 +36,6 @@ export const item: ItemModel = {
       const [x, z] = at((k * Math.PI) / 3, R_POST);
       parts.push(kit.cylinder(0.04, 0.045, EAVE - DECK_TOP, [x, (EAVE + DECK_TOP) / 2, z], 'white', { segments: 8 }));
     }
-    // a round cream mat on the deck that shows the lamp's pool of light at night
-    parts.push(kit.cylinder(0.38, 0.38, 0.01, [0, DECK_TOP + 0.005, 0], 'lampWarm', { segments: 12, glow: true }));
     // benches along the three sides away from the entrance, seat on little blocks, plus a low back rail
     for (const deg of [210, 270, 330]) {
       const a = (deg * Math.PI) / 180;

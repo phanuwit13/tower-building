@@ -10,7 +10,7 @@ const LID_TOP = 0.62;
 const POLE = { z: -0.15, top: 1.5 };
 const SHADE = { r: 0.48, h: 0.22 };
 
-/** รถไอติมกะทิ: a push cart with a coconut-ice-cream tub, a striped umbrella and coconut halves on the side. */
+/** รถไอติมกะทิ: a push cart with a coconut-ice-cream tub, a striped umbrella and coconut halves on top. */
 export const item: ItemModel = {
   id: 'coconut-ice-cream-cart',
   name: 'รถไอติมกะทิ',
@@ -44,8 +44,13 @@ export const item: ItemModel = {
       kit.cone(0.045, 0.14, [0.0, tubY + 0.07, -0.05], 'sand', { rotate: [Math.PI, 0, 0], segments: 8 }),
       kit.sphere(0.05, [0.0, tubY + 0.16, -0.05], 'white', { detail: 0 }),
     );
-    // coconut halves (brown domes) on the side of the box
-    for (const z of [-0.2, 0.15]) parts.push(kit.sphere(0.07, [BOX.w / 2 + 0.01, 0.48 - 0.0, z + BOX.z], 'woodDark', { detail: 0, scale: [0.5, 1, 1] }));
+    // two coconut halves on the lid, cut side up: a brown shell bowl with a white face
+    for (const x of [-0.12, 0.12]) {
+      parts.push(
+        kit.dome(0.1, [x, LID_TOP + 0.1, -0.3], 'woodDark', { segments: 8, rotate: [Math.PI, 0, 0] }),
+        kit.cylinder(0.09, 0.09, 0.012, [x, LID_TOP + 0.1 + 0.006, -0.3], 'white', { segments: 8 }),
+      );
+    }
     // umbrella: pole through the lid and two striped cones turned half a face apart
     const shadeY = POLE.top - SHADE.h / 2;
     parts.push(

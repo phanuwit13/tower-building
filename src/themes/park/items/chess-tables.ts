@@ -31,7 +31,7 @@ export const item: ItemModel = {
           parts.push(kit.box([cell, 0.012, cell], [-BOARD.s / 2 + cell * (i + 0.5), boardY + 0.006, z - BOARD.s / 2 + cell * (j + 0.5)], 'white'));
         }
       }
-      // game pieces: a pale and a dark one, each a little stem with a round head
+      // game pieces: a yellow and a red one, each a little stem with a round head
       for (const [px, pz, c] of [[-0.1, -0.1, 'sunYellow'], [0.12, 0.1, 'red']] as const) {
         parts.push(
           kit.cylinder(0.03, 0.04, 0.07, [px, boardY + 0.006 + 0.035, z + pz], c, { segments: 8 }),

@@ -5,7 +5,7 @@ const SEAT_Y = 0.31; // shared seat height
 const Z0 = -0.12; // bench centre along z; the lamp stands past its +z end
 const LENGTH = 1.25;
 const LAMP = { x: -0.15, z: 0.75, h: 0.8 };
-const BREATHE_OFF = { glow: true } as const;
+const LAMP_GLOW = { glow: true } as const;
 
 /** ม้านั่งสวน: a classic park bench with wooden slats, scrolled iron arms and a small lamp beside it. */
 export const item: ItemModel = {
@@ -37,7 +37,7 @@ export const item: ItemModel = {
       kit.cylinder(0.08, 0.1, 0.06, [LAMP.x, 0.03, LAMP.z], 'charcoal', { segments: 8 }),
       kit.cylinder(0.025, 0.035, LAMP.h - 0.2, [LAMP.x, 0.06 + (LAMP.h - 0.2) / 2, LAMP.z], 'charcoal', { segments: 8 }),
       kit.cylinder(0.09, 0.05, 0.06, [LAMP.x, LAMP.h - 0.17, LAMP.z], 'charcoal', { segments: 8 }),
-      kit.sphere(0.09, [LAMP.x, LAMP.h - 0.05, LAMP.z], 'lampWarm', BREATHE_OFF),
+      kit.sphere(0.09, [LAMP.x, LAMP.h - 0.05, LAMP.z], 'lampWarm', LAMP_GLOW),
       kit.cone(0.1, 0.07, [LAMP.x, LAMP.h + 0.07, LAMP.z], 'charcoal', { segments: 8 }),
     );
     return kit.finish(parts);
