@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FootprintMix } from './types';
-import { AMUSEMENT_MIX, BEACH_MIX, DEFAULT_MIX, ZOO_MIX } from '../themes/mix';
+import { AMUSEMENT_MIX, BEACH_MIX, DEFAULT_MIX, MARKET_MIX, ZOO_MIX } from '../themes/mix';
 import { catalogFromMix, planningPlacer, randomPlacer, simulateRounds } from './simulate';
 
 // 20 x 20 rounds are long (~140 items), so 120 rounds keep this to about 2 s a mix on its own; in the
@@ -12,6 +12,7 @@ const TIMEOUT_MS = 20_000;
 //   School (DEFAULT_MIX) planning meanFill 99.7, p10Fill 99, meanItems 142.3; random meanFill 71.3, meanItems 102.7.
 //   Amusement (AMUSEMENT_MIX) planning meanFill 99.6, p10Fill 99, meanItems 136.9; random meanFill 70.9, meanItems 98.0.
 //   Zoo (ZOO_MIX) planning meanFill 99.6, p10Fill 99, meanItems 141.8; random meanFill 70.0, meanItems 99.5.
+//   Market (MARKET_MIX) planning meanFill 99.7, p10Fill 99, meanItems 142.7; random meanFill 71.0, meanItems 102.1.
 // Every theme's mix must meet the same targets. Thresholds keep a safety margin: mean -5, p10 -10,
 // and a band on item counts, so a skewed mix fails.
 const MIXES: [string, FootprintMix, number][] = [
@@ -19,6 +20,7 @@ const MIXES: [string, FootprintMix, number][] = [
   ['amusement', AMUSEMENT_MIX, 53],
   ['zoo', ZOO_MIX, 60],
   ['beach', BEACH_MIX, 60],
+  ['market', MARKET_MIX, 70],
 ];
 
 for (const [theme, mix, size] of MIXES) {

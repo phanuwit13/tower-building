@@ -229,6 +229,8 @@ Use only these names. They describe the colour, not its use: a `red` can be a ro
 
 Any colour may glow (a screen, a neon sign, a lit pool). Make windows with `glassWindow` and lamps with `lampWarm` and `glow: true`. Keep glowing areas small: large ones bloom a lot at night.
 
+**City nights and neon.** A theme can set `nightGlow` in its `info.ts` (default 1): above 1, its dusk and night get a warm, brighter street light and somewhat stronger glowing parts, so a city never goes dark (the shopping district uses 1.5); day and dawn never change. The batch gallery shows your theme's own night, so judge glows there. A neon sign is a glow part in a vivid palette colour (pink, purple, blue, skyBlue, teal, lime, sunYellow, orange, red) shaped as an icon (a cup, a shirt, a star, scissors), never letters or text; neighbouring shops get different colours. Lit up, the deep colours (blue, purple, red, orange, teal) keep their colour best and the pale ones (pink, skyBlue, lime, sunYellow) turn pastel, so put a neon on a dark board and build it from thin strokes and small shapes, never a whole wall.
+
 ## 8. Rules
 
 Validation (`src/models/validate.ts`) enforces these, and every theme is checked by `src/themes/registry.test.ts`:

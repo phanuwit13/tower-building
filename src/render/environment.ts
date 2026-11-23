@@ -58,6 +58,28 @@ const RAIN_FOG_FAR = 0.6;
 /** Wind strength for item sway and flags (motion.ts): calm 1, rain blows harder. */
 const RAIN_WIND = 1.8;
 
+/**
+ * A city's night (ThemeDef.nightGlow): street lamps, shop windows and neon light the streets up.
+ * The share of a theme's extra night glow each time of day gets: all of it at night, some at dusk
+ * (the lights are coming on), none by day or at dawn.
+ */
+const CITY_NIGHT: Record<TimeId, number> = { dawn: 0, day: 0, dusk: 0.6, night: 1 };
+/** Warm street light, added to the sky fill and to the haze at the horizon (city light pollution). */
+const CITY_LIGHT = 0xffb878;
+/**
+ * Per unit of lift (nightGlow − 1, times the share above): how much brighter the fill light gets;
+ * how much city light its sky colour, its ground colour (light bounced up from the lit street onto
+ * building faces) and the horizon pick up; and how much stronger glowing parts get. The glow rises
+ * gently: tone mapping already turns glowing colours pale, and more glow whitens neon further.
+ */
+const CITY = { fill: 0.8, sky: 0.2, ground: 0.7, haze: 0.24, glow: 0.6 } as const;
+
+/** `hex` with `t` of `light` added, per channel (light only adds: never darker). */
+function addLight(hex: number, light: number, t: number): number {
+  const ch = (shift: number) => Math.min(255, Math.round(((hex >> shift) & 255) + ((light >> shift) & 255) * t));
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 /** Pull a colour towards its own grey and darken it a little (rain clouds). */
 function greyed(hex: number, amount = 0.7, dim = 0.85): number {
   const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
@@ -71,14 +93,26 @@ function normalize([x, y, z]: Vec3): Vec3 {
   return [x / len, y / len, z / len];
 }
 
-/** Lighting, sky and fog for one time × weather. Pure; returns a fresh object. */
-export function envPreset(time: TimeId, weather: WeatherId): EnvPreset {
+/**
+ * Lighting, sky and fog for one time × weather. Pure; returns a fresh object. `nightGlow` is the
+ * shown theme's (ThemeDef.nightGlow): above 1, its dusk and night are a lit city's (a warmer,
+ * brighter fill light, a glowing horizon, stronger glowing parts); 1 (or less) is the standard look.
+ */
+export function envPreset(time: TimeId, weather: WeatherId, nightGlow = 1): EnvPreset {
   const base = SUNNY[time];
   const p: EnvPreset = {
     ...base, sunDir: normalize(base.sunDir), glowStrength: GLOW[time],
     stars: time === 'night' && weather === 'sunny', // rain clouds hide them
     moon: weather === 'rain' ? 0 : MOON_LIGHT[time],
   };
+  const lift = Math.max(0, nightGlow - 1) * CITY_NIGHT[time];
+  if (lift > 0) {
+    p.hemiIntensity *= 1 + CITY.fill * lift;
+    p.hemiSky = addLight(p.hemiSky, CITY_LIGHT, CITY.sky * lift);
+    p.hemiGround = addLight(p.hemiGround, CITY_LIGHT, CITY.ground * lift);
+    p.fog = addLight(p.fog, CITY_LIGHT, CITY.haze * lift);
+    p.glowStrength *= 1 + CITY.glow * lift;
+  }
   if (weather === 'rain') {
     p.sky = greyed(p.sky);
     p.fog = greyed(p.fog);
@@ -362,10 +396,11 @@ function createRain() {
 }
 
 /**
- * Lights, sky dome, stars, fog and rain. Call `apply` whenever the settings *or the quality tier*
- * change: the smooth tier's fog colour and the rain density depend on the tier.
+ * Lights, sky dome, stars, fog and rain. Call `apply` whenever the settings, the quality tier *or
+ * the shown theme's night glow* change: the smooth tier's fog colour and the rain density depend on
+ * the tier, a city theme's dusk and night on its `nightGlow` (see envPreset; default 1).
  */
-export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: SceneSettings, q: QualityTier): void } {
+export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: SceneSettings, q: QualityTier, nightGlow?: number): void } {
   const { scene } = stage;
 
   const hemi = new THREE.HemisphereLight();
@@ -399,8 +434,8 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
 
   const linear = new THREE.Color();
   return {
-    apply(s, q) {
-      const p = envPreset(s.time, s.weather);
+    apply(s, q, nightGlow = 1) {
+      const p = envPreset(s.time, s.weather, nightGlow);
       hemi.color.setHex(p.hemiSky);
       hemi.groundColor.setHex(p.hemiGround);
       hemi.intensity = p.hemiIntensity;
@@ -421,7 +456,7 @@ export function createEnvironment(stage: Stage, kit: StyleKit): { apply(s: Scene
       rain.set(s.weather === 'rain', q, greyed(p.hemiSky, 0.45, 0.9)); // drops pick up the sky light, softened
       kit.setGlowStrength(p.glowStrength);
       setWind(s.weather === 'rain' ? RAIN_WIND : 1);
-      setNight(p.glowStrength); // how night it is: 0 day, 0.3 dawn, 0.6 dusk, 1 night
+      setNight(GLOW[s.time]); // how night it is: 0 day, 0.3 dawn, 0.6 dusk, 1 night (a city's extra glow does not dim the water more)
       setMoon(p.moon); // moonlight glints on ponds
     },
   };
