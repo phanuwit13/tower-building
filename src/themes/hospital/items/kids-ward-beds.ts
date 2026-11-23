@@ -20,13 +20,14 @@ export const item: ItemModel = {
     const xc = (BED.x0 + BED.x1) / 2;
 
     const teddy = (x: number, y: number, z: number): void => {
+      const k = 1.5; // size: a good big bear
       parts.push(
-        kit.sphere(1, [x, y + 0.075, z], 'wood', { detail: 0, scale: [0.075, 0.09, 0.075] }),
-        kit.sphere(0.065, [x + 0.02, y + 0.19, z], 'wood', { detail: 0 }),
-        kit.sphere(0.03, [x + 0.075, y + 0.18, z], 'sand', { detail: 0 }),
-        kit.sphere(0.012, [x + 0.098, y + 0.19, z], 'charcoal', { detail: 0 }),
-        kit.sphere(0.028, [x + 0.015, y + 0.245, z - 0.05], 'wood', { detail: 0 }),
-        kit.sphere(0.028, [x + 0.015, y + 0.245, z + 0.05], 'wood', { detail: 0 }),
+        kit.sphere(1, [x, y + 0.075 * k, z], 'wood', { detail: 0, scale: [0.075 * k, 0.09 * k, 0.075 * k] }),
+        kit.sphere(0.065 * k, [x + 0.02 * k, y + 0.19 * k, z], 'wood', { detail: 0 }),
+        kit.sphere(0.03 * k, [x + 0.075 * k, y + 0.18 * k, z], 'sand', { detail: 0 }),
+        kit.sphere(0.012 * k, [x + 0.098 * k, y + 0.19 * k, z], 'charcoal', { detail: 0 }),
+        kit.sphere(0.028 * k, [x + 0.015 * k, y + 0.245 * k, z - 0.05 * k], 'wood', { detail: 0 }),
+        kit.sphere(0.028 * k, [x + 0.015 * k, y + 0.245 * k, z + 0.05 * k], 'wood', { detail: 0 }),
       );
     };
 
@@ -56,7 +57,7 @@ export const item: ItemModel = {
           for (const v of [-0.06, -0.02, 0.02, 0.06]) parts.push(kit.sphere(0.02, at(0.05, v), 'pink', { detail: 0, scale: [1, 0.6, 1] }));
         }
       }
-      teddy(BED.x0 + 0.5, BED.mat, z + 0.05);
+      teddy(-0.05, BED.mat + 0.05, z + 0.1); // sits on the blanket (blanket top 0.5)
     };
     bed(-BED.zc, 'skyBlue', 'mint', 'sunYellow', 'giraffe');
     bed(BED.zc, 'pink', 'lampWarm', 'purple', 'paws');

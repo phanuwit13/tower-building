@@ -1,6 +1,5 @@
 import type { ItemModel } from '../../../models/contract';
 import type { Part, Vec3 } from '../../../models/kit';
-import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 import { rod } from '../../../models/parts';
 
