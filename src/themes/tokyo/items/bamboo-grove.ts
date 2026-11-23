@@ -33,7 +33,7 @@ export const item: ItemModel = {
         const x = -0.72 + i * 0.29 + (hash(i, j) - 0.5) * 0.1;
         const z = -0.72 + j * 0.29 + (hash(j, i + 9) - 0.5) * 0.1;
         if (Math.abs(z - PATH_Z(x)) < PATH_HALF) continue;
-        const h = 1.4 + hash(i + 3, j + 5) * 0.8;
+        const h = 1.3 + hash(i + 3, j + 5) * 0.65; // tuft tops stay <= 2.2
         const r = 0.04 + hash(i, j + 7) * 0.01;
         parts.push(kit.cylinder(r * 0.8, r, h, [x, SOIL_H + h / 2, z], n % 2 === 0 ? 'leaf' : 'lime', { segments: 5, motion: SWAY }));
         parts.push(kit.cylinder(r * 1.2, r * 1.2, 0.03, [x, SOIL_H + h * 0.5, z], 'leafDark', { segments: 5, motion: SWAY }));
