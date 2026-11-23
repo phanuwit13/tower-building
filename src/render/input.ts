@@ -222,11 +222,20 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   let lastY = 0;
   let overCanvas = false; // a free mouse last reported a position over the canvas
   let cursor: GhostMark | null = null;
+  let held = false; // a mouse button went down on the map and is not up yet
+  /**
+   * The canvas cursor: the pointing hand over the ✓ or the rotate button (it can be clicked); with the
+   * floor drawer's ✋ tool an open hand over the map, closed while a button drags the camera.
+   */
+  const showCursor = (): void => {
+    const want = cursor ? 'pointer' : floorMode()?.tool === 'camera' ? (held ? 'grabbing' : 'grab') : '';
+    if (canvas.style.cursor !== want) canvas.style.cursor = want;
+  };
   /** The hand over the ✓ or the rotate button (and that button turning darker) tells a mouse it can be clicked. */
   const setCursor = (mark: GhostMark | null): void => {
     if (mark === cursor) return;
     cursor = mark;
-    canvas.style.cursor = mark ? 'pointer' : '';
+    showCursor();
     opts.onMarkHover?.(mark);
   };
   const hideHover = (): void => setHover(-1, -1);
@@ -258,6 +267,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   // Deferred: the city view, which draws the ✓ where checkMark() reads it, listens after us.
   let recheckQueued = false;
   const unsubscribe = c.subscribe(() => {
+    showCursor(); // the drawer opened or closed, or the tool changed
     if (recheckQueued || !overCanvas) return;
     recheckQueued = true;
     queueMicrotask(() => { recheckQueued = false; onCameraChange(); });
@@ -335,7 +345,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onDown = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); }
+    if (e.pointerType === 'mouse') { overCanvas = false; hideHover(); held = true; showCursor(); }
     stage.rig.settle(); // a press in the middle of a turn: it ends on its 45 degree step first
     const floor = floorMode();
     // Runs before OrbitControls sees the press (capture): a new gesture gets the current tool's mapping.
@@ -381,6 +391,7 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
   };
 
   const onUp = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && held) { held = false; showCursor(); }
     handleUp(e);
     if (e.pointerType === 'mouse' && pointers.size === 0 && !dragging) updateHover(e);
   };
@@ -436,7 +447,9 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
 
   const onBlur = () => {
     overCanvas = false;
+    held = false;
     setCursor(null);
+    showCursor();
     hideHover();
     pointers.clear();
     cancelStroke();
@@ -508,5 +521,6 @@ export function attachInput(stage: Stage, c: Controller, opts: InputOptions = {}
     endDrag();
     lendCamera(false);
     setCursor(null);
+    canvas.style.cursor = '';
   };
 }

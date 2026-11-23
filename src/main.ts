@@ -237,12 +237,14 @@ function boot(app: HTMLElement): void {
     });
   };
 
-  // The drawer covers the bottom of the map: while it is open the view rides up by half its height, so the
-  // bottom cells stay reachable without the ✋ tool. Re-applied on resize and when the drawer's height changes.
+  // The drawer covers the bottom of the map up to its top (it floats a little above the edge): while it is open
+  // the view rides up by half of that, so the bottom cells stay reachable without the ✋ tool. Re-applied on
+  // resize and when the drawer's height changes.
   const drawerBox = app.querySelector<HTMLElement>('.floor-drawer');
+  const coverPx = (box: HTMLElement): number => box.offsetHeight + (parseFloat(getComputedStyle(box).bottom) || 0);
   const syncViewShift = (): void => {
     const open = floorOpen(controller.getState());
-    const shift = open && drawerBox ? viewShiftPx(drawerBox.offsetHeight, app.clientHeight) : 0;
+    const shift = open && drawerBox ? viewShiftPx(coverPx(drawerBox), app.clientHeight) : 0;
     applyViewShift(stage.camera, app.clientWidth, app.clientHeight, shift);
   };
   new ResizeObserver(syncViewShift).observe(app);

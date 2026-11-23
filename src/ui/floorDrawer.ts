@@ -2,6 +2,7 @@ import type { FloorUiState } from '../app/controller';
 import type { FloorGroup } from '../floors/types';
 import { button, el } from './dom';
 import { focusForKeyboard } from './focus';
+import { ICONS, lineIcon } from './icons';
 import { T } from './strings';
 
 /** One tile in the drawer: its Thai name and a thumbnail (null: the name alone). */
@@ -40,30 +41,38 @@ const setPressed = (b: HTMLElement, on: boolean): void => {
 const sameTiles = (a: readonly FloorSwatch[], b: readonly FloorSwatch[]): boolean =>
   a.length === b.length && a.every((t, i) => t.id === b[i].id && t.name === b[i].name && t.thumb === b[i].thumb);
 
+/** A tool button: its line icon, then its name. */
+const toolButton = (paths: readonly string[], text: string, onClick: () => void): HTMLButtonElement =>
+  el('button', { class: 'floor-tool', attrs: { type: 'button' }, onClick }, [lineIcon(paths), el('span', { text })]);
+
 /**
- * The floor drawer: a bottom sheet with the group tabs, [ยางลบ] [เสร็จ], the 🖌 ปูกระเบื้อง / ✋ ขยับกล้อง
- * tool toggle and a sideways-scrolling strip of tile swatches. It only shows the view it is given;
- * every choice goes to a handler. The app re-renders it on every state change, so the swatches are
- * rebuilt only when the shown tiles change and attributes are written only when they change.
+ * The floor drawer: a see-through bar floating over the bottom of the map. The group tabs on top; under
+ * them the 🖌 ปูกระเบื้อง / ✋ ขยับกล้อง tool toggle, a sideways-scrolling strip of tile swatches, and
+ * [ยางลบ] [เสร็จ]. The strip keeps room for the biggest group (`tiles` on a group), so the bar keeps
+ * its width from group to group. It only shows the view it is given; every choice goes to a handler.
+ * The app re-renders it on every state change, so the swatches are rebuilt only when the shown tiles
+ * change and attributes are written only when they change.
  */
 export function createFloorDrawer(
-  root: HTMLElement, groups: readonly { id: FloorGroup; name: string }[], h: FloorDrawerHandlers,
+  root: HTMLElement, groups: readonly { id: FloorGroup; name: string; tiles?: readonly unknown[] }[], h: FloorDrawerHandlers,
 ): { update(v: FloorDrawerView): void } {
   const tabs = new Map<FloorGroup, HTMLButtonElement>();
-  for (const g of groups) tabs.set(g.id, button(g.name, () => h.onGroup(g.id), 'chip floor-tab'));
+  for (const g of groups) tabs.set(g.id, button(g.name, () => h.onGroup(g.id), 'floor-tab'));
   const eraser = button(T.floor.eraser, h.onEraser, 'floor-eraser');
   const done = button(T.floor.done, h.onDone, 'floor-done');
-  const paint = button(T.floor.paint, () => h.onTool('paint'), 'floor-tool');
-  const camera = button(T.floor.camera, () => h.onTool('camera'), 'floor-tool');
+  const paint = toolButton(ICONS.brush, T.floor.paint, () => h.onTool('paint'));
+  const camera = toolButton(ICONS.hand, T.floor.camera, () => h.onTool('camera'));
   const strip = el('div', { class: 'floor-swatches' });
+  const slots = Math.max(0, ...groups.map((g) => g.tiles?.length ?? 0));
+  if (slots > 0) strip.style.setProperty('--slots', String(slots));
   const box = el('section', { class: 'floor-drawer', attrs: { 'aria-label': T.floor.title } }, [
     el('div', { class: 'floor-drawer-head' }, [
       el('div', { class: 'floor-groups', attrs: { role: 'group', 'aria-label': T.floor.groups } }, [...tabs.values()]),
-      el('div', { class: 'floor-drawer-actions' }, [eraser, done]),
     ]),
     el('div', { class: 'floor-drawer-body' }, [
       el('div', { class: 'floor-tools', attrs: { role: 'group', 'aria-label': T.floor.tools } }, [paint, camera]),
       strip,
+      el('div', { class: 'floor-drawer-actions' }, [eraser, done]),
     ]),
   ]);
   box.hidden = true;
