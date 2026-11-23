@@ -4,11 +4,11 @@ import type { MotionOpts } from '../../../models/motion';
 import type { PaletteColor } from '../../../models/palette';
 
 // A wooden drying rack: two posts with feet and a bar along z. Three striped towels hang from the bar; each is cut
-// into strips along z so the wave can ripple across it (sideways, along x). The bar sits above the cloth so the
+// into strips along z so the wave can ripple across it (sideways, along x). amount 0.04: the free end shifts at most 0.04 * 0.4 = 1.6 cm (3.2 cm in the strongest wind), about one bar radius (3 cm), so the cloth stays on the rail. The bar sits above the cloth so the
 // moving strips never cut through it.
 const POST_Z = 0.82;
 const BAR = { y: 0.78, r: 0.03 };
-const TOWEL = { len: 0.5, w: 0.42, strips: 3, t: 0.03 }; // hang length (y), width along z
+const TOWEL = { len: 0.5, w: 0.4, strips: 3, t: 0.03 }; // hang length (y), width along z
 const TOP = BAR.y - BAR.r - 0.005; // top of the cloth, just under the bar
 const BANDS = 5; // stripes across the hanging length
 const SETS: Array<[PaletteColor, PaletteColor, number]> = [
@@ -36,7 +36,7 @@ export const item: ItemModel = {
     const band = TOWEL.len / BANDS;
     for (const [c1, c2, z0] of SETS) {
       const zStart = z0 - TOWEL.w / 2;
-      const wave: MotionOpts = { kind: 'wave', pivot: [0, TOP, zStart], axis: [0, 0, 1], amount: 0.16 };
+      const wave: MotionOpts = { kind: 'wave', pivot: [0, TOP, zStart], axis: [0, 0, 1], amount: 0.04 };
       for (let k = 0; k < TOWEL.strips; k++) {
         for (let b = 0; b < BANDS; b++) {
           parts.push(kit.box([TOWEL.t, band, strip], [0, TOP - band * (b + 0.5), zStart + strip * (k + 0.5)], b % 2 === 0 ? c1 : c2, { motion: wave }));
