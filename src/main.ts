@@ -4,11 +4,12 @@ import './styles.css';
 import type { QualityTier, SceneSettings } from './game/types';
 import { loadQuality } from './game/save';
 import { getStyleKit } from './models/kit';
-import { createController, type AppState } from './app/controller';
+import { createController, upcoming, type AppState } from './app/controller';
 import { detectTier, FpsMonitor } from './app/quality';
 import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
+import { seenHints } from './app/hints';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
 import { clampNightGlow, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
@@ -28,9 +29,12 @@ import { createStage } from './render/stage';
 import { createThumbnailer } from './render/thumbnails';
 import { captureCanvas, createBrowserShareEnv, deliverImage, screenshotFilename } from './render/screenshot';
 import { createThemeSelect } from './ui/themeSelect';
-import { createHud, type ItemCard } from './ui/hud';
+import { createHud, tapHint, type ItemCard } from './ui/hud';
+import { createCameraControls } from './ui/cameraControls';
 import { createFloorDrawer, drawerGroups } from './ui/floorDrawer';
-import { createSettingsPanel } from './ui/settings';
+import { createToolbar } from './ui/toolbar';
+import { createShortcutsPanel } from './ui/shortcuts';
+import { installPointerFocusReturn, keyboardActive } from './ui/focus';
 import { button, el } from './ui/dom';
 import { confirmDialog } from './ui/dialogs';
 import { createEndScreen } from './ui/endScreen';
@@ -81,6 +85,9 @@ function boot(app: HTMLElement): void {
   });
   let tier = controller.getState().quality;
   let appliedKey = '';
+  // One-time hints, per browser (`?demo=full` keeps them in its memory store with the rest).
+  const seen = seenHints(store);
+  installPointerFocusReturn(); // a mouse/touch click hands the focus back, so the next key reaches the game
 
   const kit = getStyleKit();
   const stage = createStage(app, tier);
@@ -95,7 +102,7 @@ function boot(app: HTMLElement): void {
   let dialogOpen = false;
   // Mouse hover preview: the faint item under the cursor (never changes controller state).
   let hoverTile: { tx: number; tz: number } | null = null;
-  const blocked = (): boolean => dialogOpen || settings.isOpen() || endScreen.isVisible();
+  const blocked = (): boolean => dialogOpen || toolbar.isOpen() || shortcuts.isOpen() || endScreen.isVisible();
   const refreshHover = (): void => {
     const s = controller.getState();
     const catalog = s.game ? getCatalog(s.game.themeId) : undefined;
@@ -108,7 +115,10 @@ function boot(app: HTMLElement): void {
   attachInput(stage, controller, {
     onHover: (tile) => { hoverTile = tile; refreshHover(); },
     ghostBox: () => cityView.ghostBox(),
-    // settings, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
+    checkMark: () => cityView.checkMark(),
+    rotateMark: (camera) => cityView.rotateMark(camera),
+    onMarkHover: (mark) => cityView.setMarkHover(mark),
+    // a toolbar popover, the shortcuts panel, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
     isBlocked: blocked,
   });
   const thumbnailer = createThumbnailer(kit);
@@ -140,7 +150,7 @@ function boot(app: HTMLElement): void {
   });
 
   const askAndRun = async (message: string, confirmLabel: string, action: () => void): Promise<void> => {
-    settings.close(); // both listen for Escape on document: never stack them
+    toolbar.closePopovers(); // both listen for Escape on document: never stack them
     dialogOpen = true;
     refreshHover();
     let ok = false;
@@ -161,7 +171,7 @@ function boot(app: HTMLElement): void {
   const goHome = (): void => {
     const from = controller.getState().game?.themeId;
     controller.goToThemeSelect();
-    if (from) themeSelect.focus(from);
+    if (from && keyboardActive()) themeSelect.focus(from);
   };
 
   const shareEnv = createBrowserShareEnv();
@@ -184,18 +194,21 @@ function boot(app: HTMLElement): void {
     }
   };
 
-  const openSettings = () => {
-    const s = controller.getState();
-    settings.open({ settings: s.game?.settings ?? BACKDROP, quality: s.quality });
-    refreshHover();
-  };
-  const settings = createSettingsPanel(app, {
-    onWeather: (weather) => { controller.setSettings({ weather }); openSettings(); },
-    onTime: (time) => { controller.setSettings({ time }); openSettings(); },
-    onGround: (ground) => { controller.setSettings({ ground }); openSettings(); },
-    onQuality: (q) => { controller.setQuality(q, 'user'); openSettings(); },
+  const toolbar = createToolbar(app, {
+    onWeather: (weather) => controller.setSettings({ weather }),
+    onTime: (time) => controller.setSettings({ time }),
+    onGround: (ground) => controller.setSettings({ ground }),
+    onQuality: (q) => controller.setQuality(q, 'user'),
+    onScreenshot: () => void screenshot(),
+    onShortcuts: () => shortcuts.open(),
     onRestart: () => void restart(),
     onClear: () => void clear(),
+    onOpenChange: refreshHover,
+  });
+  // Made after attachInput: on Esc the map's key handler sees the panel still open, then the panel closes.
+  const shortcuts = createShortcutsPanel(app, {
+    canOpen: () => !dialogOpen && !endScreen.isVisible(),
+    onOpenChange: (open) => { if (open) toolbar.closePopovers(); refreshHover(); },
   });
 
   let viewing = false; // player chose "ดูเมือง": keep the end dialog hidden until the next round
@@ -238,8 +251,6 @@ function boot(app: HTMLElement): void {
   const hud = createHud(app, {
     onRotate: () => controller.rotateGhost(),
     onPlace: () => { controller.place(); },
-    onSettings: openSettings,
-    onScreenshot: () => void screenshot(),
     onRestart: () => void restart(),
     onFloors: () => {
       const picked = getFloorTile(controller.getState().floor.pick);
@@ -248,6 +259,7 @@ function boot(app: HTMLElement): void {
     },
     onHome: goHome,
   });
+  const cameraControls = createCameraControls(app, stage, seen);
 
   const card = (itemId: string, themeId: string): ItemCard | null => {
     const item = getTheme(themeId)?.items.find((i) => i.id === itemId);
@@ -267,19 +279,24 @@ function boot(app: HTMLElement): void {
 
     const game = s.game;
     const playing = s.screen === 'playing' && game !== null;
+    if (game && game.placements.length > 0) seen.mark('placed'); // the tap hint has done its job
     showDrawer(s); // before the HUD: leaving floor mode hands the focus back to [พื้น]
     syncViewShift();
     hud.update({
       visible: s.screen !== 'theme-select',
       current: playing ? card(game.current, game.themeId) : null,
-      next: playing ? card(game.next, game.themeId) : null,
+      next: playing ? upcoming(game).flatMap((id) => card(id, game.themeId) ?? []) : [],
       placed: game?.placements.length ?? 0,
       canPlace: s.ghost?.valid === true,
       canRotate: playing,
-      hint: playing && s.ghost === null ? T.hintTap : null,
+      hint: tapHint({ playing, ghost: s.ghost !== null, placedEver: seen.has('placed') }),
       finished: s.screen === 'finished',
       floorMode: floorOpen(s),
     });
+    toolbar.update({ settings: game?.settings ?? BACKDROP, quality: s.quality });
+    toolbar.setVisible(s.screen !== 'theme-select');
+    // The floor drawer has its own camera tool (✋) and covers the bottom right: the camera controls step aside.
+    cameraControls.update({ visible: s.screen !== 'theme-select' && !floorOpen(s) });
 
     if (s.screen !== 'finished') viewing = false;
     const catalog = game ? getCatalog(game.themeId) : undefined;
@@ -310,7 +327,7 @@ function boot(app: HTMLElement): void {
 
 /**
  * `?gallery=<themeId>`: a review page with every item of the theme laid out on the map. No game:
- * nothing is loaded or saved; the settings panel only switches the lighting, ground and tier.
+ * nothing is loaded or saved; the toolbar only switches the lighting, ground and tier.
  * An unknown theme id starts the normal game.
  */
 function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
@@ -319,7 +336,7 @@ function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void 
   }, devNote);
 }
 
-/** `?gallery=floors`: every floor tile as a 3 x 3 patch with its Thai name; lighting and tier from the settings panel. */
+/** `?gallery=floors`: every floor tile as a 3 x 3 patch with its Thai name; lighting and tier from the toolbar. */
 function bootFloorGallery(app: HTMLElement): void {
   bootGalleryStage(app, { defaultGround: 'grass' }, (stage, kit) => { attachFloorGallery(stage, kit); });
 }
@@ -345,13 +362,7 @@ function bootGalleryStage(
     environment.apply(scene, quality, look.nightGlow);
     groundLayer.setGround(scene.ground, scene.weather === 'rain');
   };
-  const openSettings = (): void => settings.open({ settings: scene, quality });
-  const change = (patch: Partial<SceneSettings>): void => {
-    scene = { ...scene, ...patch };
-    apply();
-    openSettings();
-  };
-  const settings = createSettingsPanel(app, {
+  const toolbar = createToolbar(app, {
     onWeather: (weather) => change({ weather }),
     onTime: (time) => change({ time }),
     onGround: (g) => change({ ground: g }),
@@ -361,7 +372,12 @@ function bootGalleryStage(
       change({});
     },
   });
-  app.appendChild(el('div', { class: 'gallery-tools' }, [button(T.settings, openSettings)]));
+  const change = (patch: Partial<SceneSettings>): void => {
+    scene = { ...scene, ...patch };
+    apply();
+    toolbar.update({ settings: scene, quality });
+  };
+  toolbar.update({ settings: scene, quality });
   if (devNote) document.body.append(el('p', { class: 'gallery-dev-note', text: devNote }));
   apply();
 }

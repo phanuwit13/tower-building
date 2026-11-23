@@ -9,8 +9,8 @@ import type { GameState } from '../game/types';
 import { getStyleKit } from '../models/kit';
 import { getCatalog, getTheme } from '../themes/registry';
 import { CHUNKS_PER_SIDE } from './batch';
-import { createCityView } from './city';
-import type { Stage } from './stage';
+import { createCityView, GHOST_INVALID, HOVER_OPACITY, MARK_INK, OPACITY, rotateMarkAt } from './city';
+import { BLOOM, type Stage } from './stage';
 
 const kit = getStyleKit();
 const catalog = getCatalog('school')!;
@@ -126,6 +126,44 @@ describe('city view batching', () => {
     expect(ghostMeshes).toBeGreaterThan(1); // footprint fill + the item model in ghost material
   });
 
+  it('a placeable ghost shows the item in its own colours, faded; a blocked one turns red', () => {
+    const { view, root } = setup();
+    const game = newGame(catalog, settings, 3);
+    const ghost = () => root.getObjectByName('ghost')!;
+    /** The item model's colour meshes (not the footprint, not the depth-only twins). */
+    const colourMeshes = () => {
+      const out: THREE.Mesh[] = [];
+      ghost().children.find((c) => !(c instanceof THREE.Mesh) && !(c instanceof THREE.LineLoop))!
+        .traverse((o) => { if (o instanceof THREE.Mesh && (o.material as THREE.Material).colorWrite !== false) out.push(o); });
+      return out;
+    };
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const meshes = colourMeshes();
+    expect(meshes.length).toBeGreaterThan(0);
+    for (const m of meshes) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      expect(mat.vertexColors).toBe(true); // the item's own palette colours
+      expect(mat.color.getHex()).toBe(0xffffff); // untinted
+      expect(mat.transparent).toBe(true);
+      expect(mat.opacity).toBe(OPACITY.valid.body);
+      expect(m.geometry.getAttribute('color')).toBeDefined();
+      // A depth-only twin drawn first keeps the item's back walls from showing through its front.
+      const twin = m.children.find((c): c is THREE.Mesh => c instanceof THREE.Mesh)!;
+      expect(twin.geometry).toBe(m.geometry);
+      expect((twin.material as THREE.Material).colorWrite).toBe(false);
+      expect(twin.renderOrder).toBeLessThan(m.renderOrder);
+    }
+
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: false }));
+    for (const m of colourMeshes()) {
+      const mat = m.material as THREE.MeshLambertMaterial;
+      expect(mat.vertexColors).toBe(false);
+      expect(mat.color.getHex()).toBe(GHOST_INVALID);
+    }
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    expect(colourMeshes().map((m) => m.material)).toEqual(meshes.map((m) => m.material));
+  });
+
   it('a merge that throws leaves the view out of sync, so the next sync rebuilds in full', () => {
     let failOnce = true;
     const flaky = (id: string) => {
@@ -206,11 +244,164 @@ describe('setHover', () => {
     expect(first.length).toBeGreaterThan(0);
   });
 
+  it('shows the item in its own colours, fainter than the ghost; red where it cannot go', () => {
+    const { view, root } = setup();
+    const colour = () => meshes(root.getObjectByName('hover')!)
+      .filter((m) => (m.material as THREE.Material).colorWrite !== false && m.renderOrder === 4);
+    view.setHover(hoverAt(true));
+    expect(colour().length).toBeGreaterThan(0);
+    for (const m of colour()) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      expect(mat.vertexColors).toBe(true);
+      expect(mat.opacity).toBe(HOVER_OPACITY.valid.body);
+      expect(mat.opacity).toBeLessThan(OPACITY.valid.body);
+    }
+    view.setHover(hoverAt(false, 8));
+    for (const m of colour()) expect((m.material as THREE.MeshLambertMaterial).color.getHex()).toBe(GHOST_INVALID);
+  });
+
   it('is fainter than the ghost, and never touches the locked ghost', () => {
     const { view, root } = setup();
     view.setHover(hoverAt(false));
     const mat = (meshes(root.getObjectByName('hover')!)[0].material as THREE.Material);
     expect(mat.opacity).toBeLessThan(0.75);
     expect(root.getObjectByName('ghost')!.visible).toBe(false);
+  });
+});
+
+describe('checkMark (the ✓ as a tap target)', () => {
+  const game = newGame(catalog, settings, 3);
+  const fp = catalog.items[game.current].footprint;
+
+  it('over a valid ghost: centred over its footprint, above the item, with a drawn size', () => {
+    const { view, root } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const mark = view.checkMark();
+    expect(mark).not.toBeNull();
+    expect(mark!.center.x).toBeCloseTo(4 + fp.w / 2);
+    expect(mark!.center.z).toBeCloseTo(6 + fp.d / 2);
+    expect(mark!.center.y).toBeGreaterThan(view.ghostBox()!.max.y); // floats above the item
+    expect(mark!.size).toBeGreaterThan(1);
+    const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
+    expect(mark!.center.equals(sprite.position)).toBe(true); // where the ✓ is drawn
+    expect(mark!.size).toBeLessThanOrEqual((sprite.material as THREE.PointsMaterial).size);
+  });
+
+  it('a rotate button floats beside it, over a placeable and a blocked ghost alike; none without a ghost', () => {
+    const { view, root } = setup();
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 300);
+    camera.position.set(24, 22, 24);
+    camera.lookAt(10, 0, 10);
+    camera.updateMatrixWorld(true);
+    expect(view.rotateMark(camera)).toBeNull();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const check = view.checkMark()!;
+    const rot = view.rotateMark(camera)!;
+    expect(rot).not.toBeNull();
+    expect(rot.size).toBeLessThan(check.size); // placing stays the main button
+    // On screen: left of the ✓, level with it, the two discs not overlapping.
+    const px = (p: THREE.Vector3) => { const v = p.clone().project(camera); return { x: (v.x + 1) * 400, y: (1 - v.y) * 400, depth: p.clone().applyMatrix4(camera.matrixWorldInverse).z * -1 }; };
+    const a = px(check.center);
+    const b = px(rot.center);
+    expect(b.x).toBeLessThan(a.x);
+    expect(Math.abs(b.y - a.y)).toBeLessThan(2);
+    const radius = (size: number, depth: number) => (size * 800) / 4 / depth;
+    expect(a.x - b.x).toBeGreaterThan(radius(check.size, a.depth) + radius(rot.size, b.depth));
+
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: false }));
+    expect(view.checkMark()).toBeNull(); // the ✗ cannot be tapped...
+    expect(view.rotateMark(camera)).not.toBeNull(); // ...but turning may make it fit
+    view.setGhostVisible(false);
+    expect(view.rotateMark(camera)).toBeNull();
+    expect(root.getObjectByName('rotate-mark')!.visible).toBe(false);
+    view.setGhostVisible(true);
+    expect(root.getObjectByName('rotate-mark')!.visible).toBe(true);
+    view.sync(state(game, null));
+    expect(view.rotateMark(camera)).toBeNull();
+  });
+
+  it('keeps the same screen gap to the ✓ at any distance, and turns with the view', () => {
+    const anchor = new THREE.Vector3(10, 2, 10);
+    const gapPx = (distance: number, azimuth: number) => {
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 300);
+      camera.position.set(10 + distance * Math.sin(azimuth), 2 + distance * 0.8, 10 + distance * Math.cos(azimuth));
+      camera.lookAt(anchor);
+      camera.updateMatrixWorld(true);
+      const a = anchor.clone().project(camera);
+      const b = rotateMarkAt(anchor, camera).project(camera);
+      return { dx: (a.x - b.x) * 400 * (distance / 20), dy: Math.abs(a.y - b.y) * 400 };
+    };
+    // Points shrink with distance just as the gap does: the gap in disc sizes stays the same.
+    const near = gapPx(20, 0.3);
+    const far = gapPx(40, 0.3);
+    expect(far.dx).toBeCloseTo(near.dx, 0);
+    expect(gapPx(20, 2.1).dx).toBeCloseTo(near.dx, 0); // left of the ✓ from any side
+    expect(near.dy).toBeLessThan(1);
+  });
+
+  it('darkens the rotate button, not the ✓, while the mouse is on it', () => {
+    const { view, root } = setup();
+    const rot = root.getObjectByName('rotate-mark') as THREE.Points;
+    const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points && c.name !== 'rotate-mark')!;
+    const map = (p: THREE.Points) => (p.material as THREE.PointsMaterial).map;
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const rotNormal = map(rot);
+    const checkNormal = map(sprite);
+    view.setMarkHover('rotate');
+    expect(map(rot)).not.toBe(rotNormal);
+    expect(map(sprite)).toBe(checkNormal);
+    view.setMarkHover('check');
+    expect(map(rot)).toBe(rotNormal);
+    expect(map(sprite)).not.toBe(checkNormal);
+  });
+
+  it('draws its ring and glyph just under the standard bloom threshold: crisp, and still white on the disc', () => {
+    const ink = new THREE.Color(MARK_INK); // linear, as the bloom pass measures it
+    const luminance = 0.299 * ink.r + 0.587 * ink.g + 0.114 * ink.b;
+    expect(luminance).toBeLessThan(BLOOM.threshold);
+    expect(luminance).toBeGreaterThan(0.75);
+  });
+
+  it('turns darker while the mouse is on it, and back after; the ✗ never changes', () => {
+    const { view, root } = setup();
+    const sprite = root.children.find((c): c is THREE.Points => c instanceof THREE.Points)!;
+    const map = () => (sprite.material as THREE.PointsMaterial).map;
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    const normal = map();
+    view.setMarkHover('check');
+    const hovered = map();
+    expect(hovered).not.toBe(normal);
+    view.sync(state(game, { x: 5, z: 6, rotation: 0, valid: true })); // a sync keeps the hover look
+    expect(map()).toBe(hovered);
+    view.sync(state(game, { x: 5, z: 6, rotation: 0, valid: false }));
+    const cross = map();
+    expect(cross).not.toBe(hovered);
+    expect(cross).not.toBe(normal);
+    view.setMarkHover(null);
+    expect(map()).toBe(cross);
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    expect(map()).toBe(normal);
+  });
+
+  it('the ✗ (invalid ghost), no ghost, a hidden ghost (screenshot) and a finished round have none', () => {
+    const { view } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: false }));
+    expect(view.checkMark()).toBeNull();
+    view.sync(state(game, null));
+    expect(view.checkMark()).toBeNull();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    view.setGhostVisible(false);
+    expect(view.checkMark()).toBeNull();
+    view.setGhostVisible(true);
+    expect(view.checkMark()).not.toBeNull();
+    view.sync({ ...state(game, { x: 4, z: 6, rotation: 0, valid: true }), screen: 'finished' });
+    expect(view.checkMark()).toBeNull();
+  });
+
+  it('returns a copy: moving it does not move the ✓', () => {
+    const { view } = setup();
+    view.sync(state(game, { x: 4, z: 6, rotation: 0, valid: true }));
+    view.checkMark()!.center.set(0, 0, 0);
+    expect(view.checkMark()!.center.x).toBeCloseTo(4 + fp.w / 2);
   });
 });

@@ -30,7 +30,36 @@ export interface Stage {
    * environment sets it on every apply (a city's night has its own, see envPreset).
    */
   setBloom(bloom: BloomSettings): void;
+  /** Zoom and turn the camera from buttons, the slider and keys (drag, wheel and pinch stay with the controls). */
+  rig: CameraRig;
 }
+
+/**
+ * Camera moves made by the HUD and the keys. Both glide (unless the player prefers reduced motion)
+ * and keep the orbit target where it is, so the pan clamp never has anything to undo.
+ */
+export interface CameraRig {
+  /** How far in the view is: 0 = the farthest (maxDistance), 1 = the closest (minDistance), on a log scale. */
+  zoom(): number;
+  /** Jump to the zoom `share` (clamped to 0..1): the camera slides along its line to the target. */
+  setZoom(share: number): void;
+  /** Glide the zoom by `step` (a share; negative zooms out). Steps pressed during a glide add up. */
+  zoomBy(step: number): void;
+  /** Glide the view `rad` about the target's vertical axis (positive: the azimuth grows). Turns pressed during a turn add up. */
+  turn(rad: number): void;
+  /** Finish the glides in progress at once, on their exact end (a hand on the map does this, so a tap never leaves a turn at an odd angle). */
+  settle(): void;
+  /** Advance the glides to `nowMs`; the stage calls it every frame, before controls.update(). */
+  step(nowMs: number): void;
+}
+
+/** ⟳ and E turn the view by +TURN_STEP, ⟲ and Q by -TURN_STEP. */
+export const TURN_STEP = Math.PI / 4;
+/** ＋ / － (buttons and keys) zoom by this share of the slider. */
+export const ZOOM_STEP = 0.125;
+/** How long a turn and a zoom step glide (reduced motion: no glide). */
+export const TURN_MS = 350;
+const ZOOM_MS = 200;
 
 /** UnrealBloomPass settings: `threshold` is a luminance measured before exposure. */
 export interface BloomSettings { threshold: number; strength: number; radius: number }
@@ -84,6 +113,118 @@ export const CAMERA = {
 const EXPOSURE = 1.4;
 /** The standard bloom: soft halos round glowing parts; lit daytime surfaces stay under its threshold. */
 export const BLOOM: Readonly<BloomSettings> = { threshold: 0.85, strength: 0.5, radius: 0.4 };
+
+const clamp01 = (v: number): number => Math.min(Math.max(v, 0), 1);
+
+/**
+ * Pure: the zoom share (0 = `max` away, 1 = `min` away) of a camera `distance` from its target. Log
+ * scale: every equal slider step multiplies the distance by the same factor, so zooming feels even.
+ */
+export function zoomShareOf(distance: number, min: number = CAMERA.minDistance, max: number = CAMERA.maxDistance): number {
+  const d = Math.min(Math.max(distance, min), max);
+  return clamp01(Math.log(max / d) / Math.log(max / min));
+}
+
+/** Pure: the camera distance of a zoom `share` (clamped to 0..1); the inverse of zoomShareOf. */
+export function distanceOfShare(share: number, min: number = CAMERA.minDistance, max: number = CAMERA.maxDistance): number {
+  return max * (min / max) ** clamp01(share);
+}
+
+const easeInOut = (t: number): number => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const prefersReducedMotion = (): boolean => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+const UP = new THREE.Vector3(0, 1, 0);
+
+export interface CameraRigOptions {
+  /** Default: the live `prefers-reduced-motion: reduce` media query. */
+  reducedMotion?: () => boolean;
+  /** Default: performance.now (the animation loop's clock). */
+  now?: () => number;
+}
+
+/**
+ * The HUD's and the keys' camera moves, on top of OrbitControls. They move the camera only (the
+ * target stays), and a hand on the map (the controls' `start`: a press, the wheel, a pinch) stops
+ * a glide where it is so the gesture takes over. Instant moves update the controls at once.
+ */
+export function createCameraRig(
+  camera: THREE.PerspectiveCamera, controls: OrbitControls, opts: CameraRigOptions = {},
+): CameraRig {
+  const reduced = opts.reducedMotion ?? prefersReducedMotion;
+  const now = opts.now ?? (() => performance.now());
+  const offset = new THREE.Vector3();
+  /** The turn in progress: `total` radians from `start`, `done` of them applied so far. */
+  let turning: { start: number; total: number; done: number } | null = null;
+  let zooming: { start: number; from: number; to: number } | null = null;
+
+  const zoom = (): number => zoomShareOf(controls.getDistance(), controls.minDistance, controls.maxDistance);
+  const moveTo = (share: number): void => {
+    offset.copy(camera.position).sub(controls.target).setLength(distanceOfShare(share, controls.minDistance, controls.maxDistance));
+    camera.position.copy(controls.target).add(offset);
+  };
+  const turnBy = (rad: number): void => {
+    offset.copy(camera.position).sub(controls.target).applyAxisAngle(UP, rad);
+    camera.position.copy(controls.target).add(offset);
+  };
+  const progress = (start: number, ms: number, t: number): number => clamp01((t - start) / ms);
+
+  /** Finish the glides on their exact end (a hand on the map does this: a turn never stops at an odd angle). */
+  const settle = (): void => {
+    if (turning) {
+      turnBy(turning.total - turning.done);
+      turning = null;
+    }
+    if (zooming) {
+      moveTo(zooming.to);
+      zooming = null;
+    }
+    controls.update();
+  };
+  controls.addEventListener('start', settle);
+
+  return {
+    zoom,
+    setZoom(share) {
+      zooming = null;
+      moveTo(clamp01(share));
+      controls.update();
+    },
+    zoomBy(step) {
+      const to = clamp01((zooming?.to ?? zoom()) + step);
+      if (reduced()) {
+        zooming = null;
+        moveTo(to);
+        controls.update();
+        return;
+      }
+      zooming = { start: now(), from: zoom(), to };
+    },
+    turn(rad) {
+      const total = rad + (turning ? turning.total - turning.done : 0);
+      if (reduced()) {
+        turning = null;
+        turnBy(total);
+        controls.update();
+        return;
+      }
+      turning = { start: now(), total, done: 0 };
+    },
+    settle,
+    step(t) {
+      if (turning) {
+        const p = progress(turning.start, TURN_MS, t);
+        const done = turning.total * easeInOut(p);
+        turnBy(done - turning.done);
+        turning.done = done;
+        if (p >= 1) turning = null;
+      }
+      if (zooming) {
+        const p = progress(zooming.start, ZOOM_MS, t);
+        moveTo(zooming.from + (zooming.to - zooming.from) * easeInOut(p));
+        if (p >= 1) zooming = null;
+      }
+    },
+  };
+}
 
 /**
  * AO and bloom are soft, low-frequency effects, so they work on a quarter of the composer's pixels
@@ -145,6 +286,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     camera.position.z += dz;
   });
   controls.update();
+  const rig = createCameraRig(camera, controls);
 
   let width = 1;
   let height = 1;
@@ -213,7 +355,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   const stats = { calls: 0, triangles: 0 };
 
   const stage: Stage = {
-    renderer, scene, camera, controls, canvas,
+    renderer, scene, camera, controls, canvas, rig,
     setQuality(next) {
       const t = TIERS[next];
       renderer.shadowMap.type = t.shadowType;
@@ -259,6 +401,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     // touches the shadow map: shadows are drawn from the rest pose, only when invalidated.
     advanceMotion(dt);
     for (const cb of frameCallbacks) cb(dt, now);
+    rig.step(now);
     controls.update();
     renderer.info.reset();
     render();

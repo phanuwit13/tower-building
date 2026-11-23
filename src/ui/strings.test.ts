@@ -14,14 +14,25 @@ describe('boot fallback text', () => {
 
 describe('floor strings', () => {
   it('the floor drawer labels, verbatim', () => {
-    expect(T.floor.open).toBe('พื้น');
+    expect(T.floor.open).toBe('ปูกระเบื้อง');
     expect(T.floor.eraser).toBe('ยางลบ');
     expect(T.floor.done).toBe('เสร็จ');
-    expect(T.floor.paint).toBe('🖌 ปูพื้น');
+    expect(T.floor.paint).toBe('🖌 ปูกระเบื้อง');
     expect(T.floor.camera).toBe('✋ ขยับกล้อง');
   });
   it('the restart confirm says the floor is cleared too', () => {
     expect(T.confirmRestart).toContain('พื้น');
+  });
+});
+
+describe('toolbar and shortcuts strings', () => {
+  it('the whole-map ground icon says whole map, the floor button says tiles', () => {
+    expect(T.ground.title).toBe('สีพื้นทั้งแผนที่');
+    expect(T.floor.open).toBe('ปูกระเบื้อง');
+  });
+  it('the shortcuts list has every key of the game', () => {
+    const keys = T.shortcuts.rows.flatMap((r) => r.keys);
+    for (const k of ['Enter', 'Space', 'R', '←', '↑', '→', '↓', 'Q', 'E', '+', '-', 'Esc', '?']) expect(keys).toContain(k);
   });
 });
 
@@ -30,7 +41,7 @@ describe('one city per theme', () => {
     expect(T.home).toBe('🏠 เปลี่ยนธีม');
     expect(builtLabel(32)).toBe('สร้างแล้ว 32 ชิ้น');
     expect(T.cityDone).toBe('เมืองเสร็จแล้ว');
-    expect(T.floorsOnly).toBe('ปูพื้นไว้แล้ว');
+    expect(T.floorsOnly).toBe('ปูกระเบื้องไว้แล้ว');
   });
   it('เริ่มใหม่ says only this city starts again; the other themes\' cities stay', () => {
     expect(T.confirmRestart).toContain('เริ่มเมืองนี้ใหม่ไหม?');

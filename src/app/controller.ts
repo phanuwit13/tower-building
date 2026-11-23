@@ -45,6 +45,17 @@ export interface Controller {
   restart(): void; clearAll(): void;
 }
 
+/** How many items after the current one the HUD shows. */
+export const NEXT_COUNT = 4;
+
+/**
+ * Pure: the ids coming after the current item, in the order they will be drawn: `next`, then the
+ * front of the bag. Fewer than `n` when the bag runs short (a refill is not known until it is drawn).
+ */
+export function upcoming(game: Pick<GameState, 'next' | 'bag'>, n = NEXT_COUNT): string[] {
+  return [game.next, ...game.bag].slice(0, n);
+}
+
 const screenOf = (g: GameState | null): AppState['screen'] =>
   g === null ? 'theme-select' : g.status === 'finished' ? 'finished' : 'playing';
 

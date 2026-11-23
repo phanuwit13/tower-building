@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { CDPSession, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, fromMore, test } from './fixtures';
 import { FLOOR_GROUPS, FLOOR_TILES } from '../src/floors';
 import { paintRect, rectCells, type FloorRect } from '../src/game/floors';
 import { demoFullGame } from '../src/game/demo';
@@ -156,8 +156,7 @@ test('เริ่มใหม่ says the floor goes too, and clears it', async
   await page.mouse.click(tap.x, tap.y);
   expect(await savedFloors(page)).toEqual({ [firstTile.id]: [10 * GRID_SIZE + 10] });
 
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.getByRole('button', { name: T.restart }).click();
+  await fromMore(page, T.restart);
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(T.confirmRestart)).toBeVisible();
   await dialog.getByRole('button', { name: T.confirmRestartOk }).click();

@@ -8,27 +8,51 @@ export const T = {
   rotate: 'หมุน',
   place: 'วาง',
   hintTap: 'แตะพื้นเพื่อเลือกที่วาง',
-  settings: 'ตั้งค่า',
   screenshot: 'ถ่ายรูป',
   close: 'ปิด',
   cancel: 'ยกเลิก',
   weather: { title: 'สภาพอากาศ', sunny: 'แดดออก', rain: 'ฝนตก' },
   time: { title: 'ช่วงเวลา', dawn: 'เช้าตรู่', day: 'กลางวัน', dusk: 'หัวค่ำ', night: 'กลางคืน' },
   ground: {
-    title: 'พื้น', grass: 'หญ้า', dirt: 'ดิน', concrete: 'ปูน', sand: 'ทราย', snow: 'หิมะ', wood: 'พื้นไม้', moon: 'พื้นดวงจันทร์',
+    title: 'สีพื้นทั้งแผนที่', grass: 'หญ้า', dirt: 'ดิน', concrete: 'ปูน', sand: 'ทราย', snow: 'หิมะ', wood: 'พื้นไม้', moon: 'พื้นดวงจันทร์',
   },
   quality: { title: 'คุณภาพภาพ', pretty: 'สวย', smooth: 'ลื่น' },
-  /** The floor drawer: [พื้น] opens it; groups and tiles have their own Thai names (src/floors). */
+  /** The floor drawer: [ปูกระเบื้อง] opens it; groups and tiles have their own Thai names (src/floors). */
   floor: {
-    open: 'พื้น', title: 'ปูพื้น', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
-    eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูพื้น', camera: '✋ ขยับกล้อง',
+    open: 'ปูกระเบื้อง', title: 'ปูกระเบื้อง', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
+    eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูกระเบื้อง', camera: '✋ ขยับกล้อง',
+  },
+  /** The camera controls on the right edge: the zoom slider with ＋/－, and ⟲ ⟳ under it. */
+  camera: {
+    zoom: 'ซูม', zoomIn: 'ซูมเข้า', zoomOut: 'ซูมออก',
+    turnLeft: 'หมุนกล้องไปทางซ้าย', turnRight: 'หมุนกล้องไปทางขวา',
+    /** Beside ⟲ ⟳ on a first visit, until the camera is turned once. */
+    dragHint: 'ลากเพื่อหมุนมุมกล้อง',
+  },
+  /** The icon toolbar (top right; down the right edge on a tablet held upright). */
+  toolbar: {
+    name: 'เครื่องมือ', more: 'เมนูเพิ่มเติม', shortcuts: 'ปุ่มลัดบนคีย์บอร์ด',
+  },
+  /** The ⌨️ panel: every key the game answers to. `?` opens it. */
+  shortcuts: {
+    title: 'ปุ่มลัดบนคีย์บอร์ด',
+    note: 'ตอนเปิดหน้าปูกระเบื้อง ปุ่มทั้งหมดนี้จะพัก ยกเว้น Esc (ปิด)',
+    rows: [
+      { keys: ['Enter', 'Space'], does: 'วาง' },
+      { keys: ['R'], does: 'หมุนของ' },
+      { keys: ['←', '↑', '→', '↓'], does: 'เลื่อน' },
+      { keys: ['Q', 'E'], does: 'หมุนกล้อง' },
+      { keys: ['+', '-'], does: 'ซูม' },
+      { keys: ['Esc'], does: 'ปิด / ยกเลิก' },
+      { keys: ['?'], does: 'เปิดหน้านี้' },
+    ],
   },
   /** Back to theme select: every theme keeps its own city, so nothing is lost. */
   home: '🏠 เปลี่ยนธีม',
   /** On a theme select card whose city's round is finished. */
   cityDone: 'เมืองเสร็จแล้ว',
   /** On a theme select card whose city has floor laid but no item yet. */
-  floorsOnly: 'ปูพื้นไว้แล้ว',
+  floorsOnly: 'ปูกระเบื้องไว้แล้ว',
   restart: 'เริ่มใหม่',
   confirmRestart: 'เริ่มเมืองนี้ใหม่ไหม? ของและพื้นที่ปูไว้ในเมืองนี้จะหายไป ส่วนเมืองของธีมอื่นยังอยู่',
   confirmRestartOk: 'เริ่มใหม่',

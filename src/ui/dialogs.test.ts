@@ -8,13 +8,23 @@ const find = (root: HTMLElement, text: string) =>
 
 describe('confirmDialog', () => {
   afterEach(() => { document.body.innerHTML = ''; });
-  it('is an accessible modal and focuses confirm', () => {
+  it('is an accessible modal and focuses ยกเลิก (a stray Space or Enter must not wipe a city)', () => {
     const root = document.body.appendChild(document.createElement('div'));
     void confirmDialog(root, { message: T.confirmRestart, confirmLabel: T.confirmRestartOk });
     const d = root.querySelector('[role="dialog"]')!;
     expect(d.getAttribute('aria-modal')).toBe('true');
     expect(d.textContent).toContain(T.confirmRestart);
-    expect(document.activeElement).toBe(find(root, T.confirmRestartOk));
+    expect(document.activeElement).toBe(find(root, T.cancel));
+  });
+  it('Tab stays inside the dialog', () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    void confirmDialog(root, { message: 'm', confirmLabel: 'ok' });
+    const ok = find(root, 'ok');
+    ok.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(find(root, T.cancel)); // wrapped to the first button
   });
   it('resolves true on confirm and removes dialog', async () => {
     const root = document.createElement('div');

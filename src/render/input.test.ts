@@ -2,8 +2,12 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppState, Controller, FloorUiState } from '../app/controller';
-import { attachInput, pressAction, rayHitsBox, screenArrowToGrid, strokeOnRelease } from './input';
-import type { Stage } from './stage';
+import type { CheckMark } from './city';
+import {
+  attachInput, CHECK_MIN_RADIUS_PX, hitsCheckMark, pressAction, rayHitsBox, screenArrowToGrid, shortcutKey, strokeOnRelease,
+  type InputOptions,
+} from './input';
+import { TURN_STEP, ZOOM_STEP, type Stage } from './stage';
 
 describe('screenArrowToGrid', () => {
   const Q = Math.PI / 2;
@@ -47,7 +51,7 @@ describe('rayHitsBox', () => {
   });
 });
 
-function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } | null) => void) {
+function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } | null) => void, extra: InputOptions = {}) {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0, toJSON() {} });
@@ -67,11 +71,14 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
     addEventListener(_t: string, fn: () => void) { this.listeners.add(fn); },
     removeEventListener(_t: string, fn: () => void) { this.listeners.delete(fn); },
   };
-  const stage = { canvas, camera, controls } as unknown as Stage;
+  const rig = { turn: vi.fn(), zoomBy: vi.fn(), settle: vi.fn() };
+  const stage = { canvas, camera, controls, rig } as unknown as Stage;
   const floor: FloorUiState = { open: false, pick: 'wood-light', tool: 'paint', preview: null };
   const state = { screen: 'playing', game: null, ghost: null, floor } as unknown as AppState;
+  const listeners = new Set<(s: AppState) => void>();
   const c = {
     getState: () => state,
+    subscribe: (fn: (s: AppState) => void) => { listeners.add(fn); return () => void listeners.delete(fn); },
     moveGhost: vi.fn(), rotateGhost: vi.fn(), place: vi.fn(() => true), dragGhostTo: vi.fn(), tapTile: vi.fn(),
     previewFloors: vi.fn((r: FloorUiState['preview']) => { floor.preview = r; }),
     paintFloors: vi.fn(() => { floor.preview = null; }),
@@ -79,8 +86,10 @@ function setup(blocked: () => boolean, onHover?: (t: { tx: number; tz: number } 
   } as unknown as Controller & {
     previewFloors: ReturnType<typeof vi.fn>; paintFloors: ReturnType<typeof vi.fn>; closeFloors: ReturnType<typeof vi.fn>; tapTile: ReturnType<typeof vi.fn>;
   };
-  const dispose = attachInput(stage, c, { isBlocked: blocked, onHover });
-  return { canvas, camera, controls, c, floor, dispose };
+  const dispose = attachInput(stage, c, { isBlocked: blocked, onHover, ...extra });
+  /** The controller announces a new state (as after a key moved the ghost or an item was placed). */
+  const emit = () => { for (const fn of listeners) fn(state); };
+  return { canvas, camera, controls, c, floor, state, rig, dispose, emit, listeners };
 }
 
 describe('attachInput keyboard', () => {
@@ -527,5 +536,379 @@ describe('attachInput floor mode', () => {
     expect(c.rotateGhost).not.toHaveBeenCalled();
     expect(c.place).not.toHaveBeenCalled();
     dispose();
+  });
+});
+
+describe('shortcutKey', () => {
+  const k = (key: string, code = '') => shortcutKey({ key, code });
+  it('names letters in lower case and leaves other keys as they are', () => {
+    expect(k('Q', 'KeyQ')).toBe('q');
+    expect(k('e', 'KeyE')).toBe('e');
+    expect(k('+', 'Equal')).toBe('+');
+    expect(k('Enter', 'Enter')).toBe('Enter');
+    expect(k(' ', 'Space')).toBe(' ');
+    expect(k('ArrowUp', 'ArrowUp')).toBe('ArrowUp');
+  });
+  it('a Thai layout (ๆ on Q, ช on =, ข on -) still names the key under the finger', () => {
+    expect(k('ๆ', 'KeyQ')).toBe('q');
+    expect(k('ำ', 'KeyE')).toBe('e');
+    expect(k('พ', 'KeyR')).toBe('r');
+    expect(k('ช', 'Equal')).toBe('=');
+    expect(k('ข', 'Minus')).toBe('-');
+  });
+  it('a Latin layout keeps the typed letter (AZERTY: the A key is KeyQ but types a)', () => {
+    expect(k('a', 'KeyQ')).toBe('a');
+  });
+});
+
+describe('attachInput camera keys', () => {
+  const press = (key: string, init: KeyboardEventInit = {}, target: EventTarget = document) =>
+    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }));
+
+  it('Q / E turn the view 45 degrees, + = / - zoom by a step', () => {
+    const { rig, dispose } = setup(() => false);
+    press('q');
+    press('E');
+    expect(rig.turn.mock.calls).toEqual([[-TURN_STEP], [TURN_STEP]]);
+    press('+');
+    press('=');
+    press('-');
+    expect(rig.zoomBy.mock.calls).toEqual([[ZOOM_STEP], [ZOOM_STEP], [-ZOOM_STEP]]);
+    dispose();
+  });
+
+  it('holding Q / E turns once (no auto-repeat spin); ＋/－ may repeat', () => {
+    const { rig, dispose } = setup(() => false);
+    press('q');
+    press('q', { repeat: true });
+    press('e', { repeat: true });
+    expect(rig.turn.mock.calls).toEqual([[-TURN_STEP]]);
+    press('+');
+    press('+', { repeat: true });
+    expect(rig.zoomBy).toHaveBeenCalledTimes(2);
+    dispose();
+  });
+
+  it('a press on the map settles a glide first', () => {
+    const { canvas, rig, dispose } = setup(() => false);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10, button: 0, bubbles: true }));
+    expect(rig.settle).toHaveBeenCalled();
+    dispose();
+  });
+
+  it('work with a Thai layout on', () => {
+    const { rig, c, dispose } = setup(() => false);
+    press('ๆ', { code: 'KeyQ' });
+    press('ข', { code: 'Minus' });
+    press('พ', { code: 'KeyR' });
+    expect(rig.turn).toHaveBeenCalledWith(-TURN_STEP);
+    expect(rig.zoomBy).toHaveBeenCalledWith(-ZOOM_STEP);
+    expect(c.rotateGhost).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it('do nothing while an overlay owns the keyboard, with the drawer open, in a field, or with Ctrl (browser zoom)', () => {
+    let blocked = true;
+    const { rig, floor, dispose } = setup(() => blocked);
+    for (const key of ['q', 'e', '+', '-']) press(key);
+    blocked = false;
+    floor.open = true;
+    for (const key of ['q', 'e', '+', '-']) press(key);
+    floor.open = false;
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    for (const key of ['q', 'e', '+', '-']) press(key, {}, field);
+    field.remove();
+    press('+', { ctrlKey: true });
+    press('-', { metaKey: true });
+    expect(rig.turn).not.toHaveBeenCalled();
+    expect(rig.zoomBy).not.toHaveBeenCalled();
+    dispose();
+  });
+});
+
+describe('hitsCheckMark', () => {
+  const camera = new THREE.PerspectiveCamera(40, 800 / 600, 0.1, 100);
+  camera.position.set(16, 13, 16);
+  camera.lookAt(5, 0, 5);
+  camera.updateMatrixWorld(true);
+  const W = 800;
+  const H = 600;
+  const screenOf = (p: THREE.Vector3) => {
+    const v = p.clone().project(camera);
+    return { x: ((v.x + 1) / 2) * W, y: ((1 - v.y) / 2) * H };
+  };
+  const mark = (size: number, at = new THREE.Vector3(5, 2, 5)): CheckMark => ({ center: at, size });
+  const depth = (p: THREE.Vector3) => -p.clone().applyMatrix4(camera.matrixWorldInverse).z;
+
+  it('hits on the ✓ and misses well beside it', () => {
+    const m = mark(2.3);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x, c.y, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x + 80, c.y, m, camera, W, H)).toBe(false);
+    expect(hitsCheckMark(c.x, c.y - 80, m, camera, W, H)).toBe(false);
+  });
+
+  it('a ✓ drawn small (zoomed out) still takes a 48 px finger', () => {
+    const m = mark(0.5);
+    const drawnRadius = (m.size * H) / 4 / depth(m.center);
+    expect(drawnRadius).toBeLessThan(CHECK_MIN_RADIUS_PX);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x + CHECK_MIN_RADIUS_PX - 1, c.y, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x + CHECK_MIN_RADIUS_PX + 2, c.y, m, camera, W, H)).toBe(false);
+  });
+
+  it('a ✓ drawn big (zoomed in) is hit across its whole disc, not beyond', () => {
+    const m = mark(8);
+    const r = (m.size * H) / 4 / depth(m.center); // the drawn disc's radius in px
+    expect(r).toBeGreaterThan(CHECK_MIN_RADIUS_PX + 10);
+    const c = screenOf(m.center);
+    expect(hitsCheckMark(c.x, c.y + r - 1, m, camera, W, H)).toBe(true);
+    expect(hitsCheckMark(c.x, c.y + r + 2, m, camera, W, H)).toBe(false);
+  });
+
+  it('never hits a ✓ behind the camera', () => {
+    const behind = mark(2.3, new THREE.Vector3(30, 20, 30));
+    expect(hitsCheckMark(400, 300, behind, camera, W, H)).toBe(false);
+  });
+});
+
+describe('attachInput: the rotate button beside the ✓', () => {
+  const ptr = (type: string, id: number, x: number, y: number, extra: PointerEventInit = {}) =>
+    new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: y, button: 0, bubbles: true, ...extra });
+  /** A ✓ at (5, 2, 5) and the rotate button at (3, 2, 5), and where the setup camera draws them. */
+  const withMarks = () => {
+    const over: Array<'check' | 'rotate' | null> = [];
+    const s = setup(() => false, undefined, {
+      checkMark: () => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }),
+      rotateMark: () => ({ center: new THREE.Vector3(3, 2, 5), size: 1.9 }),
+      onMarkHover: (m) => over.push(m),
+    });
+    const on = (p: THREE.Vector3) => { const v = p.clone().project(s.camera); return { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 }; };
+    return { ...s, over, check: on(new THREE.Vector3(5, 2, 5)), rot: on(new THREE.Vector3(3, 2, 5)) };
+  };
+
+  it('one tap on it turns the item once: no place, no tap on the map, no drag', () => {
+    const { canvas, c, rot, dispose } = withMarks();
+    canvas.dispatchEvent(ptr('pointerdown', 1, rot.x, rot.y));
+    canvas.dispatchEvent(ptr('pointermove', 1, rot.x + 2, rot.y + 1)); // a finger's wobble
+    window.dispatchEvent(ptr('pointerup', 1, rot.x + 2, rot.y + 1));
+    expect(c.rotateGhost).toHaveBeenCalledTimes(1);
+    expect(c.place).not.toHaveBeenCalled();
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('a mouse over it gets the hand and darkens it; the ✓ and empty map are told apart', () => {
+    const { canvas, rot, check, over, dispose } = withMarks();
+    const mv = (p: { x: number; y: number }) => canvas.dispatchEvent(ptr('pointermove', 1, p.x, p.y, { pointerType: 'mouse', buttons: 0 }));
+    mv(rot);
+    expect(canvas.style.cursor).toBe('pointer');
+    mv(check);
+    mv({ x: rot.x, y: rot.y + 200 });
+    expect(canvas.style.cursor).toBe('');
+    expect(over).toEqual(['rotate', 'check', null]);
+    dispose();
+  });
+
+  it('zoomed out, where the finger-sized hit areas overlap, the nearer centre wins', () => {
+    // Both discs drawn tiny and close together: each centre is inside the other's 24 px minimum.
+    const s = setup(() => false, undefined, {
+      checkMark: () => ({ center: new THREE.Vector3(5, 2, 5), size: 0.2 }),
+      rotateMark: () => ({ center: new THREE.Vector3(5, 2, 5.5), size: 0.2 }),
+    });
+    const on = (p: THREE.Vector3) => { const v = p.clone().project(s.camera); return { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 }; };
+    const check = on(new THREE.Vector3(5, 2, 5));
+    const rot = on(new THREE.Vector3(5, 2, 5.5));
+    expect(Math.hypot(check.x - rot.x, check.y - rot.y)).toBeLessThan(CHECK_MIN_RADIUS_PX);
+    const tap = (p: { x: number; y: number }) => {
+      s.canvas.dispatchEvent(ptr('pointerdown', 1, p.x, p.y));
+      window.dispatchEvent(ptr('pointerup', 1, p.x, p.y));
+    };
+    tap(rot);
+    expect(s.c.rotateGhost).toHaveBeenCalledTimes(1);
+    expect(s.c.place).not.toHaveBeenCalled();
+    tap(check);
+    expect(s.c.place).toHaveBeenCalledTimes(1);
+    expect(s.c.rotateGhost).toHaveBeenCalledTimes(1);
+    s.dispose();
+  });
+
+  it('a drag that starts on it moves the ghost, like one from the ✓', () => {
+    const { canvas, controls, c, rot, dispose } = withMarks();
+    canvas.dispatchEvent(ptr('pointerdown', 1, rot.x, rot.y));
+    expect(controls.enabled).toBe(false);
+    canvas.dispatchEvent(ptr('pointermove', 1, rot.x + 120, rot.y));
+    window.dispatchEvent(ptr('pointerup', 1, rot.x + 120, rot.y));
+    expect(c.dragGhostTo).toHaveBeenCalled();
+    expect(c.rotateGhost).not.toHaveBeenCalled();
+    dispose();
+  });
+});
+
+describe('attachInput: tap the ✓ to place', () => {
+  const ptr = (type: string, id: number, x: number, y: number, extra: PointerEventInit = {}) =>
+    new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: y, button: 0, bubbles: true, ...extra });
+  /** A ✓ at the map point (5, 2, 5) and where the setup camera draws it on the 800 x 600 canvas. */
+  const withCheck = () => {
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, undefined, { checkMark: () => mark });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    return { ...s, at, hide: () => { mark = null; } };
+  };
+
+  it('one tap on the ✓ places once, and neither moves nor drags the ghost', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    canvas.dispatchEvent(ptr('pointermove', 1, at.x + 2, at.y + 1)); // a finger's wobble
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 2, at.y + 1));
+    expect(c.place).toHaveBeenCalledTimes(1);
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(c.dragGhostTo).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('works with the mouse too', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y, { pointerType: 'mouse' }));
+    window.dispatchEvent(ptr('pointerup', 1, at.x, at.y, { pointerType: 'mouse' }));
+    expect(c.place).toHaveBeenCalledTimes(1);
+    expect(c.tapTile).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('a drag that starts on the ✓ moves the ghost (small items sit under the ✓): no place, no camera turn', () => {
+    const { canvas, controls, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    expect(controls.enabled).toBe(false); // the ghost has the gesture, not the camera
+    canvas.dispatchEvent(ptr('pointermove', 1, at.x + 120, at.y));
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 120, at.y));
+    expect(c.dragGhostTo).toHaveBeenCalled();
+    expect(c.place).not.toHaveBeenCalled();
+    expect(c.tapTile).not.toHaveBeenCalled();
+    expect(controls.enabled).toBe(true);
+    dispose();
+  });
+
+  it('the ✓ wins over the ghost body under it: a tap there places once and moves nothing', () => {
+    const catalogOf = (() => ({ items: { box: { footprint: { w: 2, d: 2 } } } })) as unknown as InputOptions['catalogOf'];
+    const ghostBox = () => new THREE.Box3(new THREE.Vector3(4, 0, 4), new THREE.Vector3(6, 3, 6)); // the ✓ point is inside
+    const onGhostBody = (checkMark: InputOptions['checkMark']) => {
+      const s = setup(() => false, undefined, { catalogOf, ghostBox, checkMark });
+      Object.assign(s.state, { game: { themeId: 'school', current: 'box' }, ghost: { x: 4, z: 4, rotation: 0, valid: true } });
+      const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+      const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+      s.canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+      const ghostDrag = !s.controls.enabled;
+      window.dispatchEvent(ptr('pointerup', 1, at.x, at.y));
+      s.dispose();
+      return { ghostDrag, c: s.c };
+    };
+    const without = onGhostBody(() => null); // no ✓ there: the press grabs the ghost
+    expect(without.ghostDrag).toBe(true);
+    const withCheckMark = onGhostBody(() => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }));
+    expect(withCheckMark.ghostDrag).toBe(true); // a press on the ✓ holds the ghost too, so a drag can move it
+    expect(withCheckMark.c.place).toHaveBeenCalledTimes(1);
+    expect(withCheckMark.c.dragGhostTo).not.toHaveBeenCalled();
+    expect(withCheckMark.c.tapTile).not.toHaveBeenCalled();
+  });
+
+  it('while something owns the page (a popover, the shortcuts panel) a tap on the map or on the ✓ does nothing', () => {
+    let blocked = true;
+    const mark: CheckMark = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => blocked, undefined, { checkMark: () => mark });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    for (const [id, p] of [[1, at], [2, { x: at.x + 150, y: at.y + 120 }]] as const) {
+      s.canvas.dispatchEvent(ptr('pointerdown', id, p.x, p.y));
+      window.dispatchEvent(ptr('pointerup', id, p.x, p.y));
+    }
+    expect(s.c.place).not.toHaveBeenCalled();
+    expect(s.c.tapTile).not.toHaveBeenCalled();
+    expect(s.c.dragGhostTo).not.toHaveBeenCalled();
+    blocked = false; // closed: the next tap works as before
+    s.canvas.dispatchEvent(ptr('pointerdown', 3, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 3, at.x, at.y));
+    expect(s.c.place).toHaveBeenCalledTimes(1);
+    s.dispose();
+  });
+
+  it('a tap away from the ✓ still moves the ghost; with the ✗ (no ✓) a tap there moves it too', () => {
+    const { canvas, c, at, hide, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x + 150, at.y + 120));
+    window.dispatchEvent(ptr('pointerup', 1, at.x + 150, at.y + 120));
+    expect(c.tapTile).toHaveBeenCalledTimes(1);
+    hide(); // the ghost turned invalid: the ✗ is not a button
+    canvas.dispatchEvent(ptr('pointerdown', 2, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 2, at.x, at.y));
+    expect(c.tapTile).toHaveBeenCalledTimes(2);
+    expect(c.place).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('two fingers that land on the ✓ (a pinch) never place', () => {
+    const { canvas, c, at, dispose } = withCheck();
+    canvas.dispatchEvent(ptr('pointerdown', 1, at.x, at.y));
+    canvas.dispatchEvent(ptr('pointerdown', 2, at.x + 60, at.y));
+    window.dispatchEvent(ptr('pointerup', 1, at.x, at.y));
+    window.dispatchEvent(ptr('pointerup', 2, at.x + 60, at.y));
+    expect(c.place).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('a mouse over the ✓ gets the hand cursor and no hover preview; off it, the preview is back', () => {
+    const calls: Array<{ tx: number; tz: number } | null> = [];
+    const over: Array<'check' | 'rotate' | null> = [];
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, (t) => calls.push(t && { ...t }), { checkMark: () => mark, onMarkHover: (m) => over.push(m) });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    const at = { x: ((v.x + 1) / 2) * 800, y: ((1 - v.y) / 2) * 600 };
+    const mv = (x: number, y: number) => s.canvas.dispatchEvent(ptr('pointermove', 1, x, y, { pointerType: 'mouse', buttons: 0 }));
+    mv(at.x + 150, at.y + 120);
+    expect(calls.at(-1)).not.toBeNull();
+    expect(s.canvas.style.cursor).toBe('');
+    mv(at.x, at.y);
+    expect(calls.at(-1)).toBeNull();
+    expect(s.canvas.style.cursor).toBe('pointer');
+    mv(at.x + 150, at.y + 120);
+    expect(calls.at(-1)).not.toBeNull();
+    expect(s.canvas.style.cursor).toBe('');
+    mv(at.x, at.y);
+    mark = null; // placed: the ✓ is gone, the camera change re-checks under the still mouse
+    s.controls.listeners.forEach((fn) => fn());
+    expect(s.canvas.style.cursor).toBe('');
+    // The ✓ is told each time the mouse moves on or off it (it darkens), and only on change.
+    expect(over).toEqual(['check', null, 'check', null]);
+    s.dispose();
+  });
+
+  it('the ✓ stops looking hovered when the game moves it out from under a still mouse', async () => {
+    const over: Array<'check' | 'rotate' | null> = [];
+    let mark: CheckMark | null = { center: new THREE.Vector3(5, 2, 5), size: 2.3 };
+    const s = setup(() => false, undefined, { checkMark: () => mark, onMarkHover: (m) => over.push(m) });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    s.canvas.dispatchEvent(ptr('pointermove', 1, ((v.x + 1) / 2) * 800, ((1 - v.y) / 2) * 600, { pointerType: 'mouse', buttons: 0 }));
+    expect(over).toEqual(['check']);
+    mark = { center: new THREE.Vector3(9, 2, 1), size: 2.3 }; // an arrow key moved the ghost away
+    s.emit();
+    s.emit(); // many emits, one re-check
+    expect(over).toEqual(['check']); // after every listener (the city view redraws the ✓ first)
+    await Promise.resolve();
+    expect(over).toEqual(['check', null]);
+    expect(s.canvas.style.cursor).toBe('');
+    s.dispose();
+    expect(s.listeners.size).toBe(0);
+  });
+
+  it('the ✓ stops looking hovered when the mouse leaves the canvas', () => {
+    const over: Array<'check' | 'rotate' | null> = [];
+    const s = setup(() => false, undefined, { checkMark: () => ({ center: new THREE.Vector3(5, 2, 5), size: 2.3 }), onMarkHover: (m) => over.push(m) });
+    const v = new THREE.Vector3(5, 2, 5).project(s.camera);
+    s.canvas.dispatchEvent(ptr('pointermove', 1, ((v.x + 1) / 2) * 800, ((1 - v.y) / 2) * 600, { pointerType: 'mouse', buttons: 0 }));
+    s.canvas.dispatchEvent(ptr('pointerleave', 1, 0, 0, { pointerType: 'mouse', buttons: 0 }));
+    expect(over).toEqual(['check', null]);
+    s.dispose();
   });
 });

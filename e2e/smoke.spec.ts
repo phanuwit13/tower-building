@@ -1,5 +1,5 @@
 import { test as plain } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, fromMore, setTime, test, tool } from './fixtures';
 import { T } from '../src/ui/strings';
 import { school } from '../src/themes/school';
 import { amusement } from '../src/themes/amusement';
@@ -44,22 +44,23 @@ test('storage blocked still playable', async ({ page }) => {
 test('clear returns to theme select', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'โรงเรียน' }).click();
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.getByRole('button', { name: T.clear }).click();
+  await fromMore(page, T.clear);
   await page.getByRole('button', { name: T.confirmClearOk }).click();
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await expect(page.getByRole('button', { name: 'โรงเรียน' })).toBeVisible();
   expect(await savedKeys(page)).toEqual([null, null]);
 });
 
-test('keyboard shortcuts do nothing while settings are open', async ({ page }) => {
+test('keyboard shortcuts do nothing while a toolbar popover is open', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'โรงเรียน' }).click();
   await page.keyboard.press('ArrowRight'); // ghost appears
-  await page.getByRole('button', { name: T.settings }).click();
+  await tool(page, T.ground.title).click();
+  await expect(page.locator('.tb-pop-ground')).toBeVisible();
   await page.keyboard.press('Enter');
   await page.keyboard.press(' ');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape'); // closes the popover, and only that
+  await expect(page.locator('.tb-pop-ground')).toBeHidden();
   await expect(page.getByText(placed(0))).toBeVisible();
 });
 
@@ -121,9 +122,11 @@ test('gallery shows every item of the theme with its Thai name, and no game', as
   await expect(page.getByText(T.pickTheme)).toHaveCount(0);
   await expect(page.getByRole('button', { name: T.place })).toHaveCount(0);
   // lighting stays switchable; the game-only actions are not offered
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.locator('.chip', { hasText: new RegExp(`^${T.time.night}$`) }).click();
-  await expect(page.locator('.chip.selected', { hasText: new RegExp(`^${T.time.night}$`) })).toBeVisible();
+  await setTime(page, T.time.night);
+  await expect(tool(page, T.weather.rain)).toBeVisible();
+  await expect(tool(page, T.ground.title)).toBeVisible();
+  await expect(tool(page, /^คุณภาพภาพ/)).toBeVisible();
+  for (const name of [T.toolbar.more, T.screenshot, T.toolbar.shortcuts]) await expect(tool(page, name)).toHaveCount(0);
   await expect(page.getByRole('button', { name: T.restart })).toHaveCount(0);
   await expect(page.getByRole('button', { name: T.clear })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.length)).toBe(0); // the gallery saves nothing
@@ -221,8 +224,7 @@ test('theme select offers ย่านการค้า and its round starts wi
   await expect(page.getByText(placed(1))).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1.5');
   // clearing the city and starting another theme puts the standard night back
-  await page.getByRole('button', { name: T.settings }).click();
-  await page.getByRole('button', { name: T.clear }).click();
+  await fromMore(page, T.clear);
   await page.getByRole('button', { name: T.confirmClearOk }).click();
   await expect(page.getByText(T.pickTheme)).toBeVisible();
   await page.getByRole('button', { name: 'ชายหาดทะเล' }).click();
