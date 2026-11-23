@@ -28,6 +28,21 @@ describe('parseBatchParam', () => {
     expect(parseBatchParam('zoo-batch-8')).toBeNull();
     expect(parseBatchParam('batch-7')).toBeNull();
   });
+  it('finds the beach batches (c-prefixed files c1-c7) without disturbing the other prefixes', () => {
+    const paths = [1, 2, 3, 4, 5, 6, 7].map((n) => `../themes/beach/batches/c${n}.ts`)
+      .concat([1, 2, 3, 4, 5, 6].map((n) => `../themes/school/batches/b${n}.ts`), [1, 2, 3, 4, 5, 6].map((n) => `../themes/amusement/batches/a${n}.ts`),
+        [1, 2, 3, 4, 5, 6, 7].map((n) => `../themes/zoo/batches/z${n}.ts`));
+    for (let n = 1; n <= 7; n++) expect(parseBatchParam(`beach-batch-${n}`, paths)).toEqual({ theme: 'beach', n });
+    expect(parseBatchParam('beach-batch-8', paths)).toBeNull();
+    expect(parseBatchParam('batch-6', paths)).toEqual({ theme: 'school', n: 6 });
+    expect(parseBatchParam('amusement-batch-6', paths)).toEqual({ theme: 'amusement', n: 6 });
+    expect(parseBatchParam('zoo-batch-7', paths)).toEqual({ theme: 'zoo', n: 7 });
+  });
+  it('knows the real beach has seven batches', () => {
+    expect(parseBatchParam('beach-batch-1')).toEqual({ theme: 'beach', n: 1 });
+    expect(parseBatchParam('beach-batch-7')).toEqual({ theme: 'beach', n: 7 });
+    expect(parseBatchParam('beach-batch-8')).toBeNull();
+  });
   it('ignores everything else', () => {
     for (const p of [null, '', 'school', 'amusement', 'floors', 'batch-0', 'batch-7', 'batch-10', 'batch-', 'batch-1x', 'Batch-1', ' batch-1',
       'amusement-batch-0', 'amusement-batch-7', 'Amusement-batch-1', '-batch-1', 'amusement-batch', 'amusement_batch-1', 'a-b-batch-1']) {

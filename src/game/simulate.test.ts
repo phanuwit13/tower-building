@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FootprintMix } from './types';
-import { AMUSEMENT_MIX, DEFAULT_MIX, ZOO_MIX } from '../themes/mix';
+import { AMUSEMENT_MIX, BEACH_MIX, DEFAULT_MIX, ZOO_MIX } from '../themes/mix';
 import { catalogFromMix, planningPlacer, randomPlacer, simulateRounds } from './simulate';
 
 // 20 x 20 rounds are long (~140 items), so 120 rounds keep this to about 2 s a mix on its own; in the
@@ -18,6 +18,7 @@ const MIXES: [string, FootprintMix, number][] = [
   ['school', DEFAULT_MIX, 50],
   ['amusement', AMUSEMENT_MIX, 53],
   ['zoo', ZOO_MIX, 60],
+  ['beach', BEACH_MIX, 60],
 ];
 
 for (const [theme, mix, size] of MIXES) {
