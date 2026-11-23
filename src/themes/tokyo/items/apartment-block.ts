@@ -17,10 +17,10 @@ const BAYS = [-0.82, 0, 0.82];
 const CLOTHES: PaletteColor[] = ['pink', 'skyBlue', 'sunYellow', 'white', 'lime'];
 
 const GLOWS: PaletteColor[] = ['orange', 'teal', 'windowWarm', 'pink'];
-let winCount = 0;
 /** A window like the stock one, but its night glow cycles through softer colours (orange, teal, warm, pink). */
 function glassWindow(kit: StyleKit, o: { at: [number, number, number]; facing: Facing; w: number; h: number; panes?: number; frame?: PaletteColor }): Part[] {
-  const glow = GLOWS[winCount++ % GLOWS.length];
+  // picked from the window's own position, so every build gives the same geometry
+  const glow = GLOWS[Math.abs(Math.round(o.at[1] * 10 + o.at[2] * 7 + (o.facing === 'x+' ? 0 : 3))) % GLOWS.length];
   const alongX = o.facing === 'x+' || o.facing === 'x-';
   const sign = o.facing === 'x+' || o.facing === 'z+' ? 1 : -1;
   const size = (w: number, h: number, d: number): [number, number, number] => (alongX ? [d, h, w] : [w, h, d]);

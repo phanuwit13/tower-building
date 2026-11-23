@@ -72,15 +72,22 @@ export const item: ItemModel = {
       kit.torus(0.05, 0.015, [px + 0.04, PAD + 1.05, pz + 0.13], 'teal', { radialSegments: 4, tubularSegments: 8, glow: true, rotate: [0, Math.PI / 2, 0] }),
       kit.cylinder(0.13, 0.13, 0.025, [px + 0.04, PAD + 1.17, pz], 'white', { segments: 8 }),
     );
-    // neon rice-ball sign on the roof, facing +x: a lime triangle with a dark wrap
-    const sx = FRONT - 0.12;
-    const sy = WALL_TOP + 0.45;
+    // neon rice-ball sign on the roof: a lime triangle (stacked bars) with a dark wrap, on a board
+    // tilted back about 30 degrees so it faces up towards the camera
+    const T = 0.5;
+    const ox = FRONT - 0.2;
+    const oy = WALL_TOP + 0.55;
+    const oz = 0.25;
+    const at = (u: number, v: number, d: number): [number, number, number] => [ox + d * Math.cos(T) - v * Math.sin(T), oy + v * Math.cos(T) + d * Math.sin(T), oz + u];
+    const sbox = (w: number, h: number, d: number, u: number, v: number, dd: number, c: PaletteColor, glow = false): Part =>
+      kit.box([d, h, w], at(u, v, dd), c, { rotate: [0, 0, T], ...(glow ? { glow: true } : {}) });
     parts.push(
-      kit.box([0.05, 0.62, 0.7], [sx, sy, 0.2], 'charcoal'),
-      kit.wedge([0.5, 0.42, 0.04], [sx + 0.045, sy + 0.04, 0.2], 'lime', { rotate: [0, Math.PI / 2, 0], glow: true }),
-      kit.box([0.03, 0.1, 0.2], [sx + 0.05, sy - 0.2, 0.2], 'navy'),
-      kit.cylinder(0.02, 0.02, 0.5, [sx, WALL_TOP + 0.2, 0.5], 'charcoal', { segments: 4 }),
+      sbox(0.95, 0.85, 0.05, 0, 0, 0, 'charcoal'),
+      kit.box([0.04, 0.35, 0.04], [ox + 0.1, WALL_TOP + 0.2, oz - 0.3], 'charcoal'),
+      kit.box([0.04, 0.35, 0.04], [ox + 0.1, WALL_TOP + 0.2, oz + 0.3], 'charcoal'),
     );
+    for (let k = 0; k < 5; k++) parts.push(sbox(0.72 - k * 0.15, 0.12, 0.04, 0, -0.26 + k * 0.12, 0.045, 'lime', true));
+    parts.push(sbox(0.3, 0.14, 0.03, 0, -0.3, 0.07, 'navy'));
     return kit.finish(parts);
   },
 };
