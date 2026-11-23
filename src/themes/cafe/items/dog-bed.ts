@@ -40,7 +40,6 @@ export const item: ItemModel = {
       kit.sphere(1, [0.14, SEAT + 0.03, 0.06], 'cream', { detail: 0, scale: [0.065, 0.04, 0.045] }),
       kit.sphere(0.05, [-0.2, SEAT + 0.07, 0.1], 'woodDark', { detail: 0 }), // short tail
       kit.sphere(0.04, [-0.24, SEAT + 0.12, 0.13], 'woodDark', { detail: 0 }),
-      // a red chew bone? no: a little ball in the bed
       kit.sphere(0.05, [0.2, SEAT + 0.05, -0.2], 'sunYellow', { detail: 1 }),
     ];
     for (const s of [-1, 1]) {
