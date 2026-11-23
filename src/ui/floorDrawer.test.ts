@@ -127,4 +127,26 @@ describe('floor drawer', () => {
     expect(document.activeElement).toBe(btn(root, T.floor.done));
     opener.remove();
   });
+
+  it('the tools show a line icon before their name (no emoji); the groups have the top row, [ยางลบ] [เสร็จ] sit beside the swatches', () => {
+    const { root, drawer } = setup();
+    drawer.update(view());
+    for (const name of [T.floor.paint, T.floor.camera]) {
+      const b = btn(root, name);
+      expect(b.querySelector('svg.line-icon'), name).not.toBeNull();
+      expect(b.textContent, name).not.toMatch(/\p{Extended_Pictographic}/u);
+    }
+    const head = root.querySelector('.floor-drawer-head')!;
+    expect([...head.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['ไม้', 'หิน-อิฐ']);
+    const body = root.querySelector('.floor-drawer-body')!;
+    expect(body.contains(btn(root, T.floor.eraser))).toBe(true);
+    expect(body.contains(btn(root, T.floor.done))).toBe(true);
+  });
+
+  it('keeps room for the biggest group\'s swatches, so the bar keeps its width from group to group', () => {
+    const root = document.body.appendChild(document.createElement('div'));
+    const h = { onPick: vi.fn(), onEraser: vi.fn(), onTool: vi.fn(), onGroup: vi.fn(), onDone: vi.fn() };
+    createFloorDrawer(root, [{ id: 'wood', name: 'ไม้', tiles: [1, 2] }, { id: 'stone', name: 'หิน-อิฐ', tiles: [1, 2, 3, 4, 5] }], h);
+    expect(root.querySelector<HTMLElement>('.floor-swatches')!.style.getPropertyValue('--slots')).toBe('5');
+  });
 });

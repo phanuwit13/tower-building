@@ -912,3 +912,40 @@ describe('attachInput: tap the ✓ to place', () => {
     s.dispose();
   });
 });
+
+describe('attachInput: the mouse cursor in floor mode', () => {
+  const mouse = (type: string, x: number, y: number, extra: PointerEventInit = {}) =>
+    new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', clientX: x, clientY: y, button: 0, buttons: 0, bubbles: true, ...extra });
+
+  it('the ✋ tool shows an open hand over the map and a closed one while it drags; 🖌 and the item rules keep the arrow', () => {
+    const { canvas, floor, emit, dispose } = setup(() => false);
+    canvas.dispatchEvent(mouse('pointermove', 400, 310));
+    expect(canvas.style.cursor).toBe('');
+    floor.open = true;
+    floor.tool = 'camera';
+    emit();
+    expect(canvas.style.cursor).toBe('grab');
+    canvas.dispatchEvent(mouse('pointerdown', 400, 310, { buttons: 1 }));
+    expect(canvas.style.cursor).toBe('grabbing');
+    canvas.dispatchEvent(mouse('pointermove', 450, 310, { buttons: 1 }));
+    expect(canvas.style.cursor).toBe('grabbing');
+    window.dispatchEvent(mouse('pointerup', 450, 310));
+    expect(canvas.style.cursor).toBe('grab');
+    canvas.dispatchEvent(mouse('pointerdown', 400, 310, { button: 2, buttons: 2 })); // a right-drag pans: closed hand too
+    expect(canvas.style.cursor).toBe('grabbing');
+    window.dispatchEvent(mouse('pointerup', 400, 310, { button: 2 }));
+    expect(canvas.style.cursor).toBe('grab');
+    floor.tool = 'paint';
+    emit();
+    expect(canvas.style.cursor).toBe('');
+    floor.tool = 'camera';
+    emit();
+    floor.open = false;
+    emit();
+    expect(canvas.style.cursor).toBe('');
+    floor.open = true;
+    emit();
+    dispose();
+    expect(canvas.style.cursor).toBe('');
+  });
+});

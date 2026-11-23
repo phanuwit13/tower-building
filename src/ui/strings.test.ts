@@ -17,8 +17,8 @@ describe('floor strings', () => {
     expect(T.floor.open).toBe('ปูกระเบื้อง');
     expect(T.floor.eraser).toBe('ยางลบ');
     expect(T.floor.done).toBe('เสร็จ');
-    expect(T.floor.paint).toBe('🖌 ปูกระเบื้อง');
-    expect(T.floor.camera).toBe('✋ ขยับกล้อง');
+    expect(T.floor.paint).toBe('ปูกระเบื้อง'); // the drawer draws a line icon before each tool's name
+    expect(T.floor.camera).toBe('ขยับกล้อง');
   });
   it('the restart confirm says the floor is cleared too', () => {
     expect(T.confirmRestart).toContain('พื้น');

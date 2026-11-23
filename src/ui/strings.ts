@@ -20,7 +20,7 @@ export const T = {
   /** The floor drawer: [ปูกระเบื้อง] opens it; groups and tiles have their own Thai names (src/floors). */
   floor: {
     open: 'ปูกระเบื้อง', title: 'ปูกระเบื้อง', groups: 'หมวดพื้น', tools: 'เครื่องมือ',
-    eraser: 'ยางลบ', done: 'เสร็จ', paint: '🖌 ปูกระเบื้อง', camera: '✋ ขยับกล้อง',
+    eraser: 'ยางลบ', done: 'เสร็จ', paint: 'ปูกระเบื้อง', camera: 'ขยับกล้อง',
   },
   /** The camera controls on the right edge: the zoom slider with ＋/－, and ⟲ ⟳ under it. */
   camera: {

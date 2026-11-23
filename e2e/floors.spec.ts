@@ -24,13 +24,20 @@ const groupName = (id: string) => FLOOR_GROUPS.find((g) => g.id === id)!.name;
 const RECT: FloorRect = { x0: 7, z0: 7, x1: 9, z1: 10 }; // 3 x 4, in the middle of the screen
 
 /**
+ * How much of the bottom of the screen the open drawer covers, as main.ts reckons it: its height plus the
+ * gap it floats above the edge (read from layout, so a drawer still sliding in counts in full); 0 while hidden.
+ */
+const drawerCover = (page: Page): Promise<number> => page.locator('.floor-drawer').evaluate((e: HTMLElement) =>
+  (e.hidden ? 0 : e.offsetHeight + (parseFloat(getComputedStyle(e).bottom) || 0)));
+
+/**
  * Where a cell's centre is on screen while the camera is still in its starting view. With the floor
- * drawer open the view rides up by half the drawer's height (viewShiftPx), so that is taken off.
+ * drawer open the view rides up by half of what the drawer covers (viewShiftPx), so that is taken off.
  */
 async function cellOnScreen(page: Page, tx: number, tz: number): Promise<{ x: number; y: number }> {
   const { width, height } = page.viewportSize()!;
-  const box = await page.locator('.floor-drawer').boundingBox(); // null while the drawer is hidden
-  const shift = box ? viewShiftPx(box.height, height) : 0;
+  const cover = await drawerCover(page);
+  const shift = cover ? viewShiftPx(cover, height) : 0;
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, width / height, 0.5, 300);
   const centre = new THREE.Vector3(GRID_SIZE / 2, 0, GRID_SIZE / 2);
   camera.position.copy(centre).addScaledVector(CAMERA.direction, CAMERA.distance);
@@ -51,7 +58,8 @@ async function savedFloors(page: Page): Promise<Record<string, number[]>> {
   return out;
 }
 
-const floorsButton = (page: Page) => page.getByRole('button', { name: T.floor.open, exact: true });
+/** The HUD's [ปูกระเบื้อง] that opens the drawer (the drawer's paint tool has the same name; only one shows at a time). */
+const floorsButton = (page: Page) => page.locator('.hud').getByRole('button', { name: T.floor.open, exact: true });
 const drawerOf = (page: Page) => page.getByRole('region', { name: T.floor.title });
 
 async function startSchool(page: Page): Promise<void> {
@@ -126,9 +134,10 @@ test('floor drawer: the view rides up with the drawer, so a cell that the drawer
   const drawer = drawerOf(page);
   await expect(drawer).toBeVisible();
   const { height } = page.viewportSize()!;
-  const top = height - (await drawer.boundingBox())!.height; // the drawer is docked at the bottom (it may still be sliding in)
-  // A cell that only the shift brings clear of the drawer: under it in the starting view, above it now.
-  const shift = viewShiftPx((await drawer.boundingBox())!.height, height);
+  const cover = await drawerCover(page);
+  const top = height - cover; // the drawer's top edge (it may still be sliding in)
+  // A cell that only the shift brings clear of the drawer: under its top edge in the starting view, above it now.
+  const shift = viewShiftPx(cover, height);
   let cellIndex = -1;
   let corner = { x: 0, y: 0 };
   for (let tz = GRID_SIZE - 1; tz >= 0 && cellIndex < 0; tz--) {
@@ -139,7 +148,8 @@ test('floor drawer: the view rides up with the drawer, so a cell that the drawer
 
   await page.mouse.move(corner.x, corner.y);
   await expect(page.locator('.floor-count')).toHaveText(floorCountLabel(1)); // the hover preview
-  await page.mouse.move(corner.x, top + 20); // over the drawer: gone
+  const bar = (await drawer.boundingBox())!;
+  await page.mouse.move(bar.x + bar.width / 2, top + 20); // over the drawer (it floats in the middle): gone
   await expect(page.locator('.floor-count')).toBeHidden();
   await page.mouse.click(corner.x, corner.y);
   expect(await savedFloors(page)).toEqual({ [firstTile.id]: [cellIndex] });
@@ -276,20 +286,48 @@ test.describe('touch (iPad 1024 x 768)', () => {
   });
 });
 
-test('floor drawer: the same height in every group, every swatch the same size (labels on two lines do not shift the layout)', async ({ page }) => {
+test('floor drawer: a bar floating clear of the screen edges, the same size in every group, every swatch the same size (labels on two lines do not shift the layout)', async ({ page }) => {
   await startSchool(page);
   await floorsButton(page).click();
   const drawer = drawerOf(page);
+  const { width, height } = page.viewportSize()!;
   const sizes: string[] = [];
   for (const g of FLOOR_GROUPS) {
     const tab = drawer.getByRole('button', { name: g.name, exact: true });
     if (!(await tab.isVisible())) continue;
     await tab.click();
-    const box = await drawer.boundingBox();
+    await expect(drawer).toHaveCSS('opacity', '1'); // slid in
+    const box = (await drawer.boundingBox())!;
+    expect(box.x, g.name).toBeGreaterThan(8);
+    expect(box.x + box.width, g.name).toBeLessThan(width - 8);
+    expect(Math.abs(box.x + box.width / 2 - width / 2), `${g.name}: centred`).toBeLessThan(2);
+    expect(height - (box.y + box.height), `${g.name}: off the bottom edge`).toBeGreaterThan(8);
     const swatches = await drawer.locator('.floor-swatch').evaluateAll((els) =>
       els.map((e) => { const r = e.getBoundingClientRect(); const img = e.querySelector('img')!.getBoundingClientRect(); return `${Math.round(r.height)}/${Math.round(img.top - r.top)}`; }));
     expect(new Set(swatches).size, `${g.name}: ${swatches.join(' ')}`).toBe(1);
-    sizes.push(`${Math.round(box!.height)}|${swatches[0]}`);
+    sizes.push(`${Math.round(box.width)}x${Math.round(box.height)}|${swatches[0]}`);
   }
   expect(new Set(sizes).size, sizes.join(' ')).toBe(1);
+});
+
+test('floor drawer: the tools have line icons, and with ✋ the mouse over the map is an open hand, a closed one while it drags', async ({ page }) => {
+  await startSchool(page);
+  await floorsButton(page).click();
+  const drawer = drawerOf(page);
+  for (const name of [T.floor.paint, T.floor.camera]) await expect(drawer.getByRole('button', { name, exact: true }).locator('svg')).toBeVisible();
+  const canvas = page.locator('canvas').first();
+  const cursor = () => canvas.evaluate((e) => getComputedStyle(e).cursor);
+  const p = await cellOnScreen(page, 10, 8);
+  await page.mouse.move(p.x, p.y);
+  expect(await cursor()).toBe('auto');
+  await drawer.getByRole('button', { name: T.floor.camera, exact: true }).click();
+  await page.mouse.move(p.x, p.y);
+  expect(await cursor()).toBe('grab');
+  await page.mouse.down();
+  expect(await cursor()).toBe('grabbing');
+  await page.mouse.move(p.x + 80, p.y);
+  await page.mouse.up();
+  expect(await cursor()).toBe('grab');
+  await drawer.getByRole('button', { name: T.floor.done, exact: true }).click();
+  expect(['auto', 'pointer']).toContain(await cursor()); // the item rules again (a hand only over the ✓)
 });
