@@ -10,6 +10,6 @@ import { info } from './info';
 /**
  * The Amusement park theme (สวนสนุก). Order = rows of docs/game/items-amusement.md: the doc lists
  * the batches one after another and each batch lists its items in doc order (its test checks).
- * Not in THEMES yet: it is registered once every batch is built.
+ * Registered in THEMES (src/themes/registry.ts).
  */
 export const amusement: ThemeDef = { ...info, items: [...a1, ...a2, ...a3, ...a4, ...a5, ...a6] };

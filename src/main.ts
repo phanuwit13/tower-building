@@ -70,10 +70,11 @@ function detectQuality(): QualityTier {
 
 function boot(app: HTMLElement): void {
   const realStore = browserStore(() => window.localStorage);
-  // `?demo=full`: a full School map for measuring, played in memory; the player's save is left alone.
+  // `?demo=full`: a full map of any theme (`&theme=<id>`, School when missing or unknown) for measuring, played in memory; the player's save is left alone.
   const demo = parseDemoParam(location.search);
-  const schoolCatalog = getCatalog(school.id);
-  const store = demo && schoolCatalog ? demoStore(realStore, schoolCatalog, demo.seed) : realStore;
+  const demoTheme = (demo && getTheme(demo.theme)) || school;
+  const demoCatalog = getCatalog(demoTheme.id);
+  const store = demo && demoCatalog ? demoStore(realStore, demoCatalog, demo.seed, demoTheme.defaultGround) : realStore;
   const floorGroups = drawerGroups(FLOOR_GROUPS, FLOOR_TILES);
   const controller = createController({
     store, getTheme, getCatalog, seed: randomSeed, detectQuality, isFloorTile, firstFloorTile: floorGroups[0]?.tiles[0]?.id,
