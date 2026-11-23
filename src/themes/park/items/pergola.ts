@@ -49,7 +49,7 @@ export const item: ItemModel = {
     for (const z of [-0.45, 0.45]) {
       parts.push(kit.box([0.26, 0.26, 0.06], [0.02, 0.13, z], 'wood'));
     }
-    // a path stone and a flower pot
+    // a paving strip under the bench
     parts.push(kit.box([0.5, 0.025, 1.7], [0.05, 0.0125 + 0.0075, 0], 'stone'));
     return kit.finish(parts);
   },
