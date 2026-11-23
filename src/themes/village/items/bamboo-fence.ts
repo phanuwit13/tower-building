@@ -32,7 +32,7 @@ export const item: ItemModel = {
     for (const z of [-HALF, HALF]) {
       parts.push(
         kit.cylinder(0.065, 0.075, 0.98, [0, 0.49, z], 'woodDark', { segments: 6 }),
-        kit.sphere(0.07, [0, 1.0, z], 'sunYellow', { detail: 0 }),
+        kit.cylinder(0.07, 0.08, 0.04, [0, 1.0, z], 'wood', { segments: 6 }), // a plain wooden cap
       );
     }
     // The vine: a thread of leaves wandering up and down the front, with flowers among them.
