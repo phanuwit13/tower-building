@@ -157,6 +157,12 @@ function boot(app: HTMLElement): void {
     controller.restart();
   });
   const clear = () => askAndRun(T.confirmClear, T.confirmClearOk, () => controller.clearAll());
+  // 🏠: straight back to theme select (every theme keeps its own city); the keyboard lands on the city just left.
+  const goHome = (): void => {
+    const from = controller.getState().game?.themeId;
+    controller.goToThemeSelect();
+    if (from) themeSelect.focus(from);
+  };
 
   const shareEnv = createBrowserShareEnv();
   const screenshot = async (): Promise<void> => {
@@ -197,6 +203,7 @@ function boot(app: HTMLElement): void {
     onScreenshot: () => void screenshot(),
     onRestart: () => void restart(),
     onView: () => { viewing = true; endScreen.hide(); },
+    onHome: goHome,
   });
 
   // Floor drawer: the shown group is the drawer's own; thumbnails are drawn the first time a group shows.
@@ -239,6 +246,7 @@ function boot(app: HTMLElement): void {
       if (picked) floorGroup = picked.group; // open on the group of the tile in hand
       controller.openFloors();
     },
+    onHome: goHome,
   });
 
   const card = (itemId: string, themeId: string): ItemCard | null => {
@@ -255,7 +263,7 @@ function boot(app: HTMLElement): void {
     cityView.setGhostVisible(!floorOpen(s));
     refreshHover();
 
-    if (s.screen === 'theme-select') themeSelect.show(); else themeSelect.hide();
+    if (s.screen === 'theme-select') themeSelect.show(s.cities); else themeSelect.hide();
 
     const game = s.game;
     const playing = s.screen === 'playing' && game !== null;

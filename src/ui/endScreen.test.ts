@@ -6,7 +6,7 @@ import { T } from './strings';
 describe('end screen', () => {
   const setup = () => {
     const root = document.createElement('div');
-    const h = { onScreenshot: vi.fn(), onRestart: vi.fn(), onView: vi.fn() };
+    const h = { onScreenshot: vi.fn(), onRestart: vi.fn(), onView: vi.fn(), onHome: vi.fn() };
     return { root, h, es: createEndScreen(root, h) };
   };
   it('shows Thai title and summary, no Game Over', () => {
@@ -20,7 +20,8 @@ describe('end screen', () => {
     const { root, h, es } = setup();
     es.show({ items: 1, tilesUsed: 1, percent: 1 });
     const click = (t: string) => ([...root.querySelectorAll('button')].find((b) => b.textContent === t) as HTMLButtonElement).click();
-    click(T.screenshot); click(T.restart); click(T.viewCity);
+    click(T.screenshot); click(T.restart); click(T.viewCity); click(T.home);
+    expect(h.onHome).toHaveBeenCalledOnce();
     expect(h.onScreenshot).toHaveBeenCalledOnce();
     expect(h.onRestart).toHaveBeenCalledOnce();
     expect(h.onView).toHaveBeenCalledOnce();

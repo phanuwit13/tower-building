@@ -5,7 +5,8 @@ import { fitsAnywhere, rotatedFootprint } from './grid';
 
 export const SAVE_KEY = 'city-builder/save';
 export const QUALITY_KEY = 'city-builder/quality';
-export const SAVE_VERSION = 2;
+/** 3: every theme keeps its own city. 1 and 2 held one city (2 added floors); they load as that theme's city. */
+export const SAVE_VERSION = 3;
 
 export interface KeyValueStore {
   getItem(k: string): string | null;
@@ -13,18 +14,36 @@ export interface KeyValueStore {
   removeItem(k: string): void;
 }
 
+/**
+ * What is saved: every theme's own city, keyed by its theme id (a city's `themeId` is its key), and
+ * the theme being played (`current`, null while the child is on theme select).
+ */
+export interface SavedCities {
+  current: string | null;
+  cities: Readonly<Record<string, GameState>>;
+}
+
+export const NO_CITIES: SavedCities = { current: null, cities: {} };
+
 const ROTATIONS: readonly number[] = [0, 1, 2, 3] satisfies readonly Rotation[];
 
-export function saveGame(store: KeyValueStore, state: GameState): boolean {
+/** The stored text: one versioned record holding every city. */
+export function encodeSave(saved: SavedCities): string {
+  return JSON.stringify({ v: SAVE_VERSION, current: saved.current, cities: saved.cities });
+}
+
+/** Every city in one write: a save is all or nothing, so the cities never get out of step. */
+export function saveCities(store: KeyValueStore, saved: SavedCities): boolean {
   try {
-    store.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VERSION, state }));
+    store.setItem(SAVE_KEY, encodeSave(saved));
     return true;
   } catch {
     return false;
   }
 }
 
-export function clearGame(store: KeyValueStore): void {
+/** Deletes every theme's city (the quality preference stays). */
+export function clearCities(store: KeyValueStore): void {
   try {
     store.removeItem(SAVE_KEY);
   } catch {
@@ -50,17 +69,47 @@ export function loadQuality(store: KeyValueStore): QualityTier | null {
   }
 }
 
-export function loadGame(
+/**
+ * The saved cities; nothing (theme select) when there is no save or it cannot be read. Each city is
+ * checked on its own: a corrupt one, or one of a theme that no longer exists, is dropped and the
+ * others load. A one-city save (v1, v2) becomes that theme's city, the theme being played.
+ */
+export function loadCities(
   store: KeyValueStore,
+  getCatalog: (themeId: string) => Catalog | undefined,
+  isFloorTile: (id: string) => boolean,
+): SavedCities {
+  try {
+    const raw = store.getItem(SAVE_KEY);
+    if (raw === null) return NO_CITIES;
+    const data: unknown = JSON.parse(raw);
+    if (!isRecord(data)) return NO_CITIES;
+    if (data.v === 1 || data.v === 2) {
+      const city = checkedCity(data.state, getCatalog, isFloorTile);
+      return city ? { current: city.themeId, cities: { [city.themeId]: city } } : NO_CITIES;
+    }
+    if (data.v !== SAVE_VERSION || !isRecord(data.cities)) return NO_CITIES;
+    const cities: Record<string, GameState> = {};
+    for (const [id, s] of Object.entries(data.cities)) {
+      const city = checkedCity(s, getCatalog, isFloorTile);
+      // a city filed under another theme's id is as broken as any other (an unknown id has no catalog)
+      if (city && city.themeId === id) cities[id] = city;
+    }
+    const current = typeof data.current === 'string' && Object.hasOwn(cities, data.current) ? data.current : null;
+    return { current, cities };
+  } catch {
+    return NO_CITIES;
+  }
+}
+
+/** One city, or null when it is broken in any way: whatever goes wrong stays with this city. */
+function checkedCity(
+  s: unknown,
   getCatalog: (themeId: string) => Catalog | undefined,
   isFloorTile: (id: string) => boolean,
 ): GameState | null {
   try {
-    const raw = store.getItem(SAVE_KEY);
-    if (raw === null) return null;
-    const data: unknown = JSON.parse(raw);
-    if (!isRecord(data) || (data.v !== 1 && data.v !== SAVE_VERSION)) return null;
-    return validateState(data.state, getCatalog, isFloorTile);
+    return validateState(s, getCatalog, isFloorTile);
   } catch {
     return null;
   }

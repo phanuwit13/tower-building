@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isFloorTile } from '../floors';
 import { memoryStore } from '../app/browserStore';
 import { getCatalog } from '../themes/registry';
-import { loadGame, loadQuality, QUALITY_KEY, SAVE_KEY } from '../game/save';
+import { loadCities, loadQuality, QUALITY_KEY, SAVE_KEY } from '../game/save';
 import { demoStore, overlayText, parseDemoParam } from './debug';
 
 describe('parseDemoParam', () => {
@@ -28,7 +28,9 @@ describe('parseDemoParam', () => {
 describe('demoStore', () => {
   it('plays any registered theme on its ground', () => {
     const store = demoStore(memoryStore({}), getCatalog('amusement')!, 3, 'concrete');
-    const game = loadGame(store, getCatalog, isFloorTile);
+    const saved = loadCities(store, getCatalog, isFloorTile);
+    expect(saved.current).toBe('amusement');
+    const game = saved.cities.amusement;
     expect(game?.themeId).toBe('amusement');
     expect(game?.settings.ground).toBe('concrete');
     expect(game?.placements.length).toBeGreaterThan(50);
@@ -37,7 +39,7 @@ describe('demoStore', () => {
   it('holds a full demo round and the real quality preference, and never writes to the real store', () => {
     const real = memoryStore({ [QUALITY_KEY]: 'smooth', [SAVE_KEY]: 'the player\'s own city' });
     const store = demoStore(real, getCatalog('school')!, 7);
-    const game = loadGame(store, getCatalog, isFloorTile);
+    const game = loadCities(store, getCatalog, isFloorTile).cities.school;
     expect(game?.placements.length).toBeGreaterThan(100);
     expect(loadQuality(store)).toBe('smooth');
     store.setItem(SAVE_KEY, 'changed');

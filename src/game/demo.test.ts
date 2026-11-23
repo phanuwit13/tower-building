@@ -4,7 +4,7 @@ import { school } from '../themes/school';
 import { demoFullGame } from './demo';
 import { buildOccupancy, canPlace, fillStats, nearestFreeSpot } from './grid';
 import { placeCurrent } from './game';
-import { loadGame, saveGame, type KeyValueStore } from './save';
+import { loadCities, saveCities, type KeyValueStore } from './save';
 import { FLOOR_TILES, isFloorTile } from '../floors';
 import { GRID_SIZE, type SceneSettings } from './types';
 
@@ -35,10 +35,10 @@ describe('demoFullGame floors', () => {
 describe('demoFullGame', () => {
   const game = demoFullGame(catalog, settings, 1234);
 
-  it('is a valid save: loadGame accepts it unchanged, still playing', () => {
+  it('is a valid save: loadCities accepts it unchanged, still playing', () => {
     const store = memStore();
-    expect(saveGame(store, game)).toBe(true);
-    const loaded = loadGame(store, getCatalog, isFloorTile);
+    expect(saveCities(store, { current: 'school', cities: { school: game } })).toBe(true);
+    const loaded = loadCities(store, getCatalog, isFloorTile).cities.school;
     expect(loaded).toEqual(game);
     expect(loaded?.status).toBe('playing');
   });

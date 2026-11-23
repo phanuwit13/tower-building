@@ -6,7 +6,7 @@ import { paintRect, rectCells, type FloorRect } from '../src/game/floors';
 import { demoFullGame } from '../src/game/demo';
 import { placeCurrent } from '../src/game/game';
 import { buildOccupancy, nearestFreeSpot } from '../src/game/grid';
-import { SAVE_KEY, SAVE_VERSION } from '../src/game/save';
+import { encodeSave, SAVE_KEY } from '../src/game/save';
 import { GRID_SIZE, type GameState } from '../src/game/types';
 import { CAMERA } from '../src/render/stage';
 import { viewShiftPx } from '../src/render/viewShift';
@@ -40,11 +40,11 @@ async function cellOnScreen(page: Page, tx: number, tz: number): Promise<{ x: nu
   return { x: ((p.x + 1) / 2) * width, y: ((1 - p.y) / 2) * height - shift };
 }
 
-/** The saved floors: cell indices per tile id. */
+/** The School city's saved floors: cell indices per tile id. */
 async function savedFloors(page: Page): Promise<Record<string, number[]>> {
   const floors = await page.evaluate((k) => {
     const raw = localStorage.getItem(k);
-    return raw ? (JSON.parse(raw) as { state: { floors: (string | null)[] } }).state.floors : null;
+    return raw ? (JSON.parse(raw) as { cities: { school?: { floors: (string | null)[] } } }).cities.school?.floors ?? null : null;
   }, SAVE_KEY);
   const out: Record<string, number[]> = {};
   floors?.forEach((id, i) => { if (id) (out[id] ??= []).push(i); });
@@ -179,7 +179,7 @@ test('after the round has finished, [พื้น] is there once the end screen 
   expect(finished.status).toBe('finished');
 
   await page.goto('/');
-  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, JSON.stringify({ v: SAVE_VERSION, state: finished })]);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, encodeSave({ current: 'school', cities: { school: finished } })]);
   await page.reload();
   await expect(page.getByText(T.endTitle)).toBeVisible();
   await page.getByRole('button', { name: T.viewCity }).click();
@@ -191,7 +191,7 @@ test('after the round has finished, [พื้น] is there once the end screen 
   const expected: Record<string, number[]> = {};
   paintRect(finished.floors, RECT, firstTile.id).forEach((id, i) => { if (id) (expected[id] ??= []).push(i); });
   expect(await savedFloors(page)).toEqual(expected);
-  const saved = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)!).state as GameState, SAVE_KEY);
+  const saved = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)!).cities.school as GameState, SAVE_KEY);
   expect(saved.status).toBe('finished');
   expect(saved.placements).toEqual(finished.placements);
 });

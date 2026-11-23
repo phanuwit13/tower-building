@@ -63,7 +63,7 @@ const state = (floors: (string | null)[] | null, floor: Partial<AppState['floor'
   screen: 'playing',
   game: floors ? ({ themeId: 'school', floors } as unknown as AppState['game']) : null,
   ghost: null, rotation: 0, quality: 'smooth', saveFailed: false,
-  floor: { open: false, pick: 'eraser', tool: 'paint', preview: null, ...floor },
+  floor: { open: false, pick: 'eraser', tool: 'paint', preview: null, ...floor }, cities: {},
 });
 
 describe('floor layer', () => {

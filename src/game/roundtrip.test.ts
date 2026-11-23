@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { newGame, placeCurrent } from './game';
 import { nearestFreeSpot, buildOccupancy } from './grid';
-import { loadGame, saveGame, type KeyValueStore } from './save';
+import { loadCities, saveCities, type KeyValueStore } from './save';
 import { GRID_SIZE, type Catalog, type GameState, type SceneSettings } from './types';
 
 const settings: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass' };
@@ -30,8 +30,8 @@ function memStore(): KeyValueStore {
 
 function roundTrips(state: GameState): void {
   const store = memStore();
-  expect(saveGame(store, state)).toBe(true);
-  expect(loadGame(store, getCatalog, () => true)).toEqual(state);
+  expect(saveCities(store, { current: state.themeId, cities: { [state.themeId]: state } })).toBe(true);
+  expect(loadCities(store, getCatalog, () => true)).toEqual({ current: state.themeId, cities: { [state.themeId]: state } });
 }
 
 for (const seed of [1, 2, 3, 42, 99]) {

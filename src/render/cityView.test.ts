@@ -30,7 +30,7 @@ function setup() {
 const state = (game: GameState | null, ghost: AppState['ghost'] = null): AppState => ({
   screen: game ? (game.status === 'finished' ? 'finished' : 'playing') : 'theme-select',
   game, ghost, rotation: 0, quality: 'smooth', saveFailed: false,
-  floor: { open: false, pick: 'eraser', tool: 'paint', preview: null },
+  floor: { open: false, pick: 'eraser', tool: 'paint', preview: null }, cities: {},
 });
 
 /** Place the current item at the first spot it fits. */
