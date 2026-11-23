@@ -6,7 +6,7 @@ import { cafe } from './index';
 
 describe('cafe theme', () => {
   it('is ร้านคาเฟ่ ☕ on wood, indoors, with a bright warm night', () => {
-    expect(cafe).toMatchObject({ id: 'cafe', name: 'ร้านคาเฟ่', emoji: '☕', defaultGround: 'wood', nightGlow: 1.75, indoor: true });
+    expect(cafe).toMatchObject({ id: 'cafe', name: 'ร้านคาเฟ่', emoji: '☕', defaultGround: 'wood', nightGlow: 1.75, indoor: true, room: 'cafe' });
   });
   it('the doc lists 60 items in seven batches, k1 to k7', () => {
     expect(CAFE_DOC.rows.size).toBe(60);

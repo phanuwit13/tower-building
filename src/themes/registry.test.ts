@@ -4,7 +4,8 @@ import { DEFAULT_MIX } from './mix';
 import { getStyleKit } from '../models/kit';
 import { validateTheme } from '../models/validate';
 import { THEMES, getCatalog, getTheme } from './registry';
-import { clampNightGlow } from './types';
+import { info as hospitalInfo } from './hospital/info';
+import { clampNightGlow, roomLookOf } from './types';
 
 interface DocItem { id: string; name: string; footprint: string }
 function docItems(): DocItem[] {
@@ -19,7 +20,7 @@ function docItems(): DocItem[] {
 }
 
 describe('registry', () => {
-  // Builds every item of every theme (seven themes, ~410 items): past the default 5 s when every worker is busy.
+  // Builds every item of every theme (nine themes, ~530 items): past the default 5 s when every worker is busy.
   it('every theme passes validation', () => {
     const kit = getStyleKit();
     for (const t of THEMES) expect(validateTheme(t, kit, { minItems: 50 })).toEqual([]);
@@ -55,14 +56,24 @@ describe('registry', () => {
 });
 
 describe('nightGlow', () => {
-  it('the shopping district and the café are registered with their bright nights; the other themes keep the standard one', () => {
-    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village']);
+  it('the shopping district, the café and the hospital are registered with their bright nights; the other themes keep the standard one', () => {
+    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market', 'cafe', 'village', 'park', 'hospital']);
     expect(getTheme('market')!.nightGlow).toBe(1.5);
     expect(getTheme('cafe')!.nightGlow).toBeGreaterThan(1);
-    for (const t of THEMES.filter((x) => x.id !== 'market' && x.id !== 'cafe')) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
+    expect(getTheme('hospital')!.nightGlow).toBe(1.5);
+    const bright = ['market', 'cafe', 'hospital'];
+    for (const t of THEMES.filter((x) => !bright.includes(x.id))) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
   });
-  it('only the café is indoors', () => {
-    expect(THEMES.filter((t) => t.indoor).map((t) => t.id)).toEqual(['cafe']);
+  it('the café and the hospital are indoors, each with its own room', () => {
+    expect(THEMES.filter((t) => t.indoor).map((t) => [t.id, t.room ?? 'cafe'])).toEqual([['cafe', 'cafe'], ['hospital', 'hospital']]);
+  });
+  it('roomLookOf: the room an indoor theme shows (the café\'s when it names none); none outdoors', () => {
+    expect(roomLookOf(getTheme('cafe'))).toBe('cafe');
+    expect(roomLookOf(hospitalInfo)).toBe('hospital');
+    expect(roomLookOf({ indoor: true })).toBe('cafe');
+    for (const t of THEMES.filter((x) => !x.indoor)) expect(roomLookOf(t), t.id).toBeNull();
+    expect(roomLookOf({ indoor: false, room: 'hospital' })).toBeNull(); // a look without walls is no room
+    expect(roomLookOf(undefined)).toBeNull(); // the theme select backdrop
   });
   it('clampNightGlow holds it to 1–2 and treats missing or broken as 1', () => {
     expect([undefined, NaN, Infinity, 0, -3, 1, 1.5, 2, 5].map(clampNightGlow)).toEqual([1, 1, 1, 1, 1, 1, 1.5, 2, 2]);

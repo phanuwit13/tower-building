@@ -8,6 +8,8 @@ import { beach } from '../src/themes/beach';
 import { market } from '../src/themes/market';
 import { cafe } from '../src/themes/cafe';
 import { village } from '../src/themes/village';
+import { park } from '../src/themes/park';
+import { hospital } from '../src/themes/hospital';
 import { FLOOR_TILES } from '../src/floors';
 import { LEGACY_SAVE_KEY, SAVE_KEY } from '../src/game/save';
 
@@ -244,14 +246,16 @@ test('the demo of ย่านการค้า is lit with its night glow; ano
   await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
 });
 
-test('theme select offers ร้านคาเฟ่: its round starts indoors with a café item; another theme is outdoors, and the café city is kept', async ({ page }) => {
+test('theme select offers ร้านคาเฟ่: its round starts indoors (in the café room) with a café item; another theme is outdoors, and the café city is kept', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false'); // the theme select backdrop
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'none');
   await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
   await expect(page.getByText(placed(0))).toBeVisible();
   const name = await page.getByTestId('current-name').textContent();
   expect(cafe.items.map((i) => i.name)).toContain(name);
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'cafe');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(page.getByText(placed(1))).toBeVisible();
@@ -260,11 +264,13 @@ test('theme select offers ร้านคาเฟ่: its round starts indoors 
   await page.getByRole('button', { name: 'ชายหาดทะเล' }).click();
   await expect(page.getByText(placed(0))).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'none');
   // back to the café: its city, indoors
   await page.getByRole('button', { name: T.home }).click();
   await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
   await expect(page.getByText(placed(1))).toBeVisible();
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'cafe');
 });
 
 test('theme select offers หมู่บ้าน and its round starts with a village item, outdoors with the standard night', async ({ page }) => {
@@ -275,6 +281,29 @@ test('theme select offers หมู่บ้าน and its round starts with a v
   expect(village.items.map((i) => i.name)).toContain(name);
   await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
   await expect(page.locator('#app')).toHaveAttribute('data-night-glow', '1');
+});
+
+test('theme select offers สวนสาธารณะ and its round starts with a park item, outdoors', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'สวนสาธารณะ' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(park.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'false');
+});
+
+test('theme select offers โรงพยาบาล: its round starts indoors in the hospital room with a hospital item', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'โรงพยาบาล' }).click();
+  await expect(page.getByText(placed(0))).toBeVisible();
+  const name = await page.getByTestId('current-name').textContent();
+  expect(hospital.items.map((i) => i.name)).toContain(name);
+  await expect(page.locator('#app')).toHaveAttribute('data-indoor', 'true');
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'hospital');
+  // the café keeps its own room
+  await page.getByRole('button', { name: T.home }).click();
+  await page.getByRole('button', { name: 'ร้านคาเฟ่' }).click();
+  await expect(page.locator('#app')).toHaveAttribute('data-room', 'cafe');
 });
 
 test('a saved School city still loads with every theme registered', async ({ page }) => {

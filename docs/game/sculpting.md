@@ -261,8 +261,8 @@ Not checked, but expected:
 - No weapons, no blood, no scary medical imagery.
 - No royal portraits or royal imagery, and no religious shrines or Buddha images, unless the owner asks for them.
 - The Thai flag appears only on a pole, at full mast (see `flagpole.ts`).
-- Hospital (Stage 2): no red cross on white. Use a green cross, a heart or an "H".
-- No real brand names or logos. There are no textures, so there is no written text: let shapes and colours tell the story. A single letter built from boxes, like the hospital "H", is fine.
+- Hospital (Stage 2): no red cross on white. Use a heart with a plus in teal or green, or a green plus in a circle (the pharmacy); no letters, not even an "H".
+- No real brand names or logos. There are no textures, so there is no written text: let shapes and colours tell the story. Not even a single letter built from boxes: signs are pictures and icons.
 
 ## 10. Checking your work
 
