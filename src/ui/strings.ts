@@ -48,7 +48,7 @@ export const T = {
     ],
   },
   /** Back to theme select: every theme keeps its own city, so nothing is lost. */
-  home: '🏠 เปลี่ยนธีม',
+  home: 'เปลี่ยนธีม',
   /** On a theme select card whose city's round is finished. */
   cityDone: 'เมืองเสร็จแล้ว',
   /** On a theme select card whose city has floor laid but no item yet. */

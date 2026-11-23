@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SceneSettings } from '../game/types';
 import { installPointerFocusReturn } from './focus';
 import { T } from './strings';
-import { createToolbar, LONG_PRESS_MS, nextTime, TIME_ICON, type ToolbarHandlers } from './toolbar';
+import { ICONS } from './icons';
+import { createToolbar, LONG_PRESS_MS, nextTime, QUALITY_ICON, TIME_ICON, type ToolbarHandlers } from './toolbar';
+
+/** The path data a toolbar icon draws. */
+const drawn = (icon: Element) => [...icon.querySelectorAll('svg path')].map((p) => p.getAttribute('d'));
 
 const scene: SceneSettings = { weather: 'sunny', time: 'day', ground: 'grass' };
 const handlers = (): Required<ToolbarHandlers> => ({
@@ -29,10 +33,29 @@ describe('toolbar', () => {
     byName(/^ช่วงเวลา/).click();
     expect(h.onTime).toHaveBeenCalledWith('dusk');
     tb.update({ settings: { ...scene, time: 'night' }, quality: 'pretty' });
-    expect(root.querySelector('.tb-time .tb-icon')!.textContent).toBe(TIME_ICON.night);
+    expect(drawn(root.querySelector('.tb-time .tb-icon')!)).toEqual(TIME_ICON.night);
     expect(byName(/^ช่วงเวลา/).getAttribute('aria-label')).toBe(`${T.time.title}: ${T.time.night}`);
     byName(/^ช่วงเวลา/).click();
     expect(h.onTime).toHaveBeenLastCalledWith('dawn');
+  });
+
+  it('every button draws a line icon (no emoji), hidden from screen readers; time and quality follow the state', () => {
+    const { root, tb } = setup();
+    tb.update({ settings: { ...scene, time: 'day' }, quality: 'smooth' });
+    const icons = [...root.querySelectorAll('.tb-btn .tb-icon')];
+    expect(icons.length).toBeGreaterThanOrEqual(7);
+    for (const icon of icons) {
+      expect(icon.textContent).toBe(''); // nothing but the svg
+      expect(icon.querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+      expect(drawn(icon).length).toBeGreaterThan(0);
+    }
+    expect(drawn(root.querySelector('.tb-time .tb-icon')!)).toEqual(ICONS.sun);
+    expect(drawn(root.querySelector('.tb-quality .tb-icon')!)).toEqual(QUALITY_ICON.smooth);
+    expect(drawn(root.querySelector('.tb-rain .tb-icon')!)).toEqual(ICONS.rain);
+    expect(drawn(root.querySelector('.tb-ground .tb-icon')!)).toEqual(ICONS.groundFill);
+    // four times of day, two qualities: each its own picture
+    expect(new Set(Object.values(TIME_ICON).map((p) => p.join())).size).toBe(4);
+    expect(new Set(Object.values(QUALITY_ICON).map((p) => p.join())).size).toBe(2);
   });
 
   it('every icon button has a Thai aria-label, a title and a label', () => {
@@ -130,7 +153,7 @@ describe('toolbar', () => {
   it('update writes the DOM only when something shown changed', () => {
     const { root, tb } = setup();
     const icon = root.querySelector('.tb-time .tb-icon')!;
-    const writes = vi.spyOn(icon, 'textContent', 'set');
+    const writes = vi.spyOn(icon, 'replaceChildren');
     tb.update({ settings: { ...scene }, quality: 'pretty' });
     tb.update({ settings: { ...scene }, quality: 'pretty' });
     expect(writes).not.toHaveBeenCalled();

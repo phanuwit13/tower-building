@@ -98,7 +98,10 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   const hud = el('div', { class: 'hud' }, [
     el('div', { class: 'hud-top' }, [
       // 🏠 above the item cards, not beside them: a tablet held upright (768 px) has no room for both in one row
-      el('div', { class: 'hud-left' }, [button(T.home, h.onHome, 'btn-home'), cards]),
+      el('div', { class: 'hud-left' }, [
+        el('button', { class: 'btn-home', attrs: { type: 'button' }, onClick: h.onHome }, [lineIcon(ICONS.home), el('span', { text: T.home })]),
+        cards,
+      ]),
       placed,
     ]),
     hint,
