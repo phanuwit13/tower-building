@@ -22,7 +22,7 @@ export const tile: FloorTile = {
     let n = 0;
     for (const [z0, z1, xs] of BANDS) {
       for (let i = 0; i + 1 < xs.length; i++) {
-        const h = 0.0055 + ((n * 7) % 5) * 0.0004; // 0.0055 .. 0.0071
+        const h = 0.005 + ((n * 7) % 5) * 0.0004; // 0.005 .. 0.0066, top at most 0.0146
         const x0 = xs[i] + GAP, x1 = xs[i + 1] - GAP;
         parts.push(kit.box([x1 - x0, h, z1 - z0 - 2 * GAP], [(x0 + x1) / 2, BASE_H + h / 2, (z0 + z1) / 2], COLORS[n % COLORS.length]));
         n++;

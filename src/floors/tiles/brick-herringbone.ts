@@ -4,12 +4,12 @@ import type { FloorTile } from '../types';
 const BASE_H = 0.008; // the mortar
 const BRICK_H = 0.007; // top at 0.015, the most a tile may rise
 const U = 0.25; // one grid cell; a brick is 2 x 1 cells
-const GAP = 0.01; // mortar inset on every side that is not the cell edge
+const GAP = 0.01; // mortar inset on every side, the cell edge included, so a joint shows across cells
 
-/** A brick covers the grid cells [c0, c1] x [r0, r1] (inclusive, 0..3); its sides on the cell edge run flush so the halves join into one brick across it. */
+/** A brick covers the grid cells [c0, c1] x [r0, r1] (inclusive, 0..3); every side is inset by GAP, so cut halves meet their other half across the cell edge with a joint like any other. */
 const brick = (parts: Part[], c0: number, c1: number, r0: number, r1: number, kit: Parameters<FloorTile['build']>[0], color: 'red' | 'terracotta') => {
-  const x0 = -0.5 + c0 * U + (c0 === 0 ? 0 : GAP), x1 = -0.5 + (c1 + 1) * U - (c1 === 3 ? 0 : GAP);
-  const z0 = -0.5 + r0 * U + (r0 === 0 ? 0 : GAP), z1 = -0.5 + (r1 + 1) * U - (r1 === 3 ? 0 : GAP);
+  const x0 = -0.5 + c0 * U + GAP, x1 = -0.5 + (c1 + 1) * U - GAP;
+  const z0 = -0.5 + r0 * U + GAP, z1 = -0.5 + (r1 + 1) * U - GAP;
   parts.push(kit.box([x1 - x0, BRICK_H, z1 - z0], [(x0 + x1) / 2, BASE_H + BRICK_H / 2, (z0 + z1) / 2], color));
 };
 
