@@ -4,6 +4,7 @@ import type { Placement } from '../game/types';
 import type { AppState, GhostState } from '../app/controller';
 import type { StyleKit } from '../models/kit';
 import type { ThemeDef } from '../themes/types';
+import { ICONS } from '../ui/icons';
 import { chunkOf, createBatch, placementMatrix, placementTransform, planBatch, type BatchItem } from './batch';
 import type { Stage } from './stage';
 
@@ -15,6 +16,8 @@ export { placementTransform }; // the gallery and tests place items with it
  * cannot, the whole item turns a strong red, drawn more opaque: a see-through red over yellow-green
  * grass or sand otherwise blends to orange. The ✓/✗ markers use deeper shades so their white glyph
  * stays readable; the ✓ darkens further while the mouse is on it (it can be clicked).
+ * Beside the ✓/✗ floats a blue rotate button (also on a ghost that cannot go there: turning it may
+ * make it fit), darker blue under the mouse.
  */
 export const GHOST_VALID = 0x7ff5b5;
 export const GHOST_INVALID = 0xff2a4d;
@@ -69,8 +72,48 @@ const MARK_LINE = 8;
 /** The drawn disc's diameter (ring included) as a share of the marker's square. */
 const MARK_DISC = (2 * MARK_R + MARK_LINE) / MARK_PX;
 const MARK_SIZE = 2.4;
+/** The rotate button: a little smaller than the ✓ (placing stays the main action), blue = an action that is not placing. */
+const ROT_SIZE = 2;
+export const ROT_COLOR = 0x2f6fde;
+export const ROT_HOVER = 0x1b4aa6;
+/** Centre to centre, ✓ to rotate button, in Points size units: the two radii plus a small gap. */
+const ROT_OFFSET = ((MARK_SIZE + ROT_SIZE) * MARK_DISC) / 2 + 0.3;
+/** Icon scale on the marker canvas: the 24-unit icon grid drawn 60 px wide inside the 116 px disc. */
+const ICON_SCALE = 2.5;
 
-function markTexture(glyph: string, color: number): THREE.CanvasTexture {
+type Ink = (g: CanvasRenderingContext2D, ink: string) => void;
+const glyph = (text: string): Ink => (g, ink) => {
+  g.fillStyle = ink;
+  g.font = 'bold 76px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, 64, 70);
+};
+const lineArt = (paths: readonly string[]): Ink => (g, ink) => {
+  g.save();
+  g.translate(MARK_PX / 2 - 12 * ICON_SCALE, MARK_PX / 2 - 12 * ICON_SCALE);
+  g.scale(ICON_SCALE, ICON_SCALE);
+  g.strokeStyle = ink;
+  g.lineWidth = 2.5;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (const d of paths) g.stroke(new Path2D(d));
+  g.restore();
+};
+
+/**
+ * Where the rotate button is drawn: beside the ✓/✗ at `anchor`, on its left as `camera` sees it,
+ * the same screen gap at any distance (a Points size of s spans s × tan(fov / 2) world units).
+ */
+export function rotateMarkAt(anchor: THREE.Vector3, camera: THREE.Camera, out = new THREE.Vector3()): THREE.Vector3 {
+  const persp = camera as THREE.PerspectiveCamera;
+  const unit = persp.isPerspectiveCamera ? Math.tan(THREE.MathUtils.degToRad(persp.fov) / 2) / persp.zoom : 1;
+  const right = cameraRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+  return out.copy(anchor).addScaledVector(right, -ROT_OFFSET * unit);
+}
+const cameraRight = new THREE.Vector3();
+
+function markTexture(color: number, draw: Ink): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = MARK_PX;
   const g = c.getContext('2d');
@@ -83,11 +126,7 @@ function markTexture(glyph: string, color: number): THREE.CanvasTexture {
     g.strokeStyle = ink;
     g.lineWidth = MARK_LINE;
     g.stroke();
-    g.fillStyle = ink;
-    g.font = 'bold 76px sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(glyph, 64, 70);
+    draw(g, ink);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -99,6 +138,8 @@ function markTexture(glyph: string, color: number): THREE.CanvasTexture {
  * PointsMaterial size units: on screen it is size × (canvas height / 2) / depth px across.
  */
 export interface CheckMark { center: THREE.Vector3; size: number }
+/** The two buttons floating over the ghost. */
+export type GhostMark = 'check' | 'rotate';
 
 export interface CityView {
   sync(s: AppState): void;
@@ -106,6 +147,8 @@ export interface CityView {
   ghostBox(): THREE.Box3 | null;
   /** The ✓ over a valid ghost, as a tap target; null when none is shown (no ghost, the ✗, hidden for a screenshot). */
   checkMark(): CheckMark | null;
+  /** The rotate button beside the ✓/✗ as `camera` sees it, as a tap target; null when no ghost is shown. */
+  rotateMark(camera: THREE.Camera): CheckMark | null;
   /**
    * The faint mouse-hover preview of `itemId` at `p` (no marker, no shadow); null hides it.
    * Independent of the locked ghost; hidden too while a capture asked to hide the ghost.
@@ -113,8 +156,8 @@ export interface CityView {
   setHover(h: { themeId: string; itemId: string; p: GhostState } | null): void;
   /** Hide/show the ghost, its outline and its marker (e.g. for a screenshot). Persists across sync. */
   setGhostVisible(v: boolean): void;
-  /** The mouse is on the ✓: draw it darker, as a button under the pointer. */
-  setCheckHover(on: boolean): void;
+  /** The mouse is on the ✓ or the rotate button (or neither): draw that one darker, as a button under the pointer. */
+  setMarkHover(mark: GhostMark | null): void;
   /** How long the last change to the placed items took to apply (ms); undefined before the first. */
   lastBuildMs(): number | undefined;
 }
@@ -160,9 +203,11 @@ export function createCityView(
     color: GHOST_VALID, transparent: true, opacity: OPACITY.valid.fill, depthWrite: false,
   });
   const lineMat = new THREE.LineBasicMaterial({ color: GHOST_VALID });
-  const okTex = markTexture('✓', MARK_VALID);
-  const noTex = markTexture('✗', MARK_INVALID);
-  const okHoverTex = markTexture('✓', MARK_HOVER);
+  const okTex = markTexture(MARK_VALID, glyph('✓'));
+  const noTex = markTexture(MARK_INVALID, glyph('✗'));
+  const okHoverTex = markTexture(MARK_HOVER, glyph('✓'));
+  const rotTex = markTexture(ROT_COLOR, lineArt(ICONS.rotateItem));
+  const rotHoverTex = markTexture(ROT_HOVER, lineArt(ICONS.rotateItem));
   // A one-vertex Points billboard rather than a Sprite: GTAOPass hides Points but renders Sprites as dark quads.
   const spriteMat = new THREE.PointsMaterial({
     map: okTex, size: MARK_SIZE, sizeAttenuation: true, depthTest: false, depthWrite: false, transparent: true,
@@ -193,6 +238,23 @@ export function createCityView(
   root.add(ghost);
   root.add(sprite);
   sprite.visible = false;
+  // The rotate button: placed each frame beside the ✓ as the drawing camera sees it (it turns with the view).
+  const rotMat = new THREE.PointsMaterial({
+    map: rotTex, size: ROT_SIZE, sizeAttenuation: true, depthTest: false, depthWrite: false, transparent: true,
+  });
+  const rotSprite = new THREE.Points(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3)),
+    rotMat,
+  );
+  rotSprite.name = 'rotate-mark';
+  rotSprite.frustumCulled = false;
+  rotSprite.renderOrder = 10;
+  rotSprite.visible = false;
+  rotSprite.onBeforeRender = (_r, _s, camera) => {
+    rotateMarkAt(sprite.position, camera, rotSprite.position);
+    rotSprite.updateMatrixWorld();
+  };
+  root.add(rotSprite);
 
   // Hover preview: its own fainter materials, model and group; same looks as the ghost.
   const hoverLook = fadedLook(HOVER_OPACITY.valid.body);
@@ -218,12 +280,16 @@ export function createCityView(
   let wanted = false; // the game state wants a ghost on screen
   let valid = false; // ...and it can be placed where it is (the ✓, not the ✗)
   let suppressed = false; // ...but a capture asked to hide it
-  let checkHover = false; // the mouse is on the ✓
-  const applyMark = (): void => { spriteMat.map = !valid ? noTex : checkHover ? okHoverTex : okTex; };
+  let markHover: GhostMark | null = null; // the mouse is on the ✓ or the rotate button
+  const applyMark = (): void => {
+    spriteMat.map = !valid ? noTex : markHover === 'check' ? okHoverTex : okTex;
+    rotMat.map = markHover === 'rotate' ? rotHoverTex : rotTex;
+  };
   const box = new THREE.Box3();
   const applyVisibility = (): void => {
     ghost.visible = wanted && !suppressed;
     sprite.visible = wanted && !suppressed;
+    rotSprite.visible = wanted && !suppressed;
     hover.visible = hoverWanted && !suppressed;
   };
 
@@ -367,13 +433,14 @@ export function createCityView(
     setHover,
     ghostBox: () => (wanted ? box.clone() : null),
     checkMark: () => (wanted && valid && !suppressed ? { center: sprite.position.clone(), size: MARK_SIZE * MARK_DISC } : null),
+    rotateMark: (camera) => (wanted && !suppressed ? { center: rotateMarkAt(sprite.position, camera), size: ROT_SIZE * MARK_DISC } : null),
     setGhostVisible(v) {
       suppressed = !v;
       applyVisibility();
     },
-    setCheckHover(on) {
-      if (on === checkHover) return;
-      checkHover = on;
+    setMarkHover(mark) {
+      if (mark === markHover) return;
+      markHover = mark;
       applyMark();
     },
     lastBuildMs: () => buildMs,

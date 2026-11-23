@@ -2,6 +2,7 @@ import { button, el } from './dom';
 import { focusReturn } from './focus';
 import { NEXT_COUNT } from '../app/controller';
 import { placedLabel, T } from './strings';
+import { ICONS, lineIcon } from './icons';
 
 export interface ItemCard { name: string; size: string; thumb: string | null }
 export interface HudView {
@@ -81,8 +82,12 @@ export function createHud(root: HTMLElement, h: HudHandlers): { update(v: HudVie
   ]);
   const placed = el('div', { class: 'hud-placed' });
   const hint = el('div', { class: 'hud-hint', attrs: { role: 'status' } });
-  const rotate = button(T.rotate, h.onRotate, 'btn-rotate');
-  const place = button(T.place, h.onPlace, 'btn-place');
+  const rotate = el('button', { class: 'btn-rotate', attrs: { type: 'button' }, onClick: h.onRotate }, [
+    lineIcon(ICONS.rotateItem), el('span', { text: T.rotate }),
+  ]);
+  const place = el('button', { class: 'btn-place', attrs: { type: 'button' }, onClick: h.onPlace }, [
+    lineIcon(ICONS.check), el('span', { text: T.place }),
+  ]);
   const restart = button(T.restart, h.onRestart, 'btn-restart');
   restart.hidden = true;
   const floors = el('button', { class: 'btn-floors', attrs: { type: 'button' }, onClick: h.onFloors }, [

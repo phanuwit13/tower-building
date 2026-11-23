@@ -2,6 +2,7 @@ import type { SeenHints } from '../app/hints';
 import { TURN_STEP, ZOOM_STEP, type Stage } from '../render/stage';
 import { el } from './dom';
 import { T } from './strings';
+import { ICONS, lineIcon } from './icons';
 
 /**
  * A camera move past this many radians (azimuth or tilt) from where the page started counts as the
@@ -16,31 +17,10 @@ export interface CameraControlsView {
   visible: boolean;
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-/** Line icons on a 24 px grid in the button's text colour: no font has to carry ⟲ ⟳ ＋ －. */
-const ICONS = {
-  zoomIn: ['M12 5v14', 'M5 12h14'],
-  zoomOut: ['M5 12h14'],
-  turnLeft: ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'],
-  turnRight: ['M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8', 'M21 3v5h-5'],
-} as const;
-
-function icon(paths: readonly string[]): SVGSVGElement {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  for (const d of paths) {
-    const p = document.createElementNS(SVG_NS, 'path');
-    p.setAttribute('d', d);
-    svg.appendChild(p);
-  }
-  return svg;
-}
-
 /** An icon button named for screen readers; the hover tooltip adds its key. */
 function iconButton(name: string, key: string, paths: readonly string[], cls: string, onClick: () => void): HTMLButtonElement {
   const b = el('button', { class: `cam-btn ${cls}`, attrs: { type: 'button', 'aria-label': name, title: `${name} (${key})` }, onClick });
-  b.appendChild(icon(paths));
+  b.appendChild(lineIcon(paths));
   return b;
 }
 

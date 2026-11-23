@@ -6,6 +6,7 @@ import { rotatedFootprint } from '../src/game/grid';
 import { SAVE_KEY } from '../src/game/save';
 import { GRID_SIZE, type GameState } from '../src/game/types';
 import { getStyleKit } from '../src/models/kit';
+import { rotateMarkAt } from '../src/render/city';
 import { CAMERA, distanceOfShare, zoomShareOf } from '../src/render/stage';
 import { getCatalog, getTheme } from '../src/themes/registry';
 import { T } from '../src/ui/strings';
@@ -51,7 +52,8 @@ function onScreen(page: Page, p: THREE.Vector3): { x: number; y: number } {
 
 /**
  * Tap cell (10, 10) so the ghost goes there, and return where the ghost is and where its ✓ is drawn
- * (city.ts: over the footprint's centre, 0.7 above the item's top), in the starting view.
+ * (city.ts: over the footprint's centre, 0.7 above the item's top), in the starting view; `rotate`:
+ * where the rotate button beside it is drawn.
  */
 async function ghostWithCheck(page: Page, tap: (p: { x: number; y: number }) => Promise<void>) {
   const game = await schoolCity(page);
@@ -62,7 +64,11 @@ async function ghostWithCheck(page: Page, tap: (p: { x: number; y: number }) => 
   const item = getTheme('school')!.items.find((i) => i.id === game.current)!;
   const top = new THREE.Box3().setFromObject(item.build(getStyleKit())).max.y;
   const { w, d } = rotatedFootprint(item.footprint, 0);
-  return { ghost, itemId: item.id, check: onScreen(page, new THREE.Vector3(ghost.x + w / 2, top + 0.7, ghost.z + d / 2)) };
+  const mark = new THREE.Vector3(ghost.x + w / 2, top + 0.7, ghost.z + d / 2);
+  return {
+    ghost, itemId: item.id, check: onScreen(page, mark),
+    rotate: onScreen(page, rotateMarkAt(mark, startCamera(page).camera)),
+  };
 }
 
 test('the zoom slider moves the camera, and follows the wheel', async ({ page }) => {
@@ -135,6 +141,21 @@ test('Q / E turn and + / - zoom from the keyboard, but not while a toolbar popov
   await page.waitForTimeout(600); // longer than a glide
   expect(await azimuth(page)).toBe(a1);
   expect(await distance(page)).toBe(d3);
+});
+
+test('a click on the rotate button beside the ✓ turns the item once; placing keeps the turn', async ({ page }) => {
+  await startSchool(page);
+  const { itemId, rotate } = await ghostWithCheck(page, (p) => page.mouse.click(p.x, p.y));
+  await expect(button(page, T.place)).toBeEnabled();
+  await page.mouse.move(rotate.x, rotate.y);
+  await expect.poll(() => page.locator('canvas').evaluate((c) => (c as HTMLCanvasElement).style.cursor)).toBe('pointer');
+  await page.mouse.click(rotate.x, rotate.y);
+  await page.waitForTimeout(300);
+  await expect(page.getByText(placed(0))).toBeVisible(); // turning never places
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(placed(1))).toBeVisible();
+  const city = await schoolCity(page);
+  expect(city.placements.map(({ itemId: id, rotation }) => ({ id, rotation }))).toEqual([{ id: itemId, rotation: 1 }]);
 });
 
 test('a click on the ✓ places the item once, where the ghost was', async ({ page }) => {

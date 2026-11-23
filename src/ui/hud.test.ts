@@ -31,6 +31,17 @@ describe('hud', () => {
     hud.update(view({ canPlace: true }));
     expect(btn(root, T.place).disabled).toBe(false);
   });
+  it('หมุน and วาง carry an icon (a box with an arrow, a check) and keep their Thai names', () => {
+    const { root, hud } = setup();
+    hud.update(view());
+    for (const name of [T.rotate, T.place]) {
+      const b = btn(root, name);
+      expect(b.textContent).toBe(name); // the accessible name is the word alone
+      const svg = b.querySelector('svg')!;
+      expect(svg.getAttribute('aria-hidden')).toBe('true');
+      expect(svg.querySelectorAll('path').length).toBeGreaterThan(0);
+    }
+  });
   it('wires buttons to handlers', () => {
     const { root, h, hud } = setup();
     hud.update(view());

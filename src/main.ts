@@ -116,7 +116,8 @@ function boot(app: HTMLElement): void {
     onHover: (tile) => { hoverTile = tile; refreshHover(); },
     ghostBox: () => cityView.ghostBox(),
     checkMark: () => cityView.checkMark(),
-    onCheckHover: (over) => cityView.setCheckHover(over),
+    rotateMark: (camera) => cityView.rotateMark(camera),
+    onMarkHover: (mark) => cityView.setMarkHover(mark),
     // a toolbar popover, the shortcuts panel, a confirm dialog or the end screen own the keyboard: nothing reaches the game behind them
     isBlocked: blocked,
   });

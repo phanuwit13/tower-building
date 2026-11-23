@@ -82,6 +82,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .floor-icon .brush { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
 .btn-place { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 20px; }
 .btn-rotate { min-width: 96px; font-size: 18px; }
+.btn-place, .btn-rotate { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.line-icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .btn-restart { background: var(--accent); color: var(--accent-ink); min-width: 120px; font-size: 18px; }
 
 /* Camera controls: the right edge above หมุน/วาง (the top right stays free for the tools) */
