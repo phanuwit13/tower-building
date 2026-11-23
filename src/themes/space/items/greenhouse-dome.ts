@@ -34,8 +34,12 @@ export const item: ItemModel = {
     }
     // lit glass walls: both sides and both ends
     for (const s of [-1, 1]) {
-      parts.push(kit.box([0.02, WALL_H, 2.6], [s * R, FLOOR + WALL_H / 2, 0], 'mint', { glow: 'lime', light: 'window' }));
-      parts.push(kit.box([R * 2 - 0.04, WALL_H, 0.02], [0, FLOOR + WALL_H / 2, s * 1.3], 'mint', { glow: 'lime', light: 'window' }));
+      parts.push(kit.box([0.02, WALL_H, 2.6], [s * R, FLOOR + WALL_H / 2, 0], 'mint'));
+      parts.push(kit.box([R * 2 - 0.04, WALL_H, 0.02], [0, FLOOR + WALL_H / 2, s * 1.3], 'mint'));
+      // a few small lit panes (deep green glow) on each side wall
+      for (const z of [-0.8, 0, 0.8]) {
+        parts.push(kit.box([0.02, 0.16, 0.4], [s * (R + 0.012), FLOOR + 0.18, z + (s > 0 ? 0.0 : 0)], 'leaf', { glow: 'leaf', light: 'window' }));
+      }
       parts.push(kit.box([0.04, 0.04, 2.64], [s * R, FLOOR + WALL_H + 0.02, 0], 'teal'));
     }
     parts.push(...door(kit, { at: [R + 0.01, FLOOR + 0.25, 0.4], facing: 'x+', w: 0.3, h: 0.5, color: 'orange', knob: 'sunYellow' }));
@@ -62,7 +66,7 @@ export const item: ItemModel = {
     // a tall leafy plant down the middle aisle and a green grow-light strip
     parts.push(kit.cone(0.14, 0.7, [0, FLOOR + 0.35, -0.9], 'leaf', { segments: 6 }));
     parts.push(kit.cone(0.12, 0.55, [0, FLOOR + 0.28, 0.9], 'lime', { segments: 6 }));
-    parts.push(kit.box([0.06, 0.02, 1.6], [0, FLOOR + 0.01 + 0.02, 0], 'leaf', { glow: 'lime', light: 'window' }));
+    parts.push(kit.box([0.06, 0.02, 1.6], [0, FLOOR + 0.01 + 0.02, 0], 'leaf', { glow: 'leaf', light: 'window' }));
     return kit.finish(parts);
   },
 };

@@ -23,7 +23,7 @@ export const item: ItemModel = {
       // flat roof: teal slab, a chimney vent, a roof skylight that glows
       kit.box([B.w + 0.14, 0.07, B.d + 0.14], [BX, B.h + 0.035, 0], 'teal'),
       kit.cylinder(0.08, 0.1, 0.18, [BX - 0.3, B.h + 0.16, -0.5], 'stoneDark', { segments: 8 }),
-      kit.box([0.3, 0.04, 0.36], [BX + 0.1, B.h + 0.09, 0.3], 'skyBlue', { glow: 'windowWarm', light: 'window' }),
+      kit.box([0.3, 0.04, 0.36], [BX + 0.1, B.h + 0.09, 0.3], 'teal', { glow: 'teal', light: 'window' }),
       kit.box([0.46, 0.03, 0.04], [BX + 0.1, B.h + 0.075, 0.57], 'chrome'),
       ...glassWindow(kit, { at: [front, 0.55, -0.5], facing: 'x+', w: 0.3, h: 0.22 }),
       ...door(kit, { at: [front, BASE + 0.25, 0.4], facing: 'x+', w: 0.34, h: 0.5, color: 'red', knob: 'sunYellow' }),

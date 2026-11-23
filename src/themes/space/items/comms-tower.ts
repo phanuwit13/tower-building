@@ -6,7 +6,7 @@ import { aim, rod } from '../../../models/parts';
 const BASE_H = 0.1;
 const SPREAD = 0.5; // leg half-spacing at the bottom
 const TOP_SPREAD = 0.14;
-const TOP_Y = 2.0;
+const TOP_Y = 1.85;
 
 const legPoint = (sx: number, sz: number, t: number): Vec3 => {
   const sp = SPREAD + (TOP_SPREAD - SPREAD) * t;
@@ -52,7 +52,7 @@ export const item: ItemModel = {
     parts.push(kit.cylinder(0.2, 0.04, 0.1, [0, TOP_Y + 0.3, 0.3], 'orange', { segments: 10, rotate: d2 }));
     // mast and blinking light
     parts.push(rod(kit, [-0.1, TOP_Y + 0.05, -0.1], [-0.1, TOP_Y + 0.4, -0.1], 0.025, 'stoneDark', { segments: 4 }));
-    parts.push(kit.sphere(0.08, [-0.1, TOP_Y + 0.45, -0.1], 'red', { detail: 0, glow: true, light: 'blink' }));
+    parts.push(kit.sphere(0.08, [-0.1, TOP_Y + 0.45, -0.1], 'orange', { detail: 0, glow: 'red', light: 'blink' }));
     return kit.finish(parts);
   },
 };

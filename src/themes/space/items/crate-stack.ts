@@ -29,10 +29,10 @@ export const item: ItemModel = {
   footprint: { w: 1, d: 2 },
   build: (kit) => {
     const parts: Part[] = [
-      ...container(kit, 0.24, H / 2, -0.04, 'red', 'redDark'),
-      ...container(kit, -0.24, H / 2, 0.02, 'blue', 'navy'),
-      ...container(kit, 0.0, H * 1.5 + 0.03, 0, 'sunYellow', 'orange'),
-      ...container(kit, -0.24, H * 2.5 + 0.06, 0.0, 'teal', 'leafDark'),
+      ...container(kit, 0.23, H / 2, 0, 'red', 'redDark'),
+      ...container(kit, -0.23, H / 2, 0, 'blue', 'navy'),
+      ...container(kit, 0.23, H * 1.5 + 0.03, 0, 'sunYellow', 'orange'),
+      ...container(kit, -0.23, H * 1.5 + 0.03, 0, 'teal', 'leafDark'),
     ];
     return kit.finish(parts);
   },

@@ -22,8 +22,8 @@ export const item: ItemModel = {
       kit.cone(0.07, 0.26, [-0.12, MOUND_Y + 0.13, -0.2], 'teal', { segments: 6 }),
     ];
     // stalks: [tip x, tip y, tip z, bulb radius, colour]
-    const stalks: Array<[number, number, number, number, 'pink' | 'sunYellow' | 'skyBlue']> = [
-      [0.12, 0.85, 0.02, 0.11, 'pink'],
+    const stalks: Array<[number, number, number, number, 'purple' | 'sunYellow' | 'skyBlue']> = [
+      [0.12, 0.85, 0.02, 0.11, 'purple'],
       [-0.2, 0.62, 0.12, 0.09, 'sunYellow'],
       [0.05, 0.55, -0.2, 0.09, 'skyBlue'],
     ];
