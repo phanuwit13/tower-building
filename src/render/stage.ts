@@ -25,7 +25,15 @@ export interface Stage {
   invalidateShadows(): void;
   /** Draw calls and triangles of the last animation frame, every pass included (shadow map, AO, bloom). */
   frameStats(): { calls: number; triangles: number };
+  /**
+   * The pretty tier's bloom (BLOOM unless set). The stage keeps it across tier switches; the
+   * environment sets it on every apply (a city's night has its own, see envPreset).
+   */
+  setBloom(bloom: BloomSettings): void;
 }
+
+/** UnrealBloomPass settings: `threshold` is a luminance measured before exposure. */
+export interface BloomSettings { threshold: number; strength: number; radius: number }
 
 interface TierSettings {
   maxPixelRatio: number;
@@ -71,9 +79,11 @@ export const CAMERA = {
 } as const;
 /**
  * Lights are authored dimmer and the exposure raised to match, so lit daytime surfaces stay under
- * the bloom threshold (0.85, measured before exposure) and only glowing parts bloom.
+ * the bloom threshold (BLOOM.threshold, measured before exposure) and only glowing parts bloom.
  */
 const EXPOSURE = 1.4;
+/** The standard bloom: soft halos round glowing parts; lit daytime surfaces stay under its threshold. */
+export const BLOOM: Readonly<BloomSettings> = { threshold: 0.85, strength: 0.5, radius: 0.4 };
 
 /**
  * AO and bloom are soft, low-frequency effects, so they work on a quarter of the composer's pixels
@@ -139,6 +149,8 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   let width = 1;
   let height = 1;
   let composer: EffectComposer | null = null;
+  let bloomPass: UnrealBloomPass | null = null;
+  let bloom: BloomSettings = { ...BLOOM };
 
   const invalidateShadows = () => { renderer.shadowMap.needsUpdate = true; };
   canvas.addEventListener('webglcontextrestored', invalidateShadows); // the restored map is empty
@@ -159,7 +171,8 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 16 });
     ao.blendIntensity = 0.85;
     c.addPass(ao);
-    c.addPass(new HalfResBloomPass(new THREE.Vector2(width, height), 0.5, 0.4, 0.85));
+    bloomPass = new HalfResBloomPass(new THREE.Vector2(width, height), bloom.strength, bloom.radius, bloom.threshold);
+    c.addPass(bloomPass);
     c.addPass(new OutputPass());
     return c;
   };
@@ -167,6 +180,7 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
   const disposeComposer = (c: EffectComposer) => {
     for (const pass of c.passes) pass.dispose();
     c.dispose();
+    bloomPass = null;
   };
 
   const resize = () => {
@@ -226,6 +240,10 @@ export function createStage(container: HTMLElement, q: QualityTier): Stage {
     renderNow: render,
     invalidateShadows,
     frameStats: () => ({ ...stats }),
+    setBloom(next) {
+      bloom = { ...next };
+      if (bloomPass) Object.assign(bloomPass, bloom); // the pass reads all three every frame
+    },
   };
 
   new ResizeObserver(resize).observe(container);

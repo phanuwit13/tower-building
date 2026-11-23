@@ -43,6 +43,20 @@ describe('parseBatchParam', () => {
     expect(parseBatchParam('beach-batch-7')).toEqual({ theme: 'beach', n: 7 });
     expect(parseBatchParam('beach-batch-8')).toBeNull();
   });
+  it('finds the market batches (m-prefixed files m1-m8) without disturbing the other prefixes', () => {
+    const paths = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `../themes/market/batches/m${n}.ts`)
+      .concat([1, 2, 3, 4, 5, 6].map((n) => `../themes/school/batches/b${n}.ts`), [1, 2, 3, 4, 5, 6, 7].map((n) => `../themes/beach/batches/c${n}.ts`));
+    for (let n = 1; n <= 8; n++) expect(parseBatchParam(`market-batch-${n}`, paths)).toEqual({ theme: 'market', n });
+    expect(parseBatchParam('market-batch-9', paths)).toBeNull();
+    expect(parseBatchParam('batch-8', paths)).toBeNull();
+    expect(parseBatchParam('beach-batch-8', paths)).toBeNull();
+    expect(parseBatchParam('beach-batch-7', paths)).toEqual({ theme: 'beach', n: 7 });
+  });
+  it('knows the real market has eight batches', () => {
+    expect(parseBatchParam('market-batch-1')).toEqual({ theme: 'market', n: 1 });
+    expect(parseBatchParam('market-batch-8')).toEqual({ theme: 'market', n: 8 });
+    expect(parseBatchParam('market-batch-9')).toBeNull();
+  });
   it('ignores everything else', () => {
     for (const p of [null, '', 'school', 'amusement', 'floors', 'batch-0', 'batch-7', 'batch-10', 'batch-', 'batch-1x', 'Batch-1', ' batch-1',
       'amusement-batch-0', 'amusement-batch-7', 'Amusement-batch-1', '-batch-1', 'amusement-batch', 'amusement_batch-1', 'a-b-batch-1']) {
@@ -77,6 +91,11 @@ describe('loadBatch', () => {
     expect(got.theme).toEqual({ ...info, name: 'สวนสนุก · batch 3', items: [] });
     expect(got.file).toBe('src/themes/amusement/batches/a3.ts');
     expect(others).toBe(0);
+  });
+  it('keeps the theme\'s night glow, so a batch is reviewed under its theme\'s real night', async () => {
+    const city: Omit<ThemeDef, 'items'> = { id: 'market', name: 'ย่านการค้า', emoji: '🛍️', defaultGround: 'concrete', nightGlow: 1.5 };
+    const src = sources({ '../themes/market/batches/m2.ts': async () => ({ items: [] }) }, { '../themes/market/info.ts': async () => ({ info: city }) });
+    expect((await loadBatch({ theme: 'market', n: 2 }, src)).theme.nightGlow).toBe(1.5);
   });
   it('finds the batch whatever letter the theme gives its batch files, and never another theme\'s', async () => {
     const src = sources({ '../themes/school/batches/b1.ts': async () => ({ items: [fixture] }) },

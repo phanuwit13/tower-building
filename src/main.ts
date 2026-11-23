@@ -10,7 +10,7 @@ import { randomSeed } from './game/rng';
 import { fillStats } from './game/grid';
 import { browserStore } from './app/browserStore';
 import { getCatalog, getTheme, THEMES } from './themes/registry';
-import type { ThemeDef } from './themes/types';
+import { clampNightGlow, type ThemeDef } from './themes/types';
 import { createCityView } from './render/city';
 import { attachInput } from './render/input';
 import { applyViewShift, viewShiftPx } from './render/viewShift';
@@ -115,19 +115,21 @@ function boot(app: HTMLElement): void {
   const fpsMonitor = new FpsMonitor();
   attachFpsOverlay(stage, () => tier, () => cityView.lastBuildMs());
 
-  // Scene: re-applied when settings or tier change (rain counts are per tier).
+  // Scene: re-applied when settings, tier (rain counts are per tier) or the theme's night glow change.
   const applyScene = (s: AppState): void => {
     const settings = s.game?.settings ?? BACKDROP;
+    const nightGlow = clampNightGlow(s.game ? getTheme(s.game.themeId)?.nightGlow : undefined);
     if (s.quality !== tier) {
       tier = s.quality;
       stage.setQuality(tier);
       fpsMonitor.reset();
       appliedKey = ''; // force environment.apply below
     }
-    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}`;
+    const key = `${tier}|${settings.weather}|${settings.time}|${settings.ground}|${nightGlow}`;
     if (key === appliedKey) return;
     appliedKey = key;
-    environment.apply(settings, tier);
+    environment.apply(settings, tier, nightGlow);
+    app.dataset.nightGlow = String(nightGlow); // what the environment was given (the e2e reads it)
     ground.setGround(settings.ground, settings.weather === 'rain');
   };
 
@@ -304,22 +306,26 @@ function boot(app: HTMLElement): void {
  * An unknown theme id starts the normal game.
  */
 function bootGallery(app: HTMLElement, theme: ThemeDef, devNote?: string): void {
-  bootGalleryStage(app, theme.defaultGround, (stage, kit) => {
+  bootGalleryStage(app, theme, (stage, kit) => {
     attachGallery(stage, kit, theme, { itemId: new URLSearchParams(location.search).get('item') });
   }, devNote);
 }
 
 /** `?gallery=floors`: every floor tile as a 3 x 3 patch with its Thai name; lighting and tier from the settings panel. */
 function bootFloorGallery(app: HTMLElement): void {
-  bootGalleryStage(app, 'grass', (stage, kit) => { attachFloorGallery(stage, kit); });
+  bootGalleryStage(app, { defaultGround: 'grass' }, (stage, kit) => { attachFloorGallery(stage, kit); });
 }
 
-/** The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch. */
+/**
+ * The page shared by the review galleries: the stage, the lighting and ground switches, the tier switch.
+ * `look`: the shown theme's ground and night glow, so a batch is reviewed under its theme's real night.
+ */
 function bootGalleryStage(
-  app: HTMLElement, ground: SceneSettings['ground'], attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
+  app: HTMLElement, look: Pick<ThemeDef, 'defaultGround' | 'nightGlow'>,
+  attach: (stage: ReturnType<typeof createStage>, kit: ReturnType<typeof getStyleKit>) => void, devNote?: string,
 ): void {
   let quality: QualityTier = loadQuality(browserStore(() => window.localStorage)) ?? detectQuality();
-  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground };
+  let scene: SceneSettings = { weather: 'sunny', time: 'day', ground: look.defaultGround };
   const kit = getStyleKit();
   const stage = createStage(app, quality);
   const groundLayer = createGround(stage);
@@ -328,7 +334,7 @@ function bootGalleryStage(
   attach(stage, kit);
 
   const apply = (): void => {
-    environment.apply(scene, quality);
+    environment.apply(scene, quality, look.nightGlow);
     groundLayer.setGround(scene.ground, scene.weather === 'rain');
   };
   const openSettings = (): void => settings.open({ settings: scene, quality });

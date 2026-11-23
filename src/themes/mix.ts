@@ -11,3 +11,6 @@ export const ZOO_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 1
 
 /** The Beach mix (docs/game/items-beach.md, 60 items); the same footprints as the zoo, checked by the same simulation. */
 export const BEACH_MIX: FootprintMix = { '1x1': 19, '1x2': 17, '2x2': 14, '2x3': 10 };
+
+/** The Shopping district mix (docs/game/items-market.md, 70 items: more small shops and stalls); checked by the same simulation. */
+export const MARKET_MIX: FootprintMix = { '1x1': 22, '1x2': 20, '2x2': 17, '2x3': 11 };

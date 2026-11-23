@@ -4,6 +4,7 @@ import { DEFAULT_MIX } from './mix';
 import { getStyleKit } from '../models/kit';
 import { validateTheme } from '../models/validate';
 import { THEMES, getCatalog, getTheme } from './registry';
+import { clampNightGlow } from './types';
 
 interface DocItem { id: string; name: string; footprint: string }
 function docItems(): DocItem[] {
@@ -49,5 +50,24 @@ describe('registry', () => {
   it('getCatalog builds a theme catalog once', () => {
     const a = getCatalog('school');
     expect(getCatalog('school')).toBe(a);
+  });
+});
+
+describe('nightGlow', () => {
+  it('the shopping district is registered with its bright night; the other themes keep the standard one', () => {
+    expect(THEMES.map((t) => t.id)).toEqual(['school', 'amusement', 'zoo', 'beach', 'market']);
+    expect(getTheme('market')!.nightGlow).toBe(1.5);
+    for (const t of THEMES.filter((x) => x.id !== 'market')) expect(clampNightGlow(t.nightGlow), t.id).toBe(1);
+  });
+  it('clampNightGlow holds it to 1–2 and treats missing or broken as 1', () => {
+    expect([undefined, NaN, Infinity, 0, -3, 1, 1.5, 2, 5].map(clampNightGlow)).toEqual([1, 1, 1, 1, 1, 1, 1.5, 2, 2]);
+  });
+  it('validateTheme rejects a nightGlow outside 1–2', () => {
+    const kit = getStyleKit();
+    const market = getTheme('market')!;
+    expect(validateTheme({ ...market, nightGlow: 2 }, kit, { minItems: 50 })).toEqual([]);
+    for (const bad of [0.5, 2.5, NaN]) {
+      expect(validateTheme({ ...market, nightGlow: bad }, kit, { minItems: 50 }).join(), String(bad)).toMatch(/nightGlow .* outside 1–2/);
+    }
   });
 });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { ThemeDef } from '../themes/types';
+import { NIGHT_GLOW_MAX, NIGHT_GLOW_MIN, type ThemeDef } from '../themes/types';
 import { CATEGORIES, type ItemModel } from './contract';
 import type { StyleKit } from './kit';
 import { MOTION_ATTRIBUTES } from './motion';
@@ -116,6 +116,9 @@ export function validateItemModel(m: ItemModel, kit: StyleKit): string[] {
 
 export function validateTheme(t: ThemeDef, kit: StyleKit, opts: { minItems: number }): string[] {
   const errs: string[] = [];
+  if (t.nightGlow !== undefined && !(t.nightGlow >= NIGHT_GLOW_MIN && t.nightGlow <= NIGHT_GLOW_MAX)) {
+    errs.push(`theme "${t.id}": nightGlow ${t.nightGlow} is outside ${NIGHT_GLOW_MIN}–${NIGHT_GLOW_MAX}`);
+  }
   if (t.items.length < opts.minItems) errs.push(`theme "${t.id}": ${t.items.length} items, need at least ${opts.minItems}`);
   const ids = new Set<string>();
   const names = new Set<string>();
